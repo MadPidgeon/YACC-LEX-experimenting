@@ -1,4 +1,20 @@
 #include "scope_table.h"
+#include <iomanip>
+
+bool scopeTable::addTypeDefinition( scope_t scope, symbol_t symbol, structure_t structure, std::vector<type_t> par, std::vector<type_t> sub ) {
+	return scopes.at( scope ).typedefs.addType( symbol, structure, par, sub );
+}
+
+type_t scopeTable::getTypeDefinition( scope_t deep, symbol_t symbol, std::vector<type_t> pars ) const {
+	scope_t scope = deep;
+	while( scope != ERROR_SCOPE ) {
+		type_t t = scopes.at( scope ).typedefs.getType( symbol, pars );
+		if( t != ERROR_TYPE )
+			return t;
+		scope = scopes.at( scope ).super_scope;
+	}
+	return ERROR_TYPE;
+}
 
 scope_t scopeTable::addScope( scope_t super ) {
 	scope_t id = scopes.size();
@@ -8,7 +24,7 @@ scope_t scopeTable::addScope( scope_t super ) {
 	return id;
 }
 
-variable_t scopeTable::addVariable( scope_t scope, type_t type, symbol_t symbol ) {
+variable_t scopeTable::addVariable( scope_t scope, symbol_t symbol, type_t type ) {
 	if( scopes.at( scope ).declarations.find( symbol ) != scopes.at( scope ).declarations.end() )
 		return ERROR_VARIABLE;
 	variable_t id = declarations.size();
@@ -22,7 +38,7 @@ scope_t scopeTable::getScope( variable_t variable ) const {
 	return declarations.at( variable ).scope;
 }
 
-type_t scopeTable::getType( variable_t variable ) const {
+type_t scopeTable::getVariableType( variable_t variable ) const {
 	return declarations.at( variable ).type;
 }
 
@@ -37,8 +53,15 @@ variable_t scopeTable::getVariable( scope_t deep, symbol_t symbol ) const {
 	return ERROR_VARIABLE;
 }
 
-scopeTable::scopeTable() {
-	addScope( ERROR_SCOPE );
-	addScope( ERROR_SCOPE );
-	addVariable( ERROR_SCOPE, ERROR_TYPE, ERROR_SYMBOL );
+scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
+	assert( addScope( ERROR_SCOPE ) == ERROR_SCOPE );
+	assert( addScope( ERROR_SCOPE ) == GLOBAL_SCOPE );
+	assert( addVariable( ERROR_SCOPE, ERROR_SYMBOL, ERROR_TYPE ) == ERROR_VARIABLE );
+	addTypeDefinition( GLOBAL_SCOPE, INT_SYMBOL, INT_STRUCTURE );
+	addTypeDefinition( GLOBAL_SCOPE, FLT_SYMBOL, FLT_STRUCTURE );
+	addTypeDefinition( GLOBAL_SCOPE, STR_SYMBOL, STR_STRUCTURE );
+	addTypeDefinition( GLOBAL_SCOPE, LST_SYMBOL, LST_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
+	addTypeDefinition( GLOBAL_SCOPE, SET_SYMBOL, SET_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
+	symtab = sym;
+	strtab = str;
 }

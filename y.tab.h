@@ -49,10 +49,26 @@ extern int yydebug;
     FLT = 259,
     ID = 260,
     TYPENAME = 261,
-    ASSIGNMENT = 262,
-    ADDOP = 263,
-    MULOP = 264,
-    SEMICOLON = 265
+    VTYPE = 262,
+    ASSIGNMENT = 263,
+    ADDOP = 264,
+    MULOP = 265,
+    COMMA = 266,
+    SEMICOLON = 267,
+    LSEQ = 268,
+    RSEQ = 269,
+    LBRA = 270,
+    RBRA = 271,
+    STRING_BEGIN = 272,
+    STRING_END = 273,
+    STRING_PARTICLE = 274,
+    IF = 275,
+    WHILE = 276,
+    ELSE = 277,
+    FOR = 278,
+    IN = 279,
+    RELOP = 280,
+    ELLIPSIS = 281
   };
 #endif
 /* Tokens.  */
@@ -60,24 +76,42 @@ extern int yydebug;
 #define FLT 259
 #define ID 260
 #define TYPENAME 261
-#define ASSIGNMENT 262
-#define ADDOP 263
-#define MULOP 264
-#define SEMICOLON 265
+#define VTYPE 262
+#define ASSIGNMENT 263
+#define ADDOP 264
+#define MULOP 265
+#define COMMA 266
+#define SEMICOLON 267
+#define LSEQ 268
+#define RSEQ 269
+#define LBRA 270
+#define RBRA 271
+#define STRING_BEGIN 272
+#define STRING_END 273
+#define STRING_PARTICLE 274
+#define IF 275
+#define WHILE 276
+#define ELSE 277
+#define FOR 278
+#define IN 279
+#define RELOP 280
+#define ELLIPSIS 281
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 
 union YYSTYPE
 {
-#line 52 "lang.y" /* yacc.c:1909  */
+#line 62 "lang.y" /* yacc.c:1909  */
 
 	char *str;
 	int64_t num;
 	double flt;
+	const type_t* typ;
+	std::vector<type_t>* typlst;
 	struct syntaxTree::node *node;
 
-#line 81 "y.tab.h" /* yacc.c:1909  */
+#line 115 "y.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

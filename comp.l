@@ -1,7 +1,5 @@
 /* C declarations */
 %{
-
-int msglevel = 90;
  
 #include <stdio.h>
 #include <string>

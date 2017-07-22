@@ -1,1 +1,18 @@
-int x = 1337;
+int x = 1337, y = 0x12F, z = 0b0101;
+str s = "The quick brown fox jumps over the lazy dog.",
+    t = "Testing\n Some 
+Extra \\
+	Bullshit";
+int a = x+y*z;
+int i = 1337_10, j = 12F_16, k = 0101_2;
+str result = "Boring";
+if( j == 303 )
+	if( k == 5 )
+		result = "Exciting";
+	else
+		result = "Questionable";
+int sum = 0;
+lst(int) l = [x,y,z];
+for( v in [1,2,3] ) [
+	sum = sum + v;
+]

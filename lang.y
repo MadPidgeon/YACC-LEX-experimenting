@@ -1,13 +1,18 @@
 /* C declarations */
 %{
 
-#include <stdio.h>
-#include <math.h>
+#include <iostream>
+#include <cstdio>
+#include <iomanip>
+#include <cmath>
 #include <stack>
+#include <cstring>
 #include "symbol_table.h"
 #include "scope_table.h"
 #include "types.h"
 #include "syntax_tree.h"
+#include "debug.h"
+#include "error_reporting.h"
 
 #undef DEBUG
 
@@ -25,11 +30,6 @@ extern int yylex();
 extern int yyparse();
 extern FILE *yyin;
 
-symbolTable *symtab;
-scopeTable *scptab;
-scope_t current_scope = GLOBAL_SCOPE;
-std::stack<type_t> decllisttypes;
-
 
 int error_counter = 0;
 int warning_counter = 0;
@@ -38,98 +38,328 @@ int warning_counter = 0;
 }
 #endif
 
-extern int lineno;        /* Current line number */
+symbolTable *symtab;
+structureTable* strtab;
+scopeTable *scptab;
+syntaxTree *syntree;
+std::string input_str;
+
+scope_t current_scope = GLOBAL_SCOPE;
+std::stack<type_t> decllisttypes;
+
+syntaxTree::node* symbolToVariable( symbol_t id );
+syntaxTree::node* symbolToVariable( symbol_t id, type_t type );
 
 %}
 
 /* Start symbol */
-%start sequential_statements
+%start entry_point
 
 /* Tokens */
 
-%token INT FLT ID TYPENAME ASSIGNMENT ADDOP MULOP SEMICOLON
+%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE IF WHILE ELSE FOR IN RELOP ELLIPSIS
 
 %union {
 	char *str;
 	int64_t num;
 	double flt;
+	const type_t* typ;
+	std::vector<type_t>* typlst;
 	struct syntaxTree::node *node;
 }
 
+
 /* shift/reduce conflict: dangling ELSE */
-/* %expect 1 */
+%expect 2
 %% 
 
 /* GRAMMAR RULES AND ACTIONS */
 
-sequential_statements: 	statement | statement sequential_statements;
-statement:				declarations SEMICOLON | assignment SEMICOLON | expression SEMICOLON | error SEMICOLON;
-declarations:			TYPENAME {
-							decllisttypes.push( $<num>1 );
+entry_point:			statement_list {
+							syntree->setRoot( $<node>1 );
+						}
+sequential_block:		LSEQ statement_list RSEQ {
+							syntaxTree::node* n = $<node>2;
+							n->setType( N_SEQUENTIAL_BLOCK );
+							$<node>$ = n;
+						}
+statement_list: 		statement {
+							$<node>$ = new syntaxTree::node( N_BLOCK_LIST, $<node>1 );
+						} 
+						| statement statement_list {
+							$<node>$ = new syntaxTree::node( N_BLOCK_LIST, $<node>1, $<node>2 );
+						}
+statement:				declarations SEMICOLON {
+							$<node>$ = $<node>1;
+						} 
+						| assignment SEMICOLON {
+							$<node>$ = $<node>1;
+						} 
+						| expression SEMICOLON {
+							$<node>$ = $<node>1;
+						}
+						| sequential_block {
+							$<node>$ = $<node>1;
+						}
+						| if {
+							$<node>$ = $<node>1;
+						}
+						| for {
+							$<node>$ = $<node>1;
+						}
+						| while {
+							$<node>$ = $<node>1;
+						}
+						| error SEMICOLON;
+
+id:						ID {
+							$<num>$ = symtab->addSymbol( $<str>1 );
+							free( $<str>1 );
+						}
+
+typelist:				type {
+							$<typlst>$ = new std::vector<type_t>{ *$<typ>1 };
+						}
+						| type COMMA typelist {
+							$<typlst>$ = $<typlst>3;
+							$<typlst>$->insert( $<typlst>$->begin(), *$<typ>1 );
+						};
+
+type:					VTYPE id {
+							pmesg( 90, "ERROR: variadic types not yet implemented\n" );
+							$<typ>$ = &ERROR_TYPE;
+						}
+						| id LBRA typelist RBRA {
+							pmesg( 90, "Lexer: TYPENAME %s\n", symtab->getName( $<num>1 ).c_str() );
+							$<typ>$ = new type_t( scptab->getTypeDefinition( current_scope, $<num>1, *$<typlst>3 ) );
+							if( *$<typ>$ == ERROR_TYPE )
+								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
+						}
+						| id {
+							pmesg( 90, "Lexer: TYPENAME %s\n", symtab->getName( $<num>1 ).c_str() );
+							$<typ>$ = new type_t( scptab->getTypeDefinition( current_scope, $<num>1 ) );
+							if( *$<typ>$ == ERROR_TYPE )
+								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
+						}
+
+declarations:			type {
+							//pmesg( 90, "Declaring variables of type %d\n", $<num>1 );
+							std::cout << "Declaring variables of type " << (*$<typ>1) << std::endl;
+							decllisttypes.push( *$<typ>1  );
+							delete $<typ>1;
 						} declaration_list {
+							syntaxTree::node* n = $<node>3;
+							if( n == nullptr )
+								$<node>$ = new syntaxTree::node( N_EMPTY );
+							else
+								$<node>$ = n;
 							decllisttypes.pop();
 						};
-declaration_list:		declaration_list ',' declaration_list_1 | declaration_list_1;
-declaration_list_1:		declaration_list_2 {
-							// symtab->setType( $<num>1, decllisttypes.top() );
-						};
-declaration_list_2:		assignment {
-							$<num>$ = $<num>1;
+
+declaration_list:		declaration_list_el COMMA declaration_list {
+							if( $<node>1 == nullptr ) {
+								$<node>$ = $<node>3;
+							} else if( $<node>3 == nullptr ){
+								$<node>$ = $<node>1;
+							} else {
+								$<node>$ = new syntaxTree::node( N_BLOCK_LIST, $<node>1, $<node>3 );
+							}
 						}
-						| variable {
-							$<num>$ = $<num>1;
+						| declaration_list_el {
+							$<node>$ = $<node>1;
+						};
+
+declaration_list_el:	id ASSIGNMENT expression {
+							$<node>$ = new syntaxTree::node( N_ASSIGN, symbolToVariable( $<num>1, decllisttypes.top() ), $<node>3 );
+						}
+						| id {
+							variable_t variable = scptab->addVariable( current_scope, $<num>1, decllisttypes.top() );
+							$<node>$ = nullptr;
 						};
 
 assignment:				variable ASSIGNMENT expression {
-							$<node>$ = new syntaxTree::node( ASSIGN, $<node>1, $<node>3 );	
+							$<node>$ = new syntaxTree::node( N_ASSIGN, $<node>1, $<node>3 );	
 						};
-leaf_expression:		constant | variable | function_call | '(' expression ')';
-expression:				term {
-							$<node>$ = $<node>1;	
+
+leaf_expression:		constant | variable {
+							$<node>$ = $<node>1;
+						} 
+						| function_call | LBRA expression RBRA {
+							$<node>$ = $<node>2;
+						};
+
+expression:				relational;
+
+relational:				sum {
+							$<node>$ = $<node>1;
 						}
-						| term ADDOP expression {
+						| sum RELOP relational {
 							node_t type;
-							char c = $<str>2[0];
-							if( c == '+' )
-								type = ADD;
-							else if( c == '-' )
-								type = SUBTRACT;
+							int c = $<num>2;
+							if( c == 1 )
+								type = N_NOT_EQUALS;
+							else if( c == 0 )
+								type = N_EQUALS;
 							$<node>$ = new syntaxTree::node( type, $<node>1, $<node>3 );
 						};
-term:					leaf_expression;
+
+sum:					product {
+							$<node>$ = $<node>1;	
+						}
+						| product ADDOP sum {
+							node_t type;
+							int c = $<num>2;
+							if( c == 1 )
+								type = N_ADD;
+							else if( c == 0 )
+								type = N_SUBTRACT;
+							$<node>$ = new syntaxTree::node( type, $<node>1, $<node>3 );
+						};
+
+product:				factor MULOP product {
+							node_t type;
+							int c = $<num>2;
+							if( c == 1 )
+								type = N_MULTIPLY;
+							else if( c == 0 )
+								type = N_DIVIDE;
+							else
+								type = N_REMAINDER;
+							$<node>$ = new syntaxTree::node( type, $<node>1, $<node>3 );
+						}
+						| factor {
+							$<node>$ = $<node>1;
+						};
+
+factor:					leaf_expression;
+
 constant:				INT {
-							$<node>$ = new syntaxTree::node( INTEGER, nullptr, nullptr, {.integer=$<num>1} );
+							$<node>$ = new syntaxTree::node( N_INTEGER, nullptr, nullptr, {.integer=$<num>1} );
 						}
 						| FLT {
-							$<node>$ = new syntaxTree::node( FLOAT, nullptr, nullptr, {.floating=$<flt>1} );
+							$<node>$ = new syntaxTree::node( N_FLOAT, nullptr, nullptr, {.floating=$<flt>1} );
+						}
+						| STRING_BEGIN string_particles STRING_END {
+							pmesg(90, "Lexer: STR: \"%s\"\n", input_str.c_str());
+							syntaxTree::node::extra_data_t d;
+							d.string = strdup(input_str.c_str());
+							$<node>$ = new syntaxTree::node( N_STRING, nullptr, nullptr, d );
+							input_str.clear();
+						}
+						| list {
+							$<node>$ = $<node>1;
 						};
-variable:				ID {
-							symbol_t symbol = symtab->addSymbol( $<str>1 );
-							variable_t variable = scptab->getVariable( symbol, current_scope );
-							$<node>$ = new syntaxTree::node( VARIABLE, nullptr, nullptr, {.integer=variable} );
+list:					LSEQ list_items RSEQ {
+							$<node>$ = new syntaxTree::node( N_LIST, $<node>2 );
+						}
+						| LSEQ RSEQ {
+							$<node>$ = new syntaxTree::node( N_LIST );
+						};
+
+list_items:				expression {
+							$<node>$ = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, $<node>1 );
+						} 
+						| expression COMMA list_items {
+							type_t a = $<node>1->data_type, b = $<node>3->data_type;
+							if( a != b and a != ERROR_TYPE and b != ERROR_TYPE )
+								lerr << error_line() << "Lists and sets can only contain elements of a single type" << std::endl;
+							$<node>$ = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, $<node>1, $<node>3 );
+						};
+
+string_particles:		STRING_PARTICLE {
+							input_str.append( $<str>1 );
 							free( $<str>1 );
+						} 
+						| string_particles STRING_PARTICLE  {
+							input_str.append( $<str>2 );
+							free( $<str>2 );
 						};
-function_call:			ID '(' parameter_list ')';
-declaration:			TYPENAME variable {
+
+variable:				id {
+							$<node>$ = symbolToVariable( $<num>1 );
+						};
+
+function_call:			id LBRA parameter_list RBRA;
+
+declaration:			type variable {
 							/*symtab->setType( $<num>2, $<num>1 );
 							$<node>$ = new syntaxTree::node( VARIABLE, $<num>2 );*/
-						}
+						};
+
 parameter_list: 		declaration {
 							$<node>$ = $<node>1;
 						}
-						| declaration ',' parameter_list {
-							$<node>$ = new syntaxTree::node( ARGUMENT_LIST, $<node>1, $<node>3 );
-						}
+						| declaration COMMA parameter_list {
+							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1, $<node>3 );
+						};
 
+for:					FOR LBRA id IN expression RBRA {
+							structure_t base = $<node>5->data_type.getBase();
+							if( base != LST_STRUCTURE and base != SET_STRUCTURE )
+								lerr << error_line() << "Cannot iterate over variables of type " << $<node>5->data_type << std::endl;
+							type_t t = $<node>5->data_type.getChildType();
+							symbolToVariable( $<num>3, t );
+						} statement {
+							symbol_t s = symtab->addTemporarySymbol();
+							$<node>$ = new syntaxTree::node( N_SEQUENTIAL_BLOCK, 
+								new syntaxTree::node( N_ASSIGN, 
+									symbolToVariable( s, $<node>5->data_type ),
+									$<node>5 ),
+								new syntaxTree::node( N_WHILE, new syntaxTree::node( N_EMPTY ) /*rip*/, $<node>8 ) );
+						};
+
+while:					WHILE LBRA expression RBRA statement {
+							$<node>$ = new syntaxTree::node( N_WHILE, $<node>3, $<node>5 );
+						}
+						| WHILE LBRA expression RBRA statement ELSE statement {
+							$<node>$ = new syntaxTree::node( N_WHILE, 
+								$<node>3, 
+								new syntaxTree::node( N_ELSE, $<node>5, $<node>7 )
+							);
+						};
+
+if:						IF LBRA expression RBRA statement {
+							$<node>$ = new syntaxTree::node( N_IF, $<node>3, $<node>5 );
+						}
+						| IF LBRA expression RBRA statement ELSE statement {
+							$<node>$ = new syntaxTree::node( N_IF, $<node>3, new syntaxTree::node( N_ELSE, $<node>5, $<node>7 ) );
+						};
 
 %%
 
 /* C-CODE */
 
+std::ostream& operator<<( std::ostream& os, const scopeTable& t ) {
+	os << std::setfill(' ') << std::left << "SCOPE ID    NAME" << std::endl;
+	for( size_t i = 0; i < t.scopes.size(); ++i ) {
+		if( t.scopes.at(i).declarations.size() > 0 ) {
+			os << std::setw( 6 ) << i;
+			auto itr = t.scopes.at(i).declarations.begin();
+			os << std::setw( 6 ) << itr->second << symtab->getName( itr->first ) << std::endl;
+			for( ++itr; itr != t.scopes.at(i).declarations.end(); ++itr )
+				os << "      " << std::setw( 6 ) << itr->second << symtab->getName( itr->first ) << std::endl;
+		}
+	}
+	return os;
+}
+
+syntaxTree::node* symbolToVariable( symbol_t symbol ) {
+	variable_t variable = scptab->getVariable( current_scope, symbol );
+	return new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=variable} );
+}
+
+syntaxTree::node* symbolToVariable( symbol_t symbol, type_t type ) {
+	variable_t variable = scptab->addVariable( current_scope, symbol, type );
+	return new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=variable} );
+}
+
+
 int main( int argc, char** argv ) {
 	char *input_file_name, *output_file_name;
 	symtab = new symbolTable;
-	scptab = new scopeTable;
+	strtab = new structureTable;
+	scptab = new scopeTable( symtab, strtab );
+	syntree = new syntaxTree( scptab );
 	if( argc < 2 ) {
 		printf("Missing input file!\n");
 		return -1;
@@ -141,15 +371,16 @@ int main( int argc, char** argv ) {
 		return -1;
 	}
 	yyin = input_file;
-	auto P = yyparse();
+	int result = yyparse();
+	std::cout << (*syntree) << std::endl;
 }
 
 static void yyerror_w(const char *s, int warning ) {
 	if( !warning ) {
 		error_counter += 1;
-		fprintf(stderr, "line %d: Error: %s!\n", lineno, s);
+		lerr << error_line() << s << std::endl;
 	} else if( warning_counter != -1 ) { // toggle warnings
-		fprintf(stderr, "line %d: Warning: %s!\n", lineno, s);
+		lerr << error_line(true) << s << std::endl;
 		warning_counter++;
 	}
 }
