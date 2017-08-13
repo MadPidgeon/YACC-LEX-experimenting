@@ -1,0 +1,1716 @@
+Terminals unused in grammar
+
+   TYPENAME
+   ELLIPSIS
+
+
+State 17 conflicts: 2 reduce/reduce
+State 104 conflicts: 1 shift/reduce
+State 105 conflicts: 1 shift/reduce
+
+
+Grammar
+
+    0 $accept: entry_point $end
+
+    1 entry_point: statement_list
+
+    2 sequential_block: LSEQ statement_list RSEQ
+
+    3 statement_list: statement
+    4               | statement statement_list
+
+    5 statement: declarations SEMICOLON
+    6          | assignment SEMICOLON
+    7          | expression SEMICOLON
+    8          | sequential_block
+    9          | if
+   10          | for
+   11          | while
+   12          | function_definition
+   13          | error SEMICOLON
+
+   14 id: ID
+
+   15 typelist: type
+   16         | type COMMA typelist
+
+   17 type: VTYPE id
+   18     | id LBRA typelist RBRA
+   19     | id
+
+   20 $@1: %empty
+
+   21 declarations: type $@1 declaration_list
+
+   22 declaration_list: declaration_list_el COMMA declaration_list
+   23                 | declaration_list_el
+
+   24 declaration_list_el: id ASSIGNMENT expression
+   25                    | id
+
+   26 assignment: variable ASSIGNMENT expression
+
+   27 leaf_expression: constant
+   28                | variable
+   29                | function_call
+   30                | LBRA expression RBRA
+
+   31 expression: relational
+
+   32 expression_list: expression
+   33                | expression COMMA expression_list
+
+   34 relational: sum
+   35           | sum RELOP relational
+
+   36 sum: product
+   37    | product ADDOP sum
+
+   38 product: factor
+   39        | factor MULOP product
+
+   40 factor: leaf_expression
+
+   41 constant: INT
+   42         | FLT
+   43         | STRING_BEGIN string_particles STRING_END
+   44         | list
+
+   45 list: LSEQ list_items RSEQ
+   46     | LSEQ RSEQ
+
+   47 list_items: expression
+   48           | expression COMMA list_items
+
+   49 string_particles: STRING_PARTICLE
+   50                 | string_particles STRING_PARTICLE
+
+   51 variable: id
+
+   52 function_call: id LBRA expression_list RBRA
+
+   53 function_definition: FUNC id LBRA parameter_list RBRA sequential_block
+
+   54 declaration: type variable
+
+   55 parameter_list: declaration
+   56               | declaration COMMA parameter_list
+
+   57 $@2: %empty
+
+   58 for: FOR LBRA id IN expression RBRA $@2 statement
+
+   59 while: WHILE LBRA expression RBRA statement
+   60      | WHILE LBRA expression RBRA statement ELSE statement
+
+   61 if: IF LBRA expression RBRA statement
+   62   | IF LBRA expression RBRA statement ELSE statement
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+error (256) 13
+INT (258) 41
+FLT (259) 42
+ID (260) 14
+TYPENAME (261)
+VTYPE (262) 17
+ASSIGNMENT (263) 24 26
+ADDOP (264) 37
+MULOP (265) 39
+COMMA (266) 16 22 33 48 56
+SEMICOLON (267) 5 6 7 13
+LSEQ (268) 2 45 46
+RSEQ (269) 2 45 46
+LBRA (270) 18 30 52 53 58 59 60 61 62
+RBRA (271) 18 30 52 53 58 59 60 61 62
+STRING_BEGIN (272) 43
+STRING_END (273) 43
+STRING_PARTICLE (274) 49 50
+FUNC (275) 53
+IF (276) 61 62
+WHILE (277) 59 60
+ELSE (278) 60 62
+FOR (279) 58
+IN (280) 58
+RELOP (281) 35
+ELLIPSIS (282)
+
+
+Nonterminals, with rules where they appear
+
+$accept (28)
+    on left: 0
+entry_point (29)
+    on left: 1, on right: 0
+sequential_block (30)
+    on left: 2, on right: 8 53
+statement_list (31)
+    on left: 3 4, on right: 1 2 4
+statement (32)
+    on left: 5 6 7 8 9 10 11 12 13, on right: 3 4 58 59 60 61 62
+id (33)
+    on left: 14, on right: 17 18 19 24 25 51 52 53 58
+typelist (34)
+    on left: 15 16, on right: 16 18
+type (35)
+    on left: 17 18 19, on right: 15 16 21 54
+declarations (36)
+    on left: 21, on right: 5
+$@1 (37)
+    on left: 20, on right: 21
+declaration_list (38)
+    on left: 22 23, on right: 21 22
+declaration_list_el (39)
+    on left: 24 25, on right: 22 23
+assignment (40)
+    on left: 26, on right: 6
+leaf_expression (41)
+    on left: 27 28 29 30, on right: 40
+expression (42)
+    on left: 31, on right: 7 24 26 30 32 33 47 48 58 59 60 61 62
+expression_list (43)
+    on left: 32 33, on right: 33 52
+relational (44)
+    on left: 34 35, on right: 31 35
+sum (45)
+    on left: 36 37, on right: 34 35 37
+product (46)
+    on left: 38 39, on right: 36 37 39
+factor (47)
+    on left: 40, on right: 38 39
+constant (48)
+    on left: 41 42 43 44, on right: 27
+list (49)
+    on left: 45 46, on right: 44
+list_items (50)
+    on left: 47 48, on right: 45 48
+string_particles (51)
+    on left: 49 50, on right: 43 50
+variable (52)
+    on left: 51, on right: 26 28 54
+function_call (53)
+    on left: 52, on right: 29
+function_definition (54)
+    on left: 53, on right: 12
+declaration (55)
+    on left: 54, on right: 55 56
+parameter_list (56)
+    on left: 55 56, on right: 53 56
+for (57)
+    on left: 58, on right: 10
+$@2 (58)
+    on left: 57, on right: 58
+while (59)
+    on left: 59 60, on right: 11
+if (60)
+    on left: 61 62, on right: 9
+
+
+State 0
+
+    0 $accept: . entry_point $end
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    entry_point          go to state 13
+    sequential_block     go to state 14
+    statement_list       go to state 15
+    statement            go to state 16
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 22
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 1
+
+   13 statement: error . SEMICOLON
+
+    SEMICOLON  shift, and go to state 35
+
+
+State 2
+
+   41 constant: INT .
+
+    $default  reduce using rule 41 (constant)
+
+
+State 3
+
+   42 constant: FLT .
+
+    $default  reduce using rule 42 (constant)
+
+
+State 4
+
+   14 id: ID .
+
+    $default  reduce using rule 14 (id)
+
+
+State 5
+
+   17 type: VTYPE . id
+
+    ID  shift, and go to state 4
+
+    id  go to state 36
+
+
+State 6
+
+    2 sequential_block: LSEQ . statement_list RSEQ
+   45 list: LSEQ . list_items RSEQ
+   46     | LSEQ . RSEQ
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    RSEQ          shift, and go to state 37
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    sequential_block     go to state 14
+    statement_list       go to state 38
+    statement            go to state 16
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 39
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    list_items           go to state 40
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 7
+
+   30 leaf_expression: LBRA . expression RBRA
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 43
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 8
+
+   43 constant: STRING_BEGIN . string_particles STRING_END
+
+    STRING_PARTICLE  shift, and go to state 45
+
+    string_particles  go to state 46
+
+
+State 9
+
+   53 function_definition: FUNC . id LBRA parameter_list RBRA sequential_block
+
+    ID  shift, and go to state 4
+
+    id  go to state 47
+
+
+State 10
+
+   61 if: IF . LBRA expression RBRA statement
+   62   | IF . LBRA expression RBRA statement ELSE statement
+
+    LBRA  shift, and go to state 48
+
+
+State 11
+
+   59 while: WHILE . LBRA expression RBRA statement
+   60      | WHILE . LBRA expression RBRA statement ELSE statement
+
+    LBRA  shift, and go to state 49
+
+
+State 12
+
+   58 for: FOR . LBRA id IN expression RBRA $@2 statement
+
+    LBRA  shift, and go to state 50
+
+
+State 13
+
+    0 $accept: entry_point . $end
+
+    $end  shift, and go to state 51
+
+
+State 14
+
+    8 statement: sequential_block .
+
+    $default  reduce using rule 8 (statement)
+
+
+State 15
+
+    1 entry_point: statement_list .
+
+    $default  reduce using rule 1 (entry_point)
+
+
+State 16
+
+    3 statement_list: statement .
+    4               | statement . statement_list
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    $end  reduce using rule 3 (statement_list)
+    RSEQ  reduce using rule 3 (statement_list)
+
+    sequential_block     go to state 14
+    statement_list       go to state 52
+    statement            go to state 16
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 22
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 17
+
+   18 type: id . LBRA typelist RBRA
+   19     | id .
+   51 variable: id .
+   52 function_call: id . LBRA expression_list RBRA
+
+    LBRA  shift, and go to state 53
+
+    ID        reduce using rule 19 (type)
+    COMMA     reduce using rule 19 (type)
+    COMMA     [reduce using rule 51 (variable)]
+    RBRA      reduce using rule 19 (type)
+    RBRA      [reduce using rule 51 (variable)]
+    $default  reduce using rule 51 (variable)
+
+
+State 18
+
+   21 declarations: type . $@1 declaration_list
+
+    $default  reduce using rule 20 ($@1)
+
+    $@1  go to state 54
+
+
+State 19
+
+    5 statement: declarations . SEMICOLON
+
+    SEMICOLON  shift, and go to state 55
+
+
+State 20
+
+    6 statement: assignment . SEMICOLON
+
+    SEMICOLON  shift, and go to state 56
+
+
+State 21
+
+   40 factor: leaf_expression .
+
+    $default  reduce using rule 40 (factor)
+
+
+State 22
+
+    7 statement: expression . SEMICOLON
+
+    SEMICOLON  shift, and go to state 57
+
+
+State 23
+
+   31 expression: relational .
+
+    $default  reduce using rule 31 (expression)
+
+
+State 24
+
+   34 relational: sum .
+   35           | sum . RELOP relational
+
+    RELOP  shift, and go to state 58
+
+    $default  reduce using rule 34 (relational)
+
+
+State 25
+
+   36 sum: product .
+   37    | product . ADDOP sum
+
+    ADDOP  shift, and go to state 59
+
+    $default  reduce using rule 36 (sum)
+
+
+State 26
+
+   38 product: factor .
+   39        | factor . MULOP product
+
+    MULOP  shift, and go to state 60
+
+    $default  reduce using rule 38 (product)
+
+
+State 27
+
+   27 leaf_expression: constant .
+
+    $default  reduce using rule 27 (leaf_expression)
+
+
+State 28
+
+   44 constant: list .
+
+    $default  reduce using rule 44 (constant)
+
+
+State 29
+
+   26 assignment: variable . ASSIGNMENT expression
+   28 leaf_expression: variable .
+
+    ASSIGNMENT  shift, and go to state 61
+
+    $default  reduce using rule 28 (leaf_expression)
+
+
+State 30
+
+   29 leaf_expression: function_call .
+
+    $default  reduce using rule 29 (leaf_expression)
+
+
+State 31
+
+   12 statement: function_definition .
+
+    $default  reduce using rule 12 (statement)
+
+
+State 32
+
+   10 statement: for .
+
+    $default  reduce using rule 10 (statement)
+
+
+State 33
+
+   11 statement: while .
+
+    $default  reduce using rule 11 (statement)
+
+
+State 34
+
+    9 statement: if .
+
+    $default  reduce using rule 9 (statement)
+
+
+State 35
+
+   13 statement: error SEMICOLON .
+
+    $default  reduce using rule 13 (statement)
+
+
+State 36
+
+   17 type: VTYPE id .
+
+    $default  reduce using rule 17 (type)
+
+
+State 37
+
+   46 list: LSEQ RSEQ .
+
+    $default  reduce using rule 46 (list)
+
+
+State 38
+
+    2 sequential_block: LSEQ statement_list . RSEQ
+
+    RSEQ  shift, and go to state 62
+
+
+State 39
+
+    7 statement: expression . SEMICOLON
+   47 list_items: expression .
+   48           | expression . COMMA list_items
+
+    COMMA      shift, and go to state 63
+    SEMICOLON  shift, and go to state 57
+
+    $default  reduce using rule 47 (list_items)
+
+
+State 40
+
+   45 list: LSEQ list_items . RSEQ
+
+    RSEQ  shift, and go to state 64
+
+
+State 41
+
+   45 list: LSEQ . list_items RSEQ
+   46     | LSEQ . RSEQ
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    RSEQ          shift, and go to state 37
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 65
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    list_items       go to state 40
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 42
+
+   51 variable: id .
+   52 function_call: id . LBRA expression_list RBRA
+
+    LBRA  shift, and go to state 66
+
+    $default  reduce using rule 51 (variable)
+
+
+State 43
+
+   30 leaf_expression: LBRA expression . RBRA
+
+    RBRA  shift, and go to state 67
+
+
+State 44
+
+   28 leaf_expression: variable .
+
+    $default  reduce using rule 28 (leaf_expression)
+
+
+State 45
+
+   49 string_particles: STRING_PARTICLE .
+
+    $default  reduce using rule 49 (string_particles)
+
+
+State 46
+
+   43 constant: STRING_BEGIN string_particles . STRING_END
+   50 string_particles: string_particles . STRING_PARTICLE
+
+    STRING_END       shift, and go to state 68
+    STRING_PARTICLE  shift, and go to state 69
+
+
+State 47
+
+   53 function_definition: FUNC id . LBRA parameter_list RBRA sequential_block
+
+    LBRA  shift, and go to state 70
+
+
+State 48
+
+   61 if: IF LBRA . expression RBRA statement
+   62   | IF LBRA . expression RBRA statement ELSE statement
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 71
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 49
+
+   59 while: WHILE LBRA . expression RBRA statement
+   60      | WHILE LBRA . expression RBRA statement ELSE statement
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 72
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 50
+
+   58 for: FOR LBRA . id IN expression RBRA $@2 statement
+
+    ID  shift, and go to state 4
+
+    id  go to state 73
+
+
+State 51
+
+    0 $accept: entry_point $end .
+
+    $default  accept
+
+
+State 52
+
+    4 statement_list: statement statement_list .
+
+    $default  reduce using rule 4 (statement_list)
+
+
+State 53
+
+   18 type: id LBRA . typelist RBRA
+   52 function_call: id LBRA . expression_list RBRA
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 17
+    typelist         go to state 74
+    type             go to state 75
+    leaf_expression  go to state 21
+    expression       go to state 76
+    expression_list  go to state 77
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 54
+
+   21 declarations: type $@1 . declaration_list
+
+    ID  shift, and go to state 4
+
+    id                   go to state 78
+    declaration_list     go to state 79
+    declaration_list_el  go to state 80
+
+
+State 55
+
+    5 statement: declarations SEMICOLON .
+
+    $default  reduce using rule 5 (statement)
+
+
+State 56
+
+    6 statement: assignment SEMICOLON .
+
+    $default  reduce using rule 6 (statement)
+
+
+State 57
+
+    7 statement: expression SEMICOLON .
+
+    $default  reduce using rule 7 (statement)
+
+
+State 58
+
+   35 relational: sum RELOP . relational
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    relational       go to state 81
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 59
+
+   37 sum: product ADDOP . sum
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    sum              go to state 82
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 60
+
+   39 product: factor MULOP . product
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    product          go to state 83
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 61
+
+   26 assignment: variable ASSIGNMENT . expression
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 84
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 62
+
+    2 sequential_block: LSEQ statement_list RSEQ .
+
+    $default  reduce using rule 2 (sequential_block)
+
+
+State 63
+
+   48 list_items: expression COMMA . list_items
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 65
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    list_items       go to state 85
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 64
+
+   45 list: LSEQ list_items RSEQ .
+
+    $default  reduce using rule 45 (list)
+
+
+State 65
+
+   47 list_items: expression .
+   48           | expression . COMMA list_items
+
+    COMMA  shift, and go to state 63
+
+    $default  reduce using rule 47 (list_items)
+
+
+State 66
+
+   52 function_call: id LBRA . expression_list RBRA
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 76
+    expression_list  go to state 77
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 67
+
+   30 leaf_expression: LBRA expression RBRA .
+
+    $default  reduce using rule 30 (leaf_expression)
+
+
+State 68
+
+   43 constant: STRING_BEGIN string_particles STRING_END .
+
+    $default  reduce using rule 43 (constant)
+
+
+State 69
+
+   50 string_particles: string_particles STRING_PARTICLE .
+
+    $default  reduce using rule 50 (string_particles)
+
+
+State 70
+
+   53 function_definition: FUNC id LBRA . parameter_list RBRA sequential_block
+
+    ID     shift, and go to state 4
+    VTYPE  shift, and go to state 5
+
+    id              go to state 86
+    type            go to state 87
+    declaration     go to state 88
+    parameter_list  go to state 89
+
+
+State 71
+
+   61 if: IF LBRA expression . RBRA statement
+   62   | IF LBRA expression . RBRA statement ELSE statement
+
+    RBRA  shift, and go to state 90
+
+
+State 72
+
+   59 while: WHILE LBRA expression . RBRA statement
+   60      | WHILE LBRA expression . RBRA statement ELSE statement
+
+    RBRA  shift, and go to state 91
+
+
+State 73
+
+   58 for: FOR LBRA id . IN expression RBRA $@2 statement
+
+    IN  shift, and go to state 92
+
+
+State 74
+
+   18 type: id LBRA typelist . RBRA
+
+    RBRA  shift, and go to state 93
+
+
+State 75
+
+   15 typelist: type .
+   16         | type . COMMA typelist
+
+    COMMA  shift, and go to state 94
+
+    $default  reduce using rule 15 (typelist)
+
+
+State 76
+
+   32 expression_list: expression .
+   33                | expression . COMMA expression_list
+
+    COMMA  shift, and go to state 95
+
+    $default  reduce using rule 32 (expression_list)
+
+
+State 77
+
+   52 function_call: id LBRA expression_list . RBRA
+
+    RBRA  shift, and go to state 96
+
+
+State 78
+
+   24 declaration_list_el: id . ASSIGNMENT expression
+   25                    | id .
+
+    ASSIGNMENT  shift, and go to state 97
+
+    $default  reduce using rule 25 (declaration_list_el)
+
+
+State 79
+
+   21 declarations: type $@1 declaration_list .
+
+    $default  reduce using rule 21 (declarations)
+
+
+State 80
+
+   22 declaration_list: declaration_list_el . COMMA declaration_list
+   23                 | declaration_list_el .
+
+    COMMA  shift, and go to state 98
+
+    $default  reduce using rule 23 (declaration_list)
+
+
+State 81
+
+   35 relational: sum RELOP relational .
+
+    $default  reduce using rule 35 (relational)
+
+
+State 82
+
+   37 sum: product ADDOP sum .
+
+    $default  reduce using rule 37 (sum)
+
+
+State 83
+
+   39 product: factor MULOP product .
+
+    $default  reduce using rule 39 (product)
+
+
+State 84
+
+   26 assignment: variable ASSIGNMENT expression .
+
+    $default  reduce using rule 26 (assignment)
+
+
+State 85
+
+   48 list_items: expression COMMA list_items .
+
+    $default  reduce using rule 48 (list_items)
+
+
+State 86
+
+   18 type: id . LBRA typelist RBRA
+   19     | id .
+
+    LBRA  shift, and go to state 99
+
+    $default  reduce using rule 19 (type)
+
+
+State 87
+
+   54 declaration: type . variable
+
+    ID  shift, and go to state 4
+
+    id        go to state 100
+    variable  go to state 101
+
+
+State 88
+
+   55 parameter_list: declaration .
+   56               | declaration . COMMA parameter_list
+
+    COMMA  shift, and go to state 102
+
+    $default  reduce using rule 55 (parameter_list)
+
+
+State 89
+
+   53 function_definition: FUNC id LBRA parameter_list . RBRA sequential_block
+
+    RBRA  shift, and go to state 103
+
+
+State 90
+
+   61 if: IF LBRA expression RBRA . statement
+   62   | IF LBRA expression RBRA . statement ELSE statement
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    sequential_block     go to state 14
+    statement            go to state 104
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 22
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 91
+
+   59 while: WHILE LBRA expression RBRA . statement
+   60      | WHILE LBRA expression RBRA . statement ELSE statement
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    sequential_block     go to state 14
+    statement            go to state 105
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 22
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 92
+
+   58 for: FOR LBRA id IN . expression RBRA $@2 statement
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 106
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 93
+
+   18 type: id LBRA typelist RBRA .
+
+    $default  reduce using rule 18 (type)
+
+
+State 94
+
+   16 typelist: type COMMA . typelist
+
+    ID     shift, and go to state 4
+    VTYPE  shift, and go to state 5
+
+    id        go to state 86
+    typelist  go to state 107
+    type      go to state 75
+
+
+State 95
+
+   33 expression_list: expression COMMA . expression_list
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 76
+    expression_list  go to state 108
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 96
+
+   52 function_call: id LBRA expression_list RBRA .
+
+    $default  reduce using rule 52 (function_call)
+
+
+State 97
+
+   24 declaration_list_el: id ASSIGNMENT . expression
+
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    LSEQ          shift, and go to state 41
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+
+    id               go to state 42
+    leaf_expression  go to state 21
+    expression       go to state 109
+    relational       go to state 23
+    sum              go to state 24
+    product          go to state 25
+    factor           go to state 26
+    constant         go to state 27
+    list             go to state 28
+    variable         go to state 44
+    function_call    go to state 30
+
+
+State 98
+
+   22 declaration_list: declaration_list_el COMMA . declaration_list
+
+    ID  shift, and go to state 4
+
+    id                   go to state 78
+    declaration_list     go to state 110
+    declaration_list_el  go to state 80
+
+
+State 99
+
+   18 type: id LBRA . typelist RBRA
+
+    ID     shift, and go to state 4
+    VTYPE  shift, and go to state 5
+
+    id        go to state 86
+    typelist  go to state 74
+    type      go to state 75
+
+
+State 100
+
+   51 variable: id .
+
+    $default  reduce using rule 51 (variable)
+
+
+State 101
+
+   54 declaration: type variable .
+
+    $default  reduce using rule 54 (declaration)
+
+
+State 102
+
+   56 parameter_list: declaration COMMA . parameter_list
+
+    ID     shift, and go to state 4
+    VTYPE  shift, and go to state 5
+
+    id              go to state 86
+    type            go to state 87
+    declaration     go to state 88
+    parameter_list  go to state 111
+
+
+State 103
+
+   53 function_definition: FUNC id LBRA parameter_list RBRA . sequential_block
+
+    LSEQ  shift, and go to state 112
+
+    sequential_block  go to state 113
+
+
+State 104
+
+   61 if: IF LBRA expression RBRA statement .
+   62   | IF LBRA expression RBRA statement . ELSE statement
+
+    ELSE  shift, and go to state 114
+
+    ELSE      [reduce using rule 61 (if)]
+    $default  reduce using rule 61 (if)
+
+
+State 105
+
+   59 while: WHILE LBRA expression RBRA statement .
+   60      | WHILE LBRA expression RBRA statement . ELSE statement
+
+    ELSE  shift, and go to state 115
+
+    ELSE      [reduce using rule 59 (while)]
+    $default  reduce using rule 59 (while)
+
+
+State 106
+
+   58 for: FOR LBRA id IN expression . RBRA $@2 statement
+
+    RBRA  shift, and go to state 116
+
+
+State 107
+
+   16 typelist: type COMMA typelist .
+
+    $default  reduce using rule 16 (typelist)
+
+
+State 108
+
+   33 expression_list: expression COMMA expression_list .
+
+    $default  reduce using rule 33 (expression_list)
+
+
+State 109
+
+   24 declaration_list_el: id ASSIGNMENT expression .
+
+    $default  reduce using rule 24 (declaration_list_el)
+
+
+State 110
+
+   22 declaration_list: declaration_list_el COMMA declaration_list .
+
+    $default  reduce using rule 22 (declaration_list)
+
+
+State 111
+
+   56 parameter_list: declaration COMMA parameter_list .
+
+    $default  reduce using rule 56 (parameter_list)
+
+
+State 112
+
+    2 sequential_block: LSEQ . statement_list RSEQ
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    sequential_block     go to state 14
+    statement_list       go to state 38
+    statement            go to state 16
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 22
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 113
+
+   53 function_definition: FUNC id LBRA parameter_list RBRA sequential_block .
+
+    $default  reduce using rule 53 (function_definition)
+
+
+State 114
+
+   62 if: IF LBRA expression RBRA statement ELSE . statement
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    sequential_block     go to state 14
+    statement            go to state 117
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 22
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 115
+
+   60 while: WHILE LBRA expression RBRA statement ELSE . statement
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    sequential_block     go to state 14
+    statement            go to state 118
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 22
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 116
+
+   58 for: FOR LBRA id IN expression RBRA . $@2 statement
+
+    $default  reduce using rule 57 ($@2)
+
+    $@2  go to state 119
+
+
+State 117
+
+   62 if: IF LBRA expression RBRA statement ELSE statement .
+
+    $default  reduce using rule 62 (if)
+
+
+State 118
+
+   60 while: WHILE LBRA expression RBRA statement ELSE statement .
+
+    $default  reduce using rule 60 (while)
+
+
+State 119
+
+   58 for: FOR LBRA id IN expression RBRA $@2 . statement
+
+    error         shift, and go to state 1
+    INT           shift, and go to state 2
+    FLT           shift, and go to state 3
+    ID            shift, and go to state 4
+    VTYPE         shift, and go to state 5
+    LSEQ          shift, and go to state 6
+    LBRA          shift, and go to state 7
+    STRING_BEGIN  shift, and go to state 8
+    FUNC          shift, and go to state 9
+    IF            shift, and go to state 10
+    WHILE         shift, and go to state 11
+    FOR           shift, and go to state 12
+
+    sequential_block     go to state 14
+    statement            go to state 120
+    id                   go to state 17
+    type                 go to state 18
+    declarations         go to state 19
+    assignment           go to state 20
+    leaf_expression      go to state 21
+    expression           go to state 22
+    relational           go to state 23
+    sum                  go to state 24
+    product              go to state 25
+    factor               go to state 26
+    constant             go to state 27
+    list                 go to state 28
+    variable             go to state 29
+    function_call        go to state 30
+    function_definition  go to state 31
+    for                  go to state 32
+    while                go to state 33
+    if                   go to state 34
+
+
+State 120
+
+   58 for: FOR LBRA id IN expression RBRA $@2 statement .
+
+    $default  reduce using rule 58 (for)

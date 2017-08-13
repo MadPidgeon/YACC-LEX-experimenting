@@ -20,6 +20,10 @@ const std::vector<std::string> node_t_to_str = {
 
 	"LIST", "SET", "SINGLE_TYPE_EXPRESSION_LIST",
 
+	"TUPLE", "TUPLE_LIST",
+
+	"FUNCTION_CALL",
+
 	"EMPTY"
 };
 
@@ -49,6 +53,7 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_UMIN: 
 		case N_LIST: 
 		case N_SET:
+		case N_FUNCTION_CALL:
 			if( c != 1 or children[1] != nullptr )
 				return ERROR_TYPE;
 			break;
@@ -57,6 +62,8 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_BLOCK_LIST:
 		case N_SEQUENTIAL_BLOCK:
 		case N_PARALLEL_BLOCK:
+		case N_TUPLE: case N_TUPLE_LIST:
+		case N_ARGUMENT_LIST:
 			if( children[0] == nullptr )
 				return ERROR_TYPE;
 			break;
@@ -100,6 +107,11 @@ type_t syntaxTree::node::computeDatatype() {
 			return type_t( LST_STRUCTURE, { children[0]->data_type } );
 		case N_SET:
 			return type_t( SET_STRUCTURE, { children[0]->data_type } );
+		case N_FUNCTION_CALL:
+			// implement argument checking as well
+			return syntaxTree::scopes->getFunctionReturnType( data.integer );
+		case N_TUPLE: case N_TUPLE_LIST: case N_ARGUMENT_LIST:
+			return (children[1] ? children[1]->data_type : TUP_TYPE).rightFlattenTypeProduct( children[0]->data_type );
 		default:
 			pmesg(90,"ERROR: operation %s not yet implemented!\n", node_t_to_str[type].c_str() );
 			return ERROR_TYPE;

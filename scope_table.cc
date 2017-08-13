@@ -42,6 +42,47 @@ type_t scopeTable::getVariableType( variable_t variable ) const {
 	return declarations.at( variable ).type;
 }
 
+symbol_t scopeTable::getVariableSymbol( variable_t variable ) const {
+	return declarations.at( variable ).symbol;
+}
+
+function_t scopeTable::addFunctionDeclaration( scope_t scope, symbol_t symbol, type_t type, std::vector<type_t> arg_types ) {
+	if( scopes.at( scope ).function_declarations.find( symbol ) != scopes.at( scope ).function_declarations.end() )
+		return ERROR_FUNCTION;
+	function_t id = function_declarations.size();
+	function_declaration d = { id, type, arg_types, scope };
+	function_declarations.push_back( d );
+	scopes.at( scope ).function_declarations[symbol] = id;
+	return id;
+}
+
+type_t scopeTable::getFunctionReturnType( function_t function ) const {
+	return function_declarations.at( function ).return_type;
+}
+
+symbol_t scopeTable::getFunctionSymbol( function_t function ) const {
+	return function_declarations.at( function ).symbol;
+}
+
+const std::vector<type_t>& scopeTable::getFunctionArguments( function_t function ) const {
+	return function_declarations.at( function ).arg_types;
+}
+
+function_t scopeTable::getFunctionCount() const {
+	return function_declarations.size();
+}
+
+function_t scopeTable::getFunction( scope_t deep, symbol_t symbol ) const {
+	scope_t scope = deep;
+	while( scope != ERROR_SCOPE ) {
+		auto loc = scopes.at( scope ).function_declarations.find( symbol );
+		if( loc != scopes.at( scope ).function_declarations.end() )
+			return loc->second;
+		scope = scopes.at( scope ).super_scope;
+	}
+	return ERROR_FUNCTION;
+}
+
 variable_t scopeTable::getVariable( scope_t deep, symbol_t symbol ) const {
 	scope_t scope = deep;
 	while( scope != ERROR_SCOPE ) {
@@ -54,6 +95,8 @@ variable_t scopeTable::getVariable( scope_t deep, symbol_t symbol ) const {
 }
 
 scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
+	symtab = sym;
+	strtab = str;
 	assert( addScope( ERROR_SCOPE ) == ERROR_SCOPE );
 	assert( addScope( ERROR_SCOPE ) == GLOBAL_SCOPE );
 	assert( addVariable( ERROR_SCOPE, ERROR_SYMBOL, ERROR_TYPE ) == ERROR_VARIABLE );
@@ -62,6 +105,22 @@ scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
 	addTypeDefinition( GLOBAL_SCOPE, STR_SYMBOL, STR_STRUCTURE );
 	addTypeDefinition( GLOBAL_SCOPE, LST_SYMBOL, LST_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 	addTypeDefinition( GLOBAL_SCOPE, SET_SYMBOL, SET_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
-	symtab = sym;
-	strtab = str;
+	assert( addFunctionDeclaration( ERROR_SCOPE, ERROR_SYMBOL, ERROR_TYPE ) == ERROR_FUNCTION );
+	assert( addFunctionDeclaration( ERROR_SCOPE, NONE_SYMBOL, VOID_TYPE ) == GLOBAL_FUNCTION );
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, PRINT_SYMBOL, VOID_TYPE ) == PRINT_FUNCTION );
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, SCAN_SYMBOL, STR_TYPE ) == SCAN_FUNCTION );
+}
+
+std::ostream& operator<<( std::ostream& os, const scopeTable& t ) {
+	os << std::setfill(' ') << std::left << "SCOPE ID    NAME" << std::endl;
+	for( size_t i = 0; i < t.scopes.size(); ++i ) {
+		if( t.scopes.at(i).declarations.size() > 0 ) {
+			os << std::setw( 6 ) << i;
+			auto itr = t.scopes.at(i).declarations.begin();
+			os << std::setw( 6 ) << itr->second << symtab->getName( itr->first ) << std::endl;
+			for( ++itr; itr != t.scopes.at(i).declarations.end(); ++itr )
+				os << "      " << std::setw( 6 ) << itr->second << symtab->getName( itr->first ) << std::endl;
+		}
+	}
+	return os;
 }

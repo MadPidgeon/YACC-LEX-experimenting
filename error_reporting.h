@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <iomanip>
 
 extern int err_line_number;
 extern int err_character_number;

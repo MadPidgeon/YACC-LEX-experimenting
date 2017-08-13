@@ -11,6 +11,9 @@
 #define LST_SYMBOL		5
 #define SET_SYMBOL		6
 #define VOID_SYMBOL		7
+#define TUP_SYMBOL		8
+#define PRINT_SYMBOL	9
+#define SCAN_SYMBOL		10
 
 typedef uint64_t symbol_t;
 

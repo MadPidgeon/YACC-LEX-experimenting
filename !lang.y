@@ -76,8 +76,6 @@ syntaxTree::node* symbolToVariable( symbol_t id, type_t type );
 
 /* shift/reduce conflict: dangling ELSE */
 %expect 2
-%expect-rr 2
-%glr-parser
 %% 
 
 /* GRAMMAR RULES AND ACTIONS */
@@ -144,12 +142,16 @@ type:					VTYPE id {
 							if( *$<typ>$ == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
 						}
-						| id {
+						| id /*{
 							pmesg( 90, "Lexer: TYPENAME %s\n", symtab->getName( $<num>1 ).c_str() );
 							$<typ>$ = new type_t( scptab->getTypeDefinition( current_scope, $<num>1 ) );
 							if( *$<typ>$ == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
-						}
+						}*/
+
+_dummy_set_type:		{
+
+						};
 
 declarations:			type {
 							//pmesg( 90, "Declaring variables of type %d\n", $<num>1 );
@@ -182,7 +184,7 @@ declaration_list_el:	id ASSIGNMENT expression {
 							$<node>$ = new syntaxTree::node( N_ASSIGN, symbolToVariable( $<num>1, decllisttypes.top() ), $<node>3 );
 						}
 						| id {
-							scptab->addVariable( current_scope, $<num>1, decllisttypes.top() );
+							variable_t variable = scptab->addVariable( current_scope, $<num>1, decllisttypes.top() );
 							$<node>$ = nullptr;
 						};
 
@@ -198,13 +200,6 @@ leaf_expression:		constant | variable {
 						};
 
 expression:				relational;
-
-expression_list:		expression {
-							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1 );
-						} 
-						| expression COMMA expression_list {
-							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1, $<node>3 );
-						};
 
 relational:				sum {
 							$<node>$ = $<node>1;
@@ -295,11 +290,8 @@ variable:				id {
 							$<node>$ = symbolToVariable( $<num>1 );
 						};
 
-function_call:			id LBRA expression_list RBRA {
-							function_t f = scptab->getFunction( current_scope, $<num>1 );
-							if( f == ERROR_FUNCTION )
-								lerr << error_line() << "Undeclared function " << symtab->getName( $<num>1 ) << std::endl;
-							$<node>$ = new syntaxTree::node( N_FUNCTION_CALL, $<node>3, nullptr, {.integer = f } );
+function_call:			id LBRA statement_list RBRA {
+							lerr << "function_call" << std::endl;
 						};
 
 function_definition:	FUNC id LBRA parameter_list RBRA sequential_block {
@@ -308,7 +300,7 @@ function_definition:	FUNC id LBRA parameter_list RBRA sequential_block {
 
 declaration:			type variable {
 							/*symtab->setType( $<num>2, $<num>1 );
-							$<node>$ = new syntaxTree::node( N_VARIABLE, $<num>2 );*/
+							$<node>$ = new syntaxTree::node( VARIABLE, $<num>2 );*/
 						};
 
 parameter_list: 		declaration {
@@ -354,6 +346,19 @@ if:						IF LBRA expression RBRA statement {
 
 /* C-CODE */
 
+std::ostream& operator<<( std::ostream& os, const scopeTable& t ) {
+	os << std::setfill(' ') << std::left << "SCOPE ID    NAME" << std::endl;
+	for( size_t i = 0; i < t.scopes.size(); ++i ) {
+		if( t.scopes.at(i).declarations.size() > 0 ) {
+			os << std::setw( 6 ) << i;
+			auto itr = t.scopes.at(i).declarations.begin();
+			os << std::setw( 6 ) << itr->second << symtab->getName( itr->first ) << std::endl;
+			for( ++itr; itr != t.scopes.at(i).declarations.end(); ++itr )
+				os << "      " << std::setw( 6 ) << itr->second << symtab->getName( itr->first ) << std::endl;
+		}
+	}
+	return os;
+}
 
 syntaxTree::node* symbolToVariable( symbol_t symbol ) {
 	variable_t variable = scptab->getVariable( current_scope, symbol );
@@ -384,14 +389,11 @@ int main( int argc, char** argv ) {
 	}
 	yyin = input_file;
 	int result = yyparse();
-	std::cout << "Syntax Tree:" << std::endl << (*syntree) << std::endl;
+	std::cout << (*syntree) << std::endl;
 	intermediateCode ic( scptab );
-	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
-	std::cout << "Scope Table:" << std::endl << (*scptab) << std::endl;
-	std::cout << scptab->getVariable( GLOBAL_SCOPE, 1 ) << std::endl;
-
+	function_t f = ic.addFunction( NONE_SYMBOL, syntree->getRoot() );
 	std::cout << ic << std::endl;
-	flowGraph G( ic.getFunction( GLOBAL_FUNCTION ) );
+	flowGraph G( ic.getFunction(f) );
 	std::cout << G << std::endl;
 	auto v = G.naiveLiveIntervals();
 	for( auto i : v )

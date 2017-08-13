@@ -12,8 +12,14 @@
 
 #define ERROR_VARIABLE	0
 
+#define ERROR_FUNCTION	0
+#define GLOBAL_FUNCTION	1
+#define PRINT_FUNCTION	2
+#define SCAN_FUNCTION	3
+
 typedef uint64_t scope_t;
 typedef uint64_t variable_t;
+typedef uint64_t function_t;
 
 class scopeTable {
 	friend std::ostream& operator<<( std::ostream&, const scopeTable& );
@@ -28,10 +34,19 @@ class scopeTable {
 		scope_t super_scope;
 		std::vector<scope_t> sub_scopes;
 		std::map<symbol_t,variable_t> declarations;
+		std::map<symbol_t,variable_t> function_declarations;
 		typedefTable typedefs;
+	};
+	struct function_declaration {
+		function_t declaration_id;
+		type_t return_type;
+		std::vector<type_t> arg_types;
+		symbol_t symbol;
+		scope_t scope;
 	};
 	std::deque<scope> scopes;
 	std::deque<declaration> declarations;
+	std::deque<function_declaration> function_declarations;
 	symbolTable* symtab;
 	structureTable* strtab;
 public:
@@ -39,10 +54,19 @@ public:
 	type_t getTypeDefinition( scope_t, symbol_t, std::vector<type_t> = {} ) const;
 	scope_t addScope( scope_t super );
 	variable_t addVariable( scope_t, symbol_t, type_t );
+	function_t addFunctionDeclaration( scope_t, symbol_t, type_t, std::vector<type_t> = {} );
+	type_t getFunctionReturnType( function_t ) const;
+	const std::vector<type_t>& getFunctionArguments( function_t ) const;
+	function_t getFunctionCount() const;
+	function_t getFunction( scope_t, symbol_t ) const;
+	symbol_t getFunctionSymbol( function_t ) const;
 	scope_t getScope( variable_t ) const;
 	type_t getVariableType( variable_t ) const;
+	symbol_t getVariableSymbol( variable_t ) const;
 	variable_t getVariable( scope_t, symbol_t ) const;
 	scopeTable( symbolTable*, structureTable* );
 };
 
 std::ostream& operator<<( std::ostream& os, const scopeTable& );
+
+extern scopeTable* scptab; // for I/O purposes only

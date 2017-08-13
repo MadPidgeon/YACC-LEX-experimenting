@@ -39,4 +39,7 @@ symbolTable::symbolTable() {
 	assert( addSymbol("lst") == LST_SYMBOL );
 	assert( addSymbol("set") == SET_SYMBOL );
 	assert( addSymbol("nil") == VOID_SYMBOL );
+	assert( addSymbol("tup") == TUP_SYMBOL );
+	assert( addSymbol("print") == PRINT_SYMBOL );
+	assert( addSymbol("scan") == SCAN_SYMBOL );
 }

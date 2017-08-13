@@ -20,7 +20,8 @@
 #define STR_STRUCTURE		5	// POD str
 #define LST_STRUCTURE		6	// POD lst(type)
 #define SET_STRUCTURE		7	// POD set(type)
-#define LAST_POD_TYPEDEF	SET_TYPEDEF
+#define TUP_STRUCTURE		8	// POD tup(type,...)
+#define LAST_POD_TYPEDEF	TUP_TYPEDEF
 
 class type_t;
 class typedefTable;
@@ -48,6 +49,7 @@ private:
 	static int64_t free_type_counter;
 	type_t( node* );
 	node* peel();
+	std::vector<node*>& getBaseParameters();
 public:
 	const node* getRoot() const;
 	bool isFinal() const;
@@ -57,6 +59,7 @@ public:
 	structure_t getBase() const;
 	type_t getChildType() const;
 	void applySubstitution( size_t, type_t );
+	type_t rightFlattenTypeProduct( type_t left ) const;
 	type_t& operator=( const type_t& );
 	type_t( const type_t& );
 	type_t( type_t&& );
@@ -66,6 +69,8 @@ public:
 	type_t();
 	~type_t();
 };
+
+type_t rightFlattenTypeProduct( type_t left, type_t right );
 
 std::ostream& operator<<( std::ostream&, const type_t& );
 
@@ -112,5 +117,6 @@ extern const type_t VOID_TYPE;
 extern const type_t INT_TYPE;
 extern const type_t FLT_TYPE;
 extern const type_t STR_TYPE;
+extern const type_t TUP_TYPE;
 
 extern structureTable* strtab; // only to be used for I/O

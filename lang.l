@@ -47,6 +47,8 @@ ASSIGNMENT	"="
 SEMICOLON   ";"
 LSEQ		"["
 RSEQ		"]"
+LPAR		"{"
+RPAR		"}"
 COMMA		","
 LBRA		"("
 RBRA		")"
@@ -160,6 +162,11 @@ TYPENAME "int"|"str"|"flt"
 type		{
 				pmesg(90, "Lexer: VTYPE: %s\n", yytext);
 				return VTYPE;
+			}
+
+func		{
+				pmesg(90, "Lexer: FUNC\n");
+				return FUNC;
 			}
 
 if			{

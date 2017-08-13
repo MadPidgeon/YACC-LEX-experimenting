@@ -48,18 +48,6 @@ type_t::node* type_t::node::intersect( const type_t::node* other ) const {
 	return new node{free_id,structure,p};
 }
 
-structure_t type_t::getBase() const {
-	if( root )
-		return root->structure;
-	return ERROR_STRUCTURE;
-}
-
-type_t type_t::getChildType() const {
-	if( root and root->parameters.size() == 1 )
-		return type_t( root->parameters.at(0)->clone() );
-	return ERROR_TYPE;
-}
-
 type_t::node* type_t::node::applySubstitution( size_t f, type_t target ) {
 	if( free_id >= 0 and free_id == int64_t( f ) ) {
 		delete this;
@@ -93,6 +81,24 @@ type_t::node::~node() {
 		delete n;
 }
 
+structure_t type_t::getBase() const {
+	if( root )
+		return root->structure;
+	return ERROR_STRUCTURE;
+}
+
+std::vector<type_t::node*>& type_t::getBaseParameters() {
+	if( root )
+		return root->parameters;
+	throw;
+}
+
+type_t type_t::getChildType() const {
+	if( root and root->parameters.size() == 1 )
+		return type_t( root->parameters.at(0)->clone() );
+	return ERROR_TYPE;
+}
+
 const type_t::node* type_t::getRoot() const {
 	return root;
 }
@@ -123,6 +129,14 @@ type_t type_t::intersect( const type_t& t ) const {
 
 void type_t::applySubstitution( size_t free_id, type_t target ) {
 	root = root->applySubstitution( free_id, target );
+}
+
+type_t type_t::rightFlattenTypeProduct( type_t left ) const{
+	if( getBase() != TUP_STRUCTURE )
+		return ERROR_TYPE;
+	type_t r( *this );
+	r.getBaseParameters().push_back( left.peel() );
+	return r;
 }
 
 type_t& type_t::operator=( const type_t& t ) {
@@ -234,6 +248,7 @@ structureTable::structureTable() {
 	assert( addStructure( STR_SYMBOL ) == STR_STRUCTURE );
 	assert( addStructure( LST_SYMBOL, {type_t()} ) == LST_STRUCTURE );
 	assert( addStructure( SET_SYMBOL, {type_t()} ) == SET_STRUCTURE );
+	assert( addStructure( TUP_SYMBOL ) == TUP_STRUCTURE );
 	assert( ERROR_TYPE == ERROR_TYPE );
 	assert( INT_TYPE != ERROR_TYPE );
 }
@@ -243,3 +258,4 @@ const type_t VOID_TYPE( VOID_STRUCTURE, {} );
 const type_t INT_TYPE( INT_STRUCTURE, {} );
 const type_t FLT_TYPE( FLT_STRUCTURE, {} );
 const type_t STR_TYPE( STR_STRUCTURE, {} );
+const type_t TUP_TYPE( TUP_STRUCTURE, {} );

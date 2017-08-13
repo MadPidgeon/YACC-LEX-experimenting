@@ -1,8 +1,8 @@
 /* A Bison parser, made by GNU Bison 3.0.4.  */
 
-/* Bison interface for Yacc-like parsers in C
+/* Skeleton interface for Bison GLR parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+   Copyright (C) 2002-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -62,47 +62,23 @@ extern int yydebug;
     STRING_BEGIN = 272,
     STRING_END = 273,
     STRING_PARTICLE = 274,
-    IF = 275,
-    WHILE = 276,
-    ELSE = 277,
-    FOR = 278,
-    IN = 279,
-    RELOP = 280,
-    ELLIPSIS = 281
+    FUNC = 275,
+    IF = 276,
+    WHILE = 277,
+    ELSE = 278,
+    FOR = 279,
+    IN = 280,
+    RELOP = 281,
+    ELLIPSIS = 282
   };
 #endif
-/* Tokens.  */
-#define INT 258
-#define FLT 259
-#define ID 260
-#define TYPENAME 261
-#define VTYPE 262
-#define ASSIGNMENT 263
-#define ADDOP 264
-#define MULOP 265
-#define COMMA 266
-#define SEMICOLON 267
-#define LSEQ 268
-#define RSEQ 269
-#define LBRA 270
-#define RBRA 271
-#define STRING_BEGIN 272
-#define STRING_END 273
-#define STRING_PARTICLE 274
-#define IF 275
-#define WHILE 276
-#define ELSE 277
-#define FOR 278
-#define IN 279
-#define RELOP 280
-#define ELLIPSIS 281
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 
 union YYSTYPE
 {
-#line 62 "lang.y" /* yacc.c:1909  */
+#line 67 "lang.y" /* glr.c:197  */
 
 	char *str;
 	int64_t num;
@@ -111,7 +87,7 @@ union YYSTYPE
 	std::vector<type_t>* typlst;
 	struct syntaxTree::node *node;
 
-#line 115 "y.tab.h" /* yacc.c:1909  */
+#line 91 "y.tab.h" /* glr.c:197  */
 };
 
 typedef union YYSTYPE YYSTYPE;
