@@ -12,6 +12,8 @@ const std::vector<std::string> node_t_to_str = {
 
 	"ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "REMAINDER", "UMIN",
 
+	"JOIN", "MEET",
+
 	"ARGUMENT_LIST",
 
 	"IF", "WHILE", "ELSE", "FOR",
@@ -23,6 +25,8 @@ const std::vector<std::string> node_t_to_str = {
 	"TUPLE", "TUPLE_LIST",
 
 	"FUNCTION_CALL",
+
+	"LIST_INDEXING",
 
 	"EMPTY"
 };
@@ -112,6 +116,14 @@ type_t syntaxTree::node::computeDatatype() {
 			return syntaxTree::scopes->getFunctionReturnType( data.integer );
 		case N_TUPLE: case N_TUPLE_LIST: case N_ARGUMENT_LIST:
 			return (children[1] ? children[1]->data_type : TUP_TYPE).rightFlattenTypeProduct( children[0]->data_type );
+		case N_LIST_INDEXING:
+			if( children[0]->data_type.isList() and children[1]->data_type == INT_TYPE )
+				return children[0]->data_type.getChildType();
+			return ERROR_TYPE;
+		case N_JOIN: case N_MEET:
+			if( ( children[0]->data_type == STR_TYPE or children[0]->data_type.isList() or children[0]->data_type.isSet() ) and children[0]->data_type == children[1]->data_type )
+				return children[0]->data_type;
+			return ERROR_TYPE;
 		default:
 			pmesg(90,"ERROR: operation %s not yet implemented!\n", node_t_to_str[type].c_str() );
 			return ERROR_TYPE;
@@ -164,6 +176,7 @@ syntaxTree::node::~node() {
 syntaxTree::syntaxTree( scopeTable* s ) {
 	root = nullptr;
 	scopes = s;
+	assert( N_COUNT == node_t_to_str.size() );
 }
 
 const syntaxTree::node* syntaxTree::getRoot() const {

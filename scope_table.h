@@ -7,15 +7,17 @@
 #include "symbol_table.h"
 #include "error_reporting.h"
 
-#define ERROR_SCOPE		0
-#define GLOBAL_SCOPE	1
+#define ERROR_SCOPE			0
+#define GLOBAL_SCOPE		1
 
-#define ERROR_VARIABLE	0
+#define ERROR_VARIABLE		0
 
-#define ERROR_FUNCTION	0
-#define GLOBAL_FUNCTION	1
-#define PRINT_FUNCTION	2
-#define SCAN_FUNCTION	3
+#define ERROR_FUNCTION		0
+#define PRINT_FUNCTION		1
+#define SCAN_FUNCTION		2
+#define ITOA_FUNCTION		3
+#define JOIN_STR_FUNCTION	4
+#define GLOBAL_FUNCTION		5	// should always be the last predefined function
 
 typedef uint64_t scope_t;
 typedef uint64_t variable_t;
@@ -60,7 +62,8 @@ public:
 	function_t getFunctionCount() const;
 	function_t getFunction( scope_t, symbol_t ) const;
 	symbol_t getFunctionSymbol( function_t ) const;
-	scope_t getScope( variable_t ) const;
+	scope_t getFunctionScope( function_t ) const;
+	scope_t getVariableScope( variable_t ) const;
 	type_t getVariableType( variable_t ) const;
 	symbol_t getVariableSymbol( variable_t ) const;
 	variable_t getVariable( scope_t, symbol_t ) const;

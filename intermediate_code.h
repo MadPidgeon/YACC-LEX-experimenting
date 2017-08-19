@@ -29,7 +29,8 @@ struct iop_t {
 						// [-a-l] (integer,label) compares a to 0
 		IOP_FJ,			// [r--l] (counter,head)
 		// function instructions (11-13)
-		IOP_ADD_PARAM,	// [-a--] 
+		IOP_ADD_PARAM,	// [-a--]
+		IOP_RESERVE_RETURN, // [-a--]
 		IOP_FUNCTION, 	// [r--l]
 		IOP_RETURN,		// [-a--]
 		// arithmetic instructions (14-22)
@@ -41,10 +42,16 @@ struct iop_t {
 		IOP_STR_CONEQ,	// [ra--]
 		// comparison instructions (23-24)
 		IOP_INT_EQ, IOP_INT_NEQ,
-						// [ra--]
+						// [rab-]
 		// container instructions (25-26)
-		IOP_INT_ARR_LOAD, IOP_INT_ARR_STORE
-						// [rab-] (target, base, offset) target = base[offset] = *(base+sizeof(int)*offset)
+		IOP_INT_ARR_LOAD, 
+						// [rab-] (variable, base, offset)
+		IOP_INT_ARR_STORE,
+						// [rab-] ((R) base, offset, variable)
+		IOP_LIST_ALLOCATE,	
+						// [ra--] (memory adress,size in bytes)
+
+		COUNT
 	};
 	id_t id;
 	variable_t r;
@@ -59,11 +66,20 @@ struct iop_t {
 	std::vector<variable_t> getWrittenVariables() const;
 	std::vector<variable_t> getReadOnlyVariables() const;
 	std::vector<variable_t> getWriteOnlyVariables() const;
+	void setParameterVariable( int i, variable_t v );
+	void setParameterInteger( int i, int64_t x );
+	variable_t getParameterVariable( int i ) const;
+	int64_t getParameterInteger( int i ) const;
+	bool parameterIsVariable( int i ) const;
+	bool parameterIsWritten( int i ) const;
+	bool parameterIsRead( int i ) const;
 	bool isFloating() const;
 	bool usesResultParameter() const;
 	bool usesReadParameterA() const;
 	bool usesReadParameterB() const;
+	bool usesLabel() const;
 	std::string debugName() const;
+	bool operator==( const iop_t& ) const;
 };
 
 class intermediateCode {
@@ -85,8 +101,12 @@ public:
 		variable_t translateContainer( const syntaxTree::node* n );
 		variable_t translateExpression( const syntaxTree::node* n );
 		variable_t translateFunctionCall( const syntaxTree::node* n );
+		variable_t translateFunctionOperation( const syntaxTree::node* n );
+		void translateListElements( const syntaxTree::node* n, variable_t, size_t );
+		void translateLValue( const syntaxTree::node* n, variable_t value );
 		variable_t translateVariable( const syntaxTree::node* n );
-		size_t addOperation( iop_t::id_t type, variable_t r = ERROR_VARIABLE, variable_t a = ERROR_VARIABLE, variable_t b = ERROR_VARIABLE, label_t l = ERROR_LABEL, iop_t::constant_t = {.integer=0} );
+		variable_t translateReadIndexing( const syntaxTree::node* n );
+		size_t addOperation( iop_t::id_t type, variable_t r = ERROR_VARIABLE, variable_t a = ERROR_VARIABLE, variable_t b = ERROR_VARIABLE, label_t l = ERROR_LABEL, iop_t::constant_t = {.integer=0}, iop_t::constant_t = {.integer=0} );
 	};
 private:
 	std::vector<function> functions;

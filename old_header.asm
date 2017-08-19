@@ -114,12 +114,13 @@ section .bss
 default rel
 section .text
 _1: ; print
-  mov rsi, [rsp+8]
-  mov rdx, [rsi-8]
-  mov rax, SYSCALL_WRITE
-  mov rdi, 1
-  syscall
-  ret 8
+	mov rax, [rsp+8]
+	lea rsi, [rax+8]
+	mov rdx, [rax]
+	mov rax, SYSCALL_WRITE
+	mov rdi, 1
+	syscall
+	ret 8
 
 _3:
 	mov rax, [rsp+8]    ; load integer
@@ -154,19 +155,19 @@ _3:
 	mov rsi, [_3_registers]	; get read position
 	;pop rsi
 	lea rdi, [rax+8]	; get write position
-  mov [rsp+16], rdi ; set pointer as return value
 	cld
-	rep movsb			    ; copy string 
+	rep movsb			; copy string 
 
+	mov [rsp+16], rax	; set pointer as return value
 	ret 8               ; return
 
 _4: ; concat
 	; reserve string
 	mov rax, [rsp+8]	; load first string address
-	mov rsi, [rax-8]	; load first string size
+	mov rsi, [rax]		; load first string size
 	mov rax, [rsp+16]	; load second string address
-	add rsi, [rax-8]	; add second string size
-	add rsi, 8		   	; add string header size
+	add rsi, [rax]		; add second string size
+	add rsi, 8			; add string header size
 	mov rax, SYSCALL_MMAP
 	xor edi, edi
 	mov rdx, PROT_READ | PROT_WRITE
@@ -179,18 +180,20 @@ _4: ; concat
 	mov [rax], rsi
 	; copy first string
 	mov rsi, [rsp+16]	; load first string adress
-	mov rcx, [rsi-8]	; load first string size
-	mov rdx, rcx		  ; save first string size
+	mov rcx, [rsi]		; load first string size
+	mov rdx, rcx		; save first string size
+	add rsi, 8			; compute string starting point 
 	lea rdi, [rax+8]	; load write adress
-  mov [rsp+24], rdi ; push return value
 	cld 
 	rep movsb			; copy string
 	; copy second string
 	mov rsi, [rsp+8]	; load second string adress
-	mov rcx, [rsi-8]	; load second string size
+	mov rcx, [rsi]		; load second string size
+	add rsi, 8			; compute string starting point
 	; add rdi, rdx		; load write adress
-	rep movsb			    ; copy string
+	rep movsb			; copy string
 	; return
+	mov [rsp+24], rax	; push return value
 	ret 16
 
 global _start

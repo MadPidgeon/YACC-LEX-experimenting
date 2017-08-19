@@ -1,3 +1,5 @@
+section .data
+
 ; TAKEN FROM https://github.com/davidad/asm_concurrency/blob/master/os_dependent_stuff.asm
 ; syscalls
 %ifidn __OUTPUT_FORMAT__,elf64
@@ -199,3 +201,52 @@ global start
 start:
 global main
 main:
+_5:
+	push r8
+	push r9
+	push r10
+	mov rax, 9
+	mov rsi, 40
+	xor edi, edi
+	mov rdx, 3
+	mov r10, 34
+	mov r8, -1
+	xor r9d, r9d
+	syscall
+	pop r10
+	pop r9
+	pop r8
+	mov qword [0+rax], 32
+	lea r8, [8+rax]
+	mov r9, 2
+	mov qword [0+r8], r9
+	mov r9, 4
+	mov qword [8+r8], r9
+	mov r9, 6
+	mov qword [16+r8], r9
+	mov r9, 8
+	mov qword [24+r8], r9
+	mov r9, r8
+	sub rsp, 8
+	mov r8, 2
+	mov r10, qword [0+r9+8*r8]
+	push r10
+	call _3
+	pop r8
+	push r8
+	call _1
+	mov r8, 1
+	mov r10, r8
+	mov qword [0+r9+8*r10], r10
+	sub rsp, 8
+	mov r8, 1
+	mov r10, qword [0+r9+8*r8]
+	push r10
+	call _3
+	pop r9
+	push r9
+	call _1
+	mov rax, 60
+	mov rdi, 0
+	syscall
+

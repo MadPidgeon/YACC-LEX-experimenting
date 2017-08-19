@@ -62,7 +62,7 @@ syntaxTree::node* symbolToVariable( symbol_t id, type_t type );
 
 /* Tokens */
 
-%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE FUNC IF WHILE ELSE FOR IN RELOP ELLIPSIS
+%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE FUNC IF WHILE ELSE FOR IN RELOP ELLIPSIS JOIN_MEET
 
 %union {
 	char *str;
@@ -186,7 +186,7 @@ declaration_list_el:	id ASSIGNMENT expression {
 							$<node>$ = nullptr;
 						};
 
-assignment:				variable ASSIGNMENT expression {
+assignment:				lvalue ASSIGNMENT expression {
 							$<node>$ = new syntaxTree::node( N_ASSIGN, $<node>1, $<node>3 );	
 						};
 
@@ -206,16 +206,27 @@ expression_list:		expression {
 							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1, $<node>3 );
 						};
 
-relational:				sum {
+relational:				join_meet {
 							$<node>$ = $<node>1;
 						}
-						| sum RELOP relational {
+						| join_meet RELOP relational {
 							node_t type;
 							int c = $<num>2;
 							if( c == 1 )
 								type = N_NOT_EQUALS;
 							else if( c == 0 )
 								type = N_EQUALS;
+							$<node>$ = new syntaxTree::node( type, $<node>1, $<node>3 );
+						};
+
+join_meet:				sum
+						| sum JOIN_MEET join_meet { // associativity needs to be fixed in the syntax tree or intermediate code
+							node_t type;
+							int c = $<num>2;
+							if( c == 0 )
+								type = N_JOIN;
+							else
+								type = N_MEET;
 							$<node>$ = new syntaxTree::node( type, $<node>1, $<node>3 );
 						};
 
@@ -266,20 +277,20 @@ constant:				INT {
 							$<node>$ = $<node>1;
 						};
 list:					LSEQ list_items RSEQ {
-							$<node>$ = new syntaxTree::node( N_LIST, $<node>2 );
+							$<node>$ = new syntaxTree::node( N_LIST, $<node>2, nullptr, {.integer=$<node>2->data.integer+1} );
 						}
 						| LSEQ RSEQ {
 							$<node>$ = new syntaxTree::node( N_LIST );
 						};
 
 list_items:				expression {
-							$<node>$ = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, $<node>1 );
+							$<node>$ = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, $<node>1, nullptr, {.integer=0} );
 						} 
 						| expression COMMA list_items {
 							type_t a = $<node>1->data_type, b = $<node>3->data_type;
 							if( a != b and a != ERROR_TYPE and b != ERROR_TYPE )
 								lerr << error_line() << "Lists and sets can only contain elements of a single type" << std::endl;
-							$<node>$ = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, $<node>1, $<node>3 );
+							$<node>$ = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, $<node>1, $<node>3, {.integer=$<node>3->data.integer+1} );
 						};
 
 string_particles:		STRING_PARTICLE {
@@ -291,15 +302,31 @@ string_particles:		STRING_PARTICLE {
 							free( $<str>2 );
 						};
 
+lvalue:					variable | function_call;
+
 variable:				id {
 							$<node>$ = symbolToVariable( $<num>1 );
 						};
 
 function_call:			id LBRA expression_list RBRA {
 							function_t f = scptab->getFunction( current_scope, $<num>1 );
-							if( f == ERROR_FUNCTION )
+							variable_t v = scptab->getVariable( current_scope, $<num>1 );
+							if( f == ERROR_FUNCTION and v == ERROR_VARIABLE )
 								lerr << error_line() << "Undeclared function " << symtab->getName( $<num>1 ) << std::endl;
-							$<node>$ = new syntaxTree::node( N_FUNCTION_CALL, $<node>3, nullptr, {.integer = f } );
+							if( v == ERROR_VARIABLE or scptab->getVariableScope( v ) <= scptab->getFunctionScope( f ) ) { // function
+								$<node>$ = new syntaxTree::node( N_FUNCTION_CALL, $<node>3, nullptr, {.integer = f } );
+							} else { // variable
+								type_t t = scptab->getVariableType( v );
+								if( t.isList() ) {
+									syntaxTree::node* n = $<node>3;
+									if( n->children[1] )
+										lerr << error_line(true) << "Expected 1 list index, others are ignored" << std::endl;
+									$<node>$ = new syntaxTree::node( N_LIST_INDEXING, new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = v } ), n->children[0] );
+								} else {
+									lerr << error_line() << "Variable " << symtab->getName( $<num>1 ) << " is not a list (but " << t << ")" << std::endl;
+									$<node>$ = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
+								}
+							}
 						};
 
 function_definition:	FUNC id LBRA parameter_list RBRA sequential_block {
@@ -384,24 +411,18 @@ int main( int argc, char** argv ) {
 	}
 	yyin = input_file;
 	int result = yyparse();
-	std::cout << "Syntax Tree:" << std::endl << (*syntree) << std::endl;
+	std::cout << "Syntax Tree:" << (*syntree) << std::endl << std::endl;
 	intermediateCode ic( scptab );
 	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
 	std::cout << "Scope Table:" << std::endl << (*scptab) << std::endl;
-	std::cout << scptab->getVariable( GLOBAL_SCOPE, 1 ) << std::endl;
-
-	std::cout << ic << std::endl;
+	std::cout << "Intermediate Code:" << std::endl << ic << std::endl;
 	flowGraph G( ic.getFunction( GLOBAL_FUNCTION ) );
-	std::cout << G << std::endl;
-	auto v = G.naiveLiveIntervals();
-	for( auto i : v )
-		std::cout << i << std::endl;
-	registerAllocation ra( 8, v );
-	ra.linearScan();
-	for( auto i : ra.getRegisterAssignment() )
-		std::cout <<  symtab->getName( scptab->getVariableSymbol( i.variable ) ) << ": " << i.assigned_register << std::endl;
+	G.optimize();
+	auto f = G.generateFunction();
+	std::cout << "Optimized Main:" << std::endl << f << std::endl;
 	assemblyGenerator ag( ic );
 	std::ofstream ofile( "a.out" );
+	// std::cout << "Assembly:" << std::endl << ag << std::endl;
 	ofile << ag << std::endl;
 	return 0;
 }

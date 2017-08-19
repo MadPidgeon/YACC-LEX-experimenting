@@ -54,7 +54,6 @@ LBRA		"("
 RBRA		")"
 ELLIPSIS	"..."
 
-
 TYPENAME "int"|"str"|"flt"
 
 %x STRING_STATE
@@ -222,6 +221,15 @@ in			{
 				else
 					yylval.num = 1;
 				return RELOP;
+			}
+
+"|"|"&"		{
+				pmesg(90, "Lexer: JOIN_MEET: %s\n", yytext);
+				if( yytext[0] == '|' )
+					yylval.num = 0;
+				else
+					yylval.num = 1;
+				return JOIN_MEET;
 			}
 
 %{/*{TYPENAME}	{

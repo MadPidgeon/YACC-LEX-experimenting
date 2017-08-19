@@ -1,5 +1,6 @@
 CXX=g++
-CXXFLAGS=-Wall -std=c++11 -Wno-narrowing
+CXXFLAGS=-Wall -std=c++11 -Wno-narrowing -Wfatal-errors
+
 
 #bin/$.o: $.cc
 #	$(CXX) -c $< -o $@ $(CXXFLAGS)

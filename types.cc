@@ -58,6 +58,10 @@ type_t::node* type_t::node::applySubstitution( size_t f, type_t target ) {
 	return this;
 }
 
+size_t type_t::node::rawSize() const {
+	return 8; // temp
+}
+
 void type_t::node::print( std::ostream& os ) const {
 	if( free_id >= 0 ) {
 		os << "T" << free_id;
@@ -103,6 +107,12 @@ const type_t::node* type_t::getRoot() const {
 	return root;
 }
 
+size_t type_t::rawSize() const {
+	if( root )
+		return root->rawSize();
+	throw;
+}
+
 type_t::node* type_t::peel() {
 	node* r = root;
 	root = nullptr;
@@ -111,6 +121,14 @@ type_t::node* type_t::peel() {
 
 bool type_t::isFinal() const {
 	return root->free_id == -2;
+}
+
+bool type_t::isList() const {
+	return getBase() == LST_STRUCTURE;
+}
+
+bool type_t::isSet() const {
+	return getBase() == SET_STRUCTURE;
 }
 
 bool type_t::operator==( const type_t& other ) const {

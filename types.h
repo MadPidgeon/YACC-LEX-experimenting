@@ -38,6 +38,7 @@ public:
 		std::vector<node*> parameters;
 		bool operator==( const node& ) const;
 		bool operator!=( const node& ) const;
+		size_t rawSize() const;
 		node* clone() const;
 		node* intersect( const node* ) const;
 		node* applySubstitution( size_t, type_t );
@@ -53,6 +54,8 @@ private:
 public:
 	const node* getRoot() const;
 	bool isFinal() const;
+	bool isList() const;
+	bool isSet() const;
 	bool operator==( const type_t& ) const;
 	bool operator!=( const type_t& ) const;
 	type_t intersect( const type_t& ) const;
@@ -60,6 +63,7 @@ public:
 	type_t getChildType() const;
 	void applySubstitution( size_t, type_t );
 	type_t rightFlattenTypeProduct( type_t left ) const;
+	size_t rawSize() const;
 	type_t& operator=( const type_t& );
 	type_t( const type_t& );
 	type_t( type_t&& );

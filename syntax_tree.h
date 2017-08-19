@@ -14,6 +14,8 @@ enum node_t {
 
 	N_ADD, N_SUBTRACT, N_MULTIPLY, N_DIVIDE, N_REMAINDER, N_UMIN,
 
+	N_JOIN, N_MEET,
+
 	N_ARGUMENT_LIST,
 
 	N_IF, N_WHILE, N_ELSE, N_FOR,
@@ -26,7 +28,11 @@ enum node_t {
 
 	N_FUNCTION_CALL,
 
-	N_EMPTY
+	N_LIST_INDEXING,
+
+	N_EMPTY,
+
+	N_COUNT
 };
 
 class syntaxTree {

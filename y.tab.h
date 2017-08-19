@@ -69,7 +69,8 @@ extern int yydebug;
     FOR = 279,
     IN = 280,
     RELOP = 281,
-    ELLIPSIS = 282
+    ELLIPSIS = 282,
+    JOIN_MEET = 283
   };
 #endif
 
@@ -87,7 +88,7 @@ union YYSTYPE
 	std::vector<type_t>* typlst;
 	struct syntaxTree::node *node;
 
-#line 91 "y.tab.h" /* glr.c:197  */
+#line 92 "y.tab.h" /* glr.c:197  */
 };
 
 typedef union YYSTYPE YYSTYPE;
