@@ -1,73 +1,61 @@
 #pragma once
+#include <iostream>
+#include <map>
+#include <vector>
+#include <utility>
+#include "scope_table.h"
 
 typedef int64_t stack_offset_t;
 
+// STACK FRAME:
+// -------------------------
+// Return value
+// -------------------------
+// Argument 1
+// ...
+// Argument n-1
+// Argument n
+// -------------------------
+// Return address
+// Old base pointer         < rbp
+// -------------------------
+// Local variable 1
+// Local variable 2
+// Local variable 3
+// ...
+// Local variable m         < rsp
+// -------------------------
+// Argument stack
+// ...
+// ...
+
 class stackFrame {
-	struct register_storage {
-		register_t reg;
-		stack_offset_t offset;
-	};
+public:
 	struct variable_storage {
 		variable_t variable;
+		size_t size; // = 0, 1, 2, 4, 8 (ints), 16 (flts) bytes
 		stack_offset_t offset;
-		size_t size;
+		variable_storage( variable_t v = ERROR_VARIABLE, size_t s = 0, stack_offset_t o = 0 );
 	};
-	stack_offset_t return_value;
+private:
+	std::vector<variable_storage> return_values;
 	std::vector<variable_storage> function_arguments;
-	stack_offset_t old_instruction_pointer;
-	std::vector<register_storage> saved_registers;
+	variable_storage return_address;
+	variable_storage old_bp;
 	std::vector<variable_storage> saved_variables;
-
-	size_t byte_count; 
+	std::vector<variable_storage> argument_stack;
+	size_t byte_count;
+	std::map<variable_t,std::pair<int,size_t>> variable_location;
 public:
+	size_t localVariableSize() const;
 	size_t popCountOnReturn() const;
+	stack_offset_t addVariable( variable_t v, size_t s );
+	stack_offset_t getVariableLocation( variable_t v ) const;
+	bool isLocalVariable( variable_t v ) const;
+	void print( std::ostream& os ) const;
+	void reset( std::vector<variable_storage> returns, std::vector<variable_storage> arguments );
 	stackFrame();
-	stackFrame( type_t return_type, const std::vector<variable_t>& arguments_type, std::vector<bool> saved_registers, std::vector<variable_t> saved_variables );
+	stackFrame( std::vector<variable_storage> returns, std::vector<variable_storage> arguments );
 };
 
-stackFrame::stackFrame() {
-	return_value = -8;
-	old_instruction_pointer = 0;
-	byte_count = 16;
-}
-
-stackFrame::stackFrame( type_t return_type, const std::vector<variable_t>& arguments_type, std::vector<bool> saved_registers, std::vector<variable_t> saved_variables ) {
-	stack_offset_t o = old_instruction_pointer = 0;
-	byte_count = 8;
-	int count = arguments_type.size();
-	size_t s;
-	function_arguments.resize( count-- );
-	for( auto itr = arguments_type.rbegin(); itr != arguments_type.rend(); ++itr ) {
-		auto& a = function_arguments.at( count );
-		a.variable = *itr;
-		a.size = scptab->getType( a.variable ).rawSize();
-		a.offset = ( o -= a.size );
-		byte_count += a.size;
-	}
-	s = return_type.rawSize();
-	return_value = o - s;
-	byte_count += s;
-	o = 0;
-	register_t r = 0;
-	for( bool b : saved_registers ) {
-		if( b ) {
-			saved_registers.push_back( { r, o += 8 } );
-			byte_count += 8;
-		}
-		++r;
-	}
-	o += 8;
-	for( variable_t v : saved_variables ) {
-		size_t s = scptab->getType( v ).rawSize();
-		saved_variables.push_back( { v, o, s } );
-		o += s;
-		byte_count += s;
-	}
-}
-
-size_t stackFrame::popCountOnReturn() const {
-	size_t s = 0;
-	for( auto vs : function_arguments )
-		s += vs.size;
-	return s;
-}
+std::ostream& operator<<( std::ostream&, const stackFrame& );

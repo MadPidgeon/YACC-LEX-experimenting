@@ -46,11 +46,11 @@ symbol_t scopeTable::getVariableSymbol( variable_t variable ) const {
 	return declarations.at( variable ).symbol;
 }
 
-function_t scopeTable::addFunctionDeclaration( scope_t scope, symbol_t symbol, type_t type, std::vector<type_t> arg_types ) {
+function_t scopeTable::addFunctionDeclaration( scope_t scope, symbol_t symbol, type_t type, std::vector<variable_t> args ) {
 	if( scopes.at( scope ).function_declarations.find( symbol ) != scopes.at( scope ).function_declarations.end() )
 		return ERROR_FUNCTION;
 	function_t id = function_declarations.size();
-	function_declaration d = { id, type, arg_types, symbol, scope };
+	function_declaration d = { id, type, args, symbol, scope };
 	function_declarations.push_back( d );
 	scopes.at( scope ).function_declarations[symbol] = id;
 	return id;
@@ -68,8 +68,8 @@ scope_t scopeTable::getFunctionScope( function_t function ) const {
 	return function_declarations.at( function ).scope;
 }
 
-const std::vector<type_t>& scopeTable::getFunctionArguments( function_t function ) const {
-	return function_declarations.at( function ).arg_types;
+const std::vector<variable_t>& scopeTable::getFunctionArguments( function_t function ) const {
+	return function_declarations.at( function ).args;
 }
 
 function_t scopeTable::getFunctionCount() const {
@@ -110,10 +110,10 @@ scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
 	addTypeDefinition( GLOBAL_SCOPE, LST_SYMBOL, LST_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 	addTypeDefinition( GLOBAL_SCOPE, SET_SYMBOL, SET_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 	assert( addFunctionDeclaration( ERROR_SCOPE, ERROR_SYMBOL, ERROR_TYPE ) == ERROR_FUNCTION );
-	assert( addFunctionDeclaration( GLOBAL_SCOPE, PRINT_SYMBOL, VOID_TYPE, { STR_TYPE } ) == PRINT_FUNCTION );
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, PRINT_SYMBOL, VOID_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ) } ) == PRINT_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, SCAN_SYMBOL, STR_TYPE ) == SCAN_FUNCTION );
-	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { INT_TYPE } ) == ITOA_FUNCTION );
-	assert( addFunctionDeclaration( GLOBAL_SCOPE, NONE_SYMBOL, STR_TYPE, { STR_TYPE, STR_TYPE } ) == JOIN_STR_FUNCTION );
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, INT_TYPE ) } ) == ITOA_FUNCTION );
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, NONE_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ), addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ) } ) == JOIN_STR_FUNCTION );
 	assert( addFunctionDeclaration( ERROR_SCOPE, NONE_SYMBOL, VOID_TYPE ) == GLOBAL_FUNCTION );
 }
 

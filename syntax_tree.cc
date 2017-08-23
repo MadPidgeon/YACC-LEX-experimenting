@@ -6,9 +6,11 @@
 const std::vector<std::string> node_t_to_str = {
 	"INTEGER", "FLOAT", "STRING", "VARIABLE",
 
-	"ASSIGN", 
+	"ASSIGN", "GARBAGE",
 
-	"EQUALS", "NOT_EQUALS",
+	"COMPARISON_CHAIN",
+
+	"EQUALS", "NOT_EQUALS", "LESSER", "GREATER", "LESSER_EQ", "GREATER_EQ",
 
 	"ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "REMAINDER", "UMIN",
 
@@ -16,7 +18,7 @@ const std::vector<std::string> node_t_to_str = {
 
 	"ARGUMENT_LIST",
 
-	"IF", "WHILE", "ELSE", "FOR",
+	"IF", "WHILE", "ELSE", "FOR", "BREAK", "CONTINUE",
 
 	"SEQUENTIAL_BLOCK", "PARALLEL_BLOCK", "BLOCK_LIST",
 
@@ -50,10 +52,14 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_FLOAT:
 		case N_VARIABLE:
 		case N_EMPTY:
+		case N_CONTINUE:
+		case N_BREAK:
+		case N_GARBAGE:
 			if( c != 0 )
 				return ERROR_TYPE;
 			break;
 		// 1 child (left)
+		case N_COMPARISON_CHAIN:
 		case N_UMIN: 
 		case N_LIST: 
 		case N_SET:
@@ -78,17 +84,26 @@ type_t syntaxTree::node::computeDatatype() {
 	}
 	switch( type ) {
 		case N_INTEGER:
-		case N_EQUALS:   case N_NOT_EQUALS:
 			return INT_TYPE;
+		case N_COMPARISON_CHAIN:
+			if( children[0]->data_type != ERROR_TYPE )
+				return INT_TYPE;
+			return BOOL_TYPE;
+		case N_EQUALS:   case N_NOT_EQUALS:
+		case N_LESSER:   case N_GREATER:  case N_LESSER_EQ:case N_GREATER_EQ:
+			if( children[0]->data_type != children[1]->data_type )
+				return ERROR_TYPE;
+			return children[0]->data_type;
 		case N_FLOAT:
 			return FLT_TYPE;
 		case N_STRING:
 			return STR_TYPE;
-		case N_ASSIGN:
+		case N_ASSIGN:   case N_GARBAGE:
 		case N_IF:       case N_WHILE:    case N_ELSE:     case N_FOR:
 		case N_EMPTY:
 		case N_SEQUENTIAL_BLOCK:          case N_PARALLEL_BLOCK:
 		case N_BLOCK_LIST:
+		case N_BREAK:    case N_CONTINUE:
 			return VOID_TYPE;
 		case N_MULTIPLY: case N_DIVIDE:   case N_REMAINDER:
 		case N_ADD:      case N_SUBTRACT:
@@ -125,7 +140,7 @@ type_t syntaxTree::node::computeDatatype() {
 				return children[0]->data_type;
 			return ERROR_TYPE;
 		default:
-			pmesg(90,"ERROR: operation %s not yet implemented!\n", node_t_to_str[type].c_str() );
+			pmesg(90,"ERROR: operation N(%s) not yet implemented!\n", node_t_to_str[type].c_str() );
 			return ERROR_TYPE;
 	}
 }

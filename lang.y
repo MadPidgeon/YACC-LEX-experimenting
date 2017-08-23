@@ -54,6 +54,8 @@ std::stack<type_t> decllisttypes;
 
 syntaxTree::node* symbolToVariable( symbol_t id );
 syntaxTree::node* symbolToVariable( symbol_t id, type_t type );
+syntaxTree::node* handleRelop( int id, syntaxTree::node* a, syntaxTree::node* b );
+
 
 %}
 
@@ -62,7 +64,7 @@ syntaxTree::node* symbolToVariable( symbol_t id, type_t type );
 
 /* Tokens */
 
-%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE FUNC IF WHILE ELSE FOR IN RELOP ELLIPSIS JOIN_MEET
+%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE FUNC IF WHILE ELSE FOR IN RELOP ELLIPSIS JOIN_MEET BREAK CONTINUE
 
 %union {
 	char *str;
@@ -116,6 +118,12 @@ statement:				declarations SEMICOLON {
 							$<node>$ = $<node>1;
 						}
 						| while {
+							$<node>$ = $<node>1;
+						}
+						| break SEMICOLON {
+							$<node>$ = $<node>1;
+						}
+						| continue SEMICOLON {
 							$<node>$ = $<node>1;
 						}
 						| function_definition
@@ -182,8 +190,7 @@ declaration_list_el:	id ASSIGNMENT expression {
 							$<node>$ = new syntaxTree::node( N_ASSIGN, symbolToVariable( $<num>1, decllisttypes.top() ), $<node>3 );
 						}
 						| id {
-							scptab->addVariable( current_scope, $<num>1, decllisttypes.top() );
-							$<node>$ = nullptr;
+							$<node>$ = new syntaxTree::node( N_GARBAGE, nullptr, nullptr, {.integer=scptab->addVariable( current_scope, $<num>1, decllisttypes.top() ) } );
 						};
 
 assignment:				lvalue ASSIGNMENT expression {
@@ -209,15 +216,19 @@ expression_list:		expression {
 relational:				join_meet {
 							$<node>$ = $<node>1;
 						}
-						| join_meet RELOP relational {
+						| join_meet RELOP chain_relational {
 							node_t type;
 							int c = $<num>2;
 							if( c == 1 )
 								type = N_NOT_EQUALS;
 							else if( c == 0 )
 								type = N_EQUALS;
-							$<node>$ = new syntaxTree::node( type, $<node>1, $<node>3 );
+							$<node>$ = new syntaxTree::node( N_COMPARISON_CHAIN, handleRelop( $<num>2, $<node>1, $<node>3 ) );
 						};
+
+chain_relational:		join_meet | join_meet RELOP chain_relational {
+							$<node>$ = handleRelop( $<num>2, $<node>1, $<node>3 );
+						}
 
 join_meet:				sum
 						| sum JOIN_MEET join_meet { // associativity needs to be fixed in the syntax tree or intermediate code
@@ -377,6 +388,17 @@ if:						IF LBRA expression RBRA statement {
 							$<node>$ = new syntaxTree::node( N_IF, $<node>3, new syntaxTree::node( N_ELSE, $<node>5, $<node>7 ) );
 						};
 
+break:					BREAK {
+							$<node>$ = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=1} );
+						}
+						| BREAK INT {
+							$<node>$ = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=$<num>2} );
+						}
+
+continue:				CONTINUE {
+							$<node>$ = new syntaxTree::node( N_CONTINUE );
+						}
+
 %%
 
 /* C-CODE */
@@ -390,6 +412,11 @@ syntaxTree::node* symbolToVariable( symbol_t symbol ) {
 syntaxTree::node* symbolToVariable( symbol_t symbol, type_t type ) {
 	variable_t variable = scptab->addVariable( current_scope, symbol, type );
 	return new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=variable} );
+}
+
+syntaxTree::node* handleRelop( int id, syntaxTree::node* a, syntaxTree::node* b ) {
+	assert( id >= 0 and id < 6 );
+	return new syntaxTree::node( node_t( N_EQUALS + id ), a, b );
 }
 
 
@@ -416,11 +443,8 @@ int main( int argc, char** argv ) {
 	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
 	std::cout << "Scope Table:" << std::endl << (*scptab) << std::endl;
 	std::cout << "Intermediate Code:" << std::endl << ic << std::endl;
-	flowGraph G( ic.getFunction( GLOBAL_FUNCTION ) );
-	G.optimize();
-	auto f = G.generateFunction();
-	std::cout << "Optimized Main:" << std::endl << f << std::endl;
 	assemblyGenerator ag( ic );
+	ag.print( std::cout, false );
 	std::ofstream ofile( "a.out" );
 	// std::cout << "Assembly:" << std::endl << ag << std::endl;
 	ofile << ag << std::endl;

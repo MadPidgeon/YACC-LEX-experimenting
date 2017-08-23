@@ -42,7 +42,7 @@ class scopeTable {
 	struct function_declaration {
 		function_t declaration_id;
 		type_t return_type;
-		std::vector<type_t> arg_types;
+		std::vector<variable_t> args;
 		symbol_t symbol;
 		scope_t scope;
 	};
@@ -56,9 +56,9 @@ public:
 	type_t getTypeDefinition( scope_t, symbol_t, std::vector<type_t> = {} ) const;
 	scope_t addScope( scope_t super );
 	variable_t addVariable( scope_t, symbol_t, type_t );
-	function_t addFunctionDeclaration( scope_t, symbol_t, type_t, std::vector<type_t> = {} );
+	function_t addFunctionDeclaration( scope_t, symbol_t, type_t, std::vector<variable_t> = {} );
 	type_t getFunctionReturnType( function_t ) const;
-	const std::vector<type_t>& getFunctionArguments( function_t ) const;
+	const std::vector<variable_t>& getFunctionArguments( function_t ) const;
 	function_t getFunctionCount() const;
 	function_t getFunction( scope_t, symbol_t ) const;
 	symbol_t getFunctionSymbol( function_t ) const;

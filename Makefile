@@ -35,6 +35,9 @@ bin/register_allocation.o: register_allocation.cc
 bin/assembly.o: assembly.cc
 	$(CXX) -c assembly.cc -o bin/assembly.o $(CXXFLAGS)
 
+bin/stack_frame.o: stack_frame.cc
+	$(CXX) -c stack_frame.cc -o bin/stack_frame.o $(CXXFLAGS)
+
 bin/y.tab.o: y.tab.c
 	$(CXX) -c y.tab.c -o bin/y.tab.o $(CXXFLAGS)
 
@@ -47,5 +50,5 @@ y.tab.c y.tab.h: lang.y
 lex.yy.c lex.yy.h: lang.l y.tab.h
 	lex lang.l
 
-lexer: bin/lex.yy.o bin/y.tab.o bin/debug.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o
-	$(CXX) bin/debug.o bin/y.tab.o bin/lex.yy.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o -o lexer $(CXXFLAGS)
+lexer: bin/lex.yy.o bin/y.tab.o bin/debug.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o bin/stack_frame.o
+	$(CXX) bin/debug.o bin/y.tab.o bin/lex.yy.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o bin/stack_frame.o -o lexer $(CXXFLAGS)

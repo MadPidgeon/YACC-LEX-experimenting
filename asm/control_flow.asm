@@ -230,8 +230,8 @@ _12:
 	jge _13
 	cmp r8, r9
 	setl r10b
-	cmp 4, r8
-	setl r11b
+	cmp r8, 4
+	setge r11b
 	and r11, r10
 	test r11, 1
 	je _15
@@ -247,6 +247,7 @@ _13:
 	jmp _9
 _10:
 	mov r8, 0
+	int 3
 _11:
 	sub rsp, 8
 	push r8

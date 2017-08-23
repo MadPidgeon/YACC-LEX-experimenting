@@ -1,11 +1,199 @@
+#include <algorithm>
+
 #include "flow_graph.h"
 #include "intermediate_code.h"
+
+// ***********************************************
+// * Block Order Operations
+// ***********************************************
+
+void flowGraph::node::setJumpsToChildren( const flowGraph* fg ) {
+	if( direct_child != NO_BASIC_BLOCK ) {
+		assert( operations.size() > 0 and operations.back().id == iop_t::id_t::IOP_JUMP );
+		operations.back().label = fg->basic_blocks.at( direct_child ).label;
+	}
+	if( jump_child != NO_BASIC_BLOCK ) {
+		assert( operations.size() > 1 and operations.back().id == iop_t::id_t::IOP_JUMP and operations.at(operations.size()-2).isJump() );
+		operations.at( operations.size()-2 ).label = fg->basic_blocks.at( jump_child ).label;
+	}
+}
+
+void flowGraph::expandBlocks() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization expandBlocks..." << std::endl;
+	#endif
+	// assign every block a label
+	for( basic_block_t i = 1; i < basic_blocks.size(); ++i ) {
+		if( basic_blocks.at(i).label == ERROR_LABEL ) {
+			label_t l = original_function->parent->newLabel();
+			basic_blocks.at(i).label = l;
+			labeled_blocks[l] = i;
+		}
+	}
+	// end every block with a jump
+	for( basic_block_t i = 1; i < basic_blocks.size(); ++i ) {
+		auto& b = basic_blocks.at(i);
+		if( b.direct_child != NO_BASIC_BLOCK and ( b.operations.size() == 0 or b.operations.back().id != iop_t::id_t::IOP_JUMP ) )
+			b.operations.push_back( iop_t{ iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, basic_blocks.at( b.direct_child ).label } );
+	}
+	// correct jump labels
+	for( basic_block_t i = 1; i < basic_blocks.size(); ++i )
+		basic_blocks.at(i).setJumpsToChildren( this );
+}
+
+void flowGraph::contractBlocks() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization contractBlocks..." << std::endl;
+	#endif
+	// determine order
+	std::set<basic_block_t> visited;
+	std::vector<basic_block_t> order = {0};
+	std::vector<basic_block_t> end_of_program_blocks;
+	for( basic_block_t start = 1; start < basic_blocks.size(); ++start ) {
+		if( visited.count( start ) )
+			continue;
+		basic_block_t i = start;
+		visited.insert( start );
+		order.push_back( start );
+		while( basic_blocks.at( i ).direct_child != NO_BASIC_BLOCK and visited.count( basic_blocks.at( i ).direct_child ) == 0 ) {
+			i = basic_blocks.at( i ).direct_child;
+			visited.insert( i );
+			order.push_back( i );
+		}
+		if( basic_blocks.at( order.back() ).direct_child == NO_BASIC_BLOCK ) {
+			end_of_program_blocks.push_back( order.back() );
+			order.pop_back();
+		}
+	}
+	order.insert( order.end(), end_of_program_blocks.begin(), end_of_program_blocks.end() );
+
+	// reorder
+	std::vector<node> old = std::move( basic_blocks );
+	basic_blocks.resize( 0 );
+	for( int i : order )
+		basic_blocks.push_back( std::move( old.at( i ) ) );
+	std::vector<basic_block_t> inverse_order( order.size() );
+	for( basic_block_t i = 0; i < order.size(); ++i )
+		inverse_order.at( order.at( i ) ) = i;
+	for( auto& b : basic_blocks ) {
+		for( basic_block_t& p : b.parents )
+			p = inverse_order.at( p );
+		b.direct_child = inverse_order.at( b.direct_child );
+		b.jump_child = inverse_order.at( b.jump_child );
+	}
+
+	// remove jumps
+	for( basic_block_t i = 1; i < basic_blocks.size(); ++i ) {
+		if( basic_blocks.at( i ).direct_child == i+1 ) {
+			assert( basic_blocks.at( i ).operations.back().id == iop_t::id_t::IOP_JUMP );
+			basic_blocks.at(i).operations.pop_back();
+		}
+	}
+
+	// remove useless labels
+	std::set<label_t> used_labels;
+	for( auto& b : basic_blocks )
+		for( auto& o : b.operations )
+			if( o.usesLabel() )
+				used_labels.insert( o.label );
+	for( auto& b : basic_blocks )
+		if( used_labels.count( b.label ) == 0 )
+			b.label = ERROR_LABEL;
+
+	// reinsert labels
+	for( basic_block_t i = 1; i < basic_blocks.size(); ++i )
+		if( basic_blocks.at(i).label != ERROR_LABEL )
+			basic_blocks.at(i).operations.insert( basic_blocks.at(i).operations.begin(), iop_t{ iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, basic_blocks.at(i).label } );
+
+	// renumber instructions
+	size_t n = 0;
+	for( auto& b : basic_blocks ) {
+		b.instruction_offset = n;
+		n += b.operations.size() + 1; 
+		// the plus one is here for the live intervals, 
+		// the skipped instruction is treated as one-past-the end of the block
+	}
+}
+
+void flowGraph::splitBranch( basic_block_t i1, basic_block_t parent ) {
+	// add clone
+	basic_block_t i2 = basic_blocks.size();
+	basic_blocks.push_back( basic_blocks.at( i1 ) );
+	auto& b2 = basic_blocks.at( i2 );
+	b2.parents = { parent };
+
+	// remove parent from target
+	auto& b = basic_blocks.at( i1 );
+	assert( b.parents.size() > 1 );
+	auto itr = std::find( b.parents.begin(), b.parents.end(), parent );
+	assert( itr != b.parents.end() );
+	b.parents.erase( itr );
+
+	// set clone as child
+	auto& c = basic_blocks.at( parent );
+	if( c.direct_child == i1 )
+		c.direct_child = i2;
+	if( c.jump_child == i1 )
+		c.jump_child = i2;
+	c.setJumpsToChildren( this ); // requires expended graph
+}
+
+void flowGraph::walkGraph( basic_block_t i, std::set<basic_block_t>& visited ) {
+	auto& b = basic_blocks.at( i );
+	if( b.direct_child != NO_BASIC_BLOCK and not visited.count( b.direct_child ) ) {
+		visited.insert( b.direct_child );
+		walkGraph( b.direct_child, visited );
+	} 
+	if( b.jump_child != NO_BASIC_BLOCK and not visited.count( b.jump_child ) ) {
+		visited.insert( b.jump_child );
+		walkGraph( b.jump_child, visited );
+	} 
+}
+
+void flowGraph::removeDeadCode() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization removeDeadCode..." << std::endl;
+	#endif
+	// find dead blocks
+	std::set<basic_block_t> reached_blocks = {1};
+	walkGraph( 1, reached_blocks );
+	for( int i : reached_blocks )
+		std::cout << i << " ";
+	std::cout << std::endl;
+	// delete blocks
+	for( int i = basic_blocks.size()-1; i > 0; --i )
+		if( reached_blocks.count( i ) == 0 )
+			basic_blocks.erase( basic_blocks.begin()+i );
+	// relabel blocks
+	for( int i = 1; i < basic_blocks.size(); ++i )
+		labeled_blocks[basic_blocks.at(i).label] = i;
+	// set correct children
+	for( int i = 1; i < basic_blocks.size(); ++i ) {
+		auto& b = basic_blocks.at(i);
+		if( b.direct_child != NO_BASIC_BLOCK )
+			b.direct_child = labeled_blocks[ b.operations.back().label ];
+		if( b.jump_child != NO_BASIC_BLOCK )
+			b.jump_child = labeled_blocks[ b.operations.at( b.operations.size()-2 ).label ];
+		b.parents.clear();
+	}
+	// set parents
+	for( int i = 1; i < basic_blocks.size(); ++i ) {
+		auto& b = basic_blocks.at( i );
+		if( b.direct_child != NO_BASIC_BLOCK )
+			basic_blocks.at( b.direct_child ).parents.push_back( i );
+		if( b.jump_child != NO_BASIC_BLOCK )
+			basic_blocks.at( b.jump_child ).parents.push_back( i );
+	}
+}
 
 // ***********************************************
 // * NOP
 // ***********************************************
 
 void flowGraph::clearNOP() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization clearNOP..." << std::endl;
+	#endif
 	// todo: better complexity
 	for( auto& b : basic_blocks ) {
 		for( int i = b.operations.size()-1; i >= 0; --i ) {
@@ -17,6 +205,9 @@ void flowGraph::clearNOP() {
 }
 
 void flowGraph::removeMoveIdempotent() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization removeMoveIdempotent..." << std::endl;
+	#endif
 	for( auto& b : basic_blocks )
 		for( auto& o : b.operations )
 			if( o.id == iop_t::id_t::IOP_INT_MOV and o.parameterIsVariable(1) and o.getParameterVariable(0) == o.getParameterVariable(1) )
@@ -28,6 +219,9 @@ void flowGraph::removeMoveIdempotent() {
 // ***********************************************
 
 void flowGraph::removeWriteOnlyMemory() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization removeWriteOnlyMemory..." << std::endl;
+	#endif
 	std::set<variable_t> read;
 	for( auto& b : basic_blocks ) {
 		for( auto& o : b.operations ) {
@@ -41,11 +235,11 @@ void flowGraph::removeWriteOnlyMemory() {
 	std::cout << std::endl;
 	for( auto& b : basic_blocks ) {
 		for( auto& o : b.operations ) {
-			auto r = o.getWrittenVariables();
+			auto w = o.getWrittenVariables();
 			// assumption: all instructions writing to a variable have no side effects (like jmp has)
-			if( r.size() > 0 ) {
+			if( w.size() > 0 ) {
 				bool pointless = true;
-				for( variable_t v : r )
+				for( variable_t v : w )
 					if( read.count( v ) )
 						pointless = false;
 				if( pointless )
@@ -53,6 +247,70 @@ void flowGraph::removeWriteOnlyMemory() {
 			}
 		}
 	}
+}
+
+void flowGraph::removeUselessBooleans() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization removeUselessBooleans..." << std::endl;
+	#endif
+	/*for( auto& b : basic_blocks ) {
+		std::map<variable_t,size_t> comparisons;
+		for( size_t i = 0; i < b.operations.size(); ++i ) {
+			auto& o = b.operations.at(i);
+			if( o.id == iop_t::id_t::IOP_INT_EQ or o.id == iop_t::id_t::IOP_INT_NEQ )
+				comparisons[o.r] = i;
+			else if( o.id == iop_t::id_t::IOP_JT or o.id == iop_t::id_t::IOP_JF ) {
+				if( o.parameterIsVariable( 1 ) ) {
+					bool nequals = o.id == iop_t::id_t::IOP_JF;
+					if( comparisons.count( o.a ) ) {
+						auto& p = b.operations.at( comparisons[o.a] );
+						nequals ^= p.id == iop_t::id_t::IOP_INT_NEQ;
+						if( nequals )
+							o.id = iop_t::id_t::IOP_JN;
+						else
+							o.id = iop_t::id_t::IOP_JE;
+						o.b = p.b;
+						o.c_b = p.c_b;
+						o.a = p.a;
+					}
+				} else { // constant optimization
+
+				}				
+			} else for( variable_t v : o.getWrittenVariables() ) {
+				comparisons.erase( v );
+			}
+		}
+	}*/
+	for( basic_block_t i = 1; i < basic_blocks.size(); ++i )
+		basic_blocks.at(i).upgradeJump();
+}
+
+void flowGraph::node::upgradeJump() {
+	if( jump_child == NO_BASIC_BLOCK )
+		return;
+	auto& jump = operations.at( operations.size()-2 );
+	if( jump.id != iop_t::id_t::IOP_JT and jump.id != iop_t::id_t::IOP_JF )
+		return;
+	variable_t conditional_variable = jump.a;
+	if( conditional_variable == ERROR_VARIABLE )
+		return;
+	for( int i = operations.size()-3; i >= 0; --i ) {
+		auto& o = operations.at(i);
+		if( o.id >= iop_t::id_t::IOP_INT_EQ and o.id <= iop_t::id_t::IOP_INT_GE and o.r == conditional_variable ) {
+			bool inverse = ( jump.id == iop_t::id_t::IOP_JF );
+			jump.id = iop_t::id_t( iop_t::id_t::IOP_JE + o.id - iop_t::id_t::IOP_INT_EQ );
+			jump.a = o.a;
+			jump.c_a = o.c_a;
+			jump.b = o.b;
+			jump.c_b = o.c_b;
+			if( inverse )
+				jump.invertJump();
+			return;
+		} else
+			for( variable_t x : o.getWrittenVariables() )
+				if( x == conditional_variable )
+					return;
+	}	
 }
 
 // ***********************************************
@@ -141,6 +399,9 @@ int flowGraph::node::cyclicEquivalence( flowGraph* fg ) {
 }
 
 void flowGraph::cyclicEquivalence() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization cyclicEquivalence..." << std::endl;
+	#endif
 	bool change = true;
 	while( change ) {
 		change = false;
@@ -216,6 +477,10 @@ bool flowGraph::node::constantPropagation() {
 					op.setParameterInteger( i, itr->second.data.integer );
 			}
 		}
+		// reduce strength
+		op.reduceStrength();
+		if( op.usesResultParameter() and constants.count( op.r ) and constants.at( op.r ).type == INT_TYPE )
+			op.reduceStrengthEq( constants.at( op.r ).data.integer );
 		// aquire constants
 		if( op.id == iop_t::id_t::IOP_INT_MOV and not op.parameterIsVariable( 1 ) ) {
 			auto itr = constants.find( op.getParameterVariable( 0 ) );
@@ -235,18 +500,22 @@ bool flowGraph::node::constantPropagation() {
 }
 
 void flowGraph::constantPropagation() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization constantPropagation..." << std::endl;
+	#endif
 	bool change = true;
 	while( change ) {
 		change = false;
-		for( basic_block_t b = 1; b < basic_blocks.size(); ++b ) {
+		for( basic_block_t i = 1; i < basic_blocks.size(); ++i ) {
+			auto& b = basic_blocks.at( i );
 			// compute ingoing constants
-			if( basic_blocks.at( b ).parents.size() > 0 ) {
+			if( b.parents.size() > 0 ) {
 				std::unordered_map<variable_t,constant_data> header;
-				for( const auto& p : basic_blocks.at( basic_blocks.at( b ).parents.at( 0 ) ).const_out ) {
+				for( const auto& p : basic_blocks.at( b.parents.at( 0 ) ).const_out ) {
 					bool equal = true;
-					for( basic_block_t c : basic_blocks.at( b ).parents ) {
-						auto itr = basic_blocks.at(c).const_out.find( p.first );
-						if( itr == basic_blocks.at(c).const_out.end() or itr->second != p.second ) {
+					for( basic_block_t j : b.parents ) {
+						auto itr = basic_blocks.at( j ).const_out.find( p.first );
+						if( itr == basic_blocks.at( j ).const_out.end() or itr->second != p.second ) {
 							equal = false;
 							break;
 						}
@@ -254,12 +523,21 @@ void flowGraph::constantPropagation() {
 					if( equal )
 						header[p.first] = p.second;
 				}
-				if( header != basic_blocks.at(b).const_in ) {
-					basic_blocks.at(b).const_in = std::move( header );
+				if( header != b.const_in ) {
+					b.const_in = std::move( header );
 					change = true;
 				}
 			}
-			change |= basic_blocks.at( b ).constantPropagation();
+			// propagate constants
+			change |= b.constantPropagation();
+			// fix jumps
+			if( b.jump_child != NO_BASIC_BLOCK and b.operations.at( b.operations.size() - 2 ).id == iop_t::id_t::IOP_NOP )
+				b.jump_child = NO_BASIC_BLOCK;
+			if( b.jump_child != NO_BASIC_BLOCK and b.operations.at( b.operations.size() - 2 ).id == iop_t::id_t::IOP_JUMP ) {
+				b.operations.pop_back();
+				b.direct_child = b.jump_child;
+				b.jump_child = NO_BASIC_BLOCK;
+			}
 		}
 	}
 }
@@ -304,6 +582,7 @@ std::vector<live_interval_t> flowGraph::node::computeLiveness() const {
 }
 
 void flowGraph::computeLiveness() {
+	// compute used and defined variables
 	basic_block_t s = basic_blocks.size();
 	for( basic_block_t i = 1; i < s; ++i ) {
 		auto& b = basic_blocks.at( i );
@@ -320,6 +599,7 @@ void flowGraph::computeLiveness() {
 					b.def.insert( x );
 		}
 	}
+	// compute live and defined variables
 	bool change = true;
 	while( change ) {
 		change = false;
@@ -330,8 +610,10 @@ void flowGraph::computeLiveness() {
 				if( b.def.count( x ) == 0 )
 					nin.insert( x );
 			std::set<variable_t> nout;
-			for( basic_block_t j = 0; j < 2 and b.children[j] != NO_BASIC_BLOCK; ++j )
-				nout.insert( basic_blocks.at( b.children[j] ).in.begin(), basic_blocks.at( b.children[j] ).in.end() );
+			if( b.direct_child != NO_BASIC_BLOCK )
+				nout.insert( basic_blocks.at( b.direct_child ).in.begin(), basic_blocks.at( b.direct_child ).in.end() );
+			if( b.jump_child != NO_BASIC_BLOCK )
+				nout.insert( basic_blocks.at( b.jump_child ).in.begin(), basic_blocks.at( b.jump_child ).in.end() );			
 			change |= ( ( nin != b.in ) or ( nout != b.out ) );
 			b.in = std::move( nin );
 			b.out = std::move( nout );
@@ -367,7 +649,7 @@ flowGraph::flowGraph( const intermediateCode::function& f ) {
 	const auto& o = f.operations;
 	size_t s = o.size();
 	original_function = &f;
-	node n = { ENTRY_BASIC_BLOCK, { NO_BASIC_BLOCK, NO_BASIC_BLOCK }, 0 };
+	node n = { ENTRY_BASIC_BLOCK, NO_BASIC_BLOCK, NO_BASIC_BLOCK, 0, ERROR_LABEL };
 	basic_blocks.push_back( n );
 	// split into blocks
 	for( size_t i = 0; i < s; ++i ) {
@@ -379,14 +661,14 @@ flowGraph::flowGraph( const intermediateCode::function& f ) {
 			basic_blocks.back().label = o.at(i).label;
 			++i;
 		}
-		basic_blocks.back().children[0] = n.id+1;
+		basic_blocks.back().direct_child = n.id+1;
 		for( ; i < s; ++i ) {
 			if( o.at(i).id == iop_t::id_t::IOP_LABEL ) {
 				--i;
 				break;
 			}
 			basic_blocks.back().operations.push_back( o.at(i) );
-			if( o.at(i).id >= iop_t::id_t::IOP_JUMP and o.at(i).id <= iop_t::id_t::IOP_FJ )
+			if( o.at(i).isJump() )
 				break;
 		}
 	}
@@ -396,93 +678,120 @@ flowGraph::flowGraph( const intermediateCode::function& f ) {
 			continue;
 		auto& op = b.operations.back();
 		if( op.id == iop_t::id_t::IOP_JUMP )
-			b.children[0] = labeled_blocks[ op.label ];
-		else if( op.id > iop_t::id_t::IOP_JUMP and op.id <= iop_t::id_t::IOP_FJ )
-			b.children[1] = labeled_blocks[ op.label ];
+			b.direct_child = labeled_blocks[ op.label ];
+		else if( op.isJump() )
+			b.jump_child = labeled_blocks[ op.label ];
 	}
 	// correct for last block
 	if( basic_blocks.back().operations.size() == 0 )
-		basic_blocks.back().children[0] = 0;
+		basic_blocks.back().direct_child = 0;
 	else {
 		const auto& op = basic_blocks.back().operations.back();
-		if( op.id < iop_t::id_t::IOP_JUMP or op.id > iop_t::id_t::IOP_FJ )
-			basic_blocks.back().children[0] = 0;
+		if( not op.isJump() )
+			basic_blocks.back().direct_child = 0;
 	}
 	// set parents
-	for( basic_block_t i = 0; i < basic_blocks.size(); ++i ) {
-		for( int j = 0; j < 2; ++j ) {
-			int c = basic_blocks.at(i).children[j];
-			if( c != 0 )
-				basic_blocks.at(c).parents.push_back(i);
-		}
-	}
+	for( basic_block_t b = 0; b < basic_blocks.size(); ++b )
+		for( basic_block_t c : { basic_blocks.at(b).direct_child, basic_blocks.at(b).jump_child } )
+			if( c != NO_BASIC_BLOCK )
+				basic_blocks.at(c).parents.push_back(b);
 	// to be removed
 	computeLiveness();
 }
 
 intermediateCode::function flowGraph::generateFunction() const {
 	std::vector<iop_t> ret;
-	for( basic_block_t b = 1; b < basic_blocks.size(); ++b ) {
-		if( basic_blocks.at(b).label != ERROR_LABEL )
-			ret.push_back( iop_t{ iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, basic_blocks.at(b).label } );
+	for( basic_block_t b = 1; b < basic_blocks.size(); ++b )
 		ret.insert( ret.end(), basic_blocks.at(b).operations.cbegin(), basic_blocks.at(b).operations.cend() );
-	}
 	return intermediateCode::function{ original_function->symbol, original_function->id, original_function->label, original_function->parent, ret };
 }
 
+std::vector<std::vector<iop_t>> flowGraph::generateCodeByBlock() const {
+	std::vector<std::vector<iop_t>> rb;
+	for( basic_block_t i = 1; i < basic_blocks.size(); ++i ) {
+		rb.emplace_back();
+		auto& r = rb.back();
+		auto& b = basic_blocks.at(i);
+		r.insert( r.end(), b.operations.cbegin(), b.operations.cend() ); 
+	}
+	return rb;
+}
+
+const flowGraph::node& flowGraph::getBlock( basic_block_t b ) const {
+	return basic_blocks.at( b );
+}
+
+
 void flowGraph::optimize() {
+	// first optimization
+	expandBlocks();	
+	// second optimization
 	constantPropagation();
 	cyclicEquivalence();
-	//std::cout << (*this) << std::endl;
-	removeWriteOnlyMemory();
-	// std::cout << (*this) << std::endl;
+	// third optimization
+	removeUselessBooleans();
 	removeMoveIdempotent();
+	// fourth optimization
+	removeWriteOnlyMemory();
 	clearNOP();
-	// std::cout << (*this) << std::endl;
+	removeDeadCode();
+	// final optimization
+	contractBlocks();
+	computeLiveness(); // temp
+	print( std::cout, true );
 }
 
 // ***********************************************
 // * I/O
 // ***********************************************
 
+void flowGraph::print( std::ostream& os, bool info ) const {
+	size_t s = basic_blocks.size();
+	for( size_t i = 1; i < s; ++i ) {
+		const auto& b = basic_blocks.at(i);
+		if( info ) {
+			os << "BLOCK " << i << "(" << b.label << ") [to " << b.direct_child << " " << b.jump_child << "; from";
+			for( basic_block_t x : b.parents )
+				os << " " << x;
+			os << "]:";
+			os << "\nUSE: ";
+			for( variable_t x : b.use )
+				os << symtab->getName( scptab->getVariableSymbol( x ) ) << " ";
+			os << "\nDEF: ";
+			for( variable_t x : b.def )
+				os << symtab->getName( scptab->getVariableSymbol( x ) ) << " ";
+			os << "\nLIVE IN : ";
+			for( variable_t x : b.in )
+				os << symtab->getName( scptab->getVariableSymbol( x ) ) << " ";
+			os << "\nLIVE OUT: ";
+			for( variable_t x : b.out )
+				os << symtab->getName( scptab->getVariableSymbol( x ) ) << " ";
+			/*os << "\nCONST IN: ";
+			for( const auto& p : b.const_in )
+				os << symtab->getName( scptab->getVariableSymbol( p.first ) ) << " ";
+			os << "\nCONST OUT: ";
+			for( const auto& p : b.const_out )
+				os << symtab->getName( scptab->getVariableSymbol( p.first ) ) << " ";*/
+			os << "\n";
+		}
+		size_t j = b.instruction_offset;
+		if( ( not info ) and b.label != ERROR_LABEL )
+			os << b.label << ":\n"; 
+		for( iop_t op : b.operations )
+			os << " (" << std::setw(2) << (j++) << ") " << op << std::endl;
+		/*{// temp
+			for( auto i : b.computeLiveness() )
+				os << i << std::endl;
+		}*/
+	}
+}
+
+
 std::ostream& operator<<( std::ostream& os, const live_interval_t& i ) {
 	return os << symtab->getName( scptab->getVariableSymbol( i.variable ) ) << " [" << i.begin << "," << i.end << "]"; 
 }
 
 std::ostream& operator<<( std::ostream& os, const flowGraph& fg ) {
-	size_t s = fg.basic_blocks.size();
-	for( size_t i = 1; i < s; ++i ) {
-		const auto& b = fg.basic_blocks.at(i);
-		os << "BLOCK " << i << "(" << b.label << ") [to " << b.children[0] << " " << b.children[1] << "; from";
-		for( basic_block_t x : b.parents )
-			os << " " << x;
-		os << "]:\n";
-		os << "USE: ";
-		for( variable_t x : b.use )
-			os << symtab->getName( scptab->getVariableSymbol( x ) ) << " ";
-		os << "\nDEF: ";
-		for( variable_t x : b.def )
-			os << symtab->getName( scptab->getVariableSymbol( x ) ) << " ";
-		os << "\nLIVE IN : ";
-		for( variable_t x : b.in )
-			os << symtab->getName( scptab->getVariableSymbol( x ) ) << " ";
-		os << "\nLIVE OUT: ";
-		for( variable_t x : b.out )
-			os << symtab->getName( scptab->getVariableSymbol( x ) ) << " ";
-		os << "\nCONST IN: ";
-		for( const auto& p : b.const_in )
-			os << symtab->getName( scptab->getVariableSymbol( p.first ) ) << " ";
-		os << "\nCONST OUT: ";
-		for( const auto& p : b.const_out )
-			os << symtab->getName( scptab->getVariableSymbol( p.first ) ) << " ";
-		os << "\n";
-		size_t j = b.instruction_offset;
-		for( iop_t op : b.operations )
-			os << "  " << std::setw(2) << (j++) << ": " << op << std::endl;
-		{// temp
-			for( auto i : b.computeLiveness() )
-				os << i << std::endl;
-		}
-	}
+	fg.print( os, true );
 	return os;
 }

@@ -54,8 +54,6 @@ LBRA		"("
 RBRA		")"
 ELLIPSIS	"..."
 
-TYPENAME "int"|"str"|"flt"
-
 %x STRING_STATE
 %x STRING_ESCAPE_STATE
 
@@ -158,6 +156,16 @@ TYPENAME "int"|"str"|"flt"
 				return INT;
 			}
 
+break		{
+				pmesg(90, "Lexer: BREAK\n" );
+				return BREAK;
+			}
+
+continue	{
+				pmesg(90, "Lexer: CONTINUE\n" );
+				return CONTINUE;
+			}
+
 type		{
 				pmesg(90, "Lexer: VTYPE: %s\n", yytext);
 				return VTYPE;
@@ -214,6 +222,18 @@ in			{
 				return ADDOP;
 			}
 
+"<="|">=" {
+				pmesg(90, "Lexer: RELOP: %s\n", yytext);
+				yylval.num = 4+( yytext[0] == '>' );
+				return RELOP;
+			}
+
+"<"|">" {
+				pmesg(90, "Lexer: RELOP: %s\n", yytext);
+				yylval.num = 2+( yytext[0] == '>' );
+				return RELOP;
+			}
+
 "=="|"!="	{
 				pmesg(90, "Lexer: RELOP: %s\n", yytext);
 				if( yytext[0] == '=' )
@@ -222,6 +242,8 @@ in			{
 					yylval.num = 1;
 				return RELOP;
 			}
+
+
 
 "|"|"&"		{
 				pmesg(90, "Lexer: JOIN_MEET: %s\n", yytext);

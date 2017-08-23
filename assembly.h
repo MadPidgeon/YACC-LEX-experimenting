@@ -2,21 +2,36 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 #include "intermediate_code.h"
 #include "register_allocation.h"
+#include "stack_frame.h"
 
 #define ERROR_ASM_REG	(instruction::asm_reg{-1,0})
 
-#define RAX_REG		0
-#define RBX_REG		1
-#define RCX_REG		2
-#define RDX_REG		3
-#define RSI_REG		5
-#define RDI_REG		6
-#define RSP_REG		7
+#define A_REG		0
+#define B_REG		1
+#define C_REG		2
+#define D_REG		3
+#define BP_REG		4
+#define SI_REG		5
+#define DI_REG		6
+#define SP_REG		7
 #define R8_REG		8
 #define R9_REG		9
 #define R10_REG		10
+
+#define RAX			instruction::asm_reg( A_REG, 8 )
+#define RBX			instruction::asm_reg( B_REG, 8 )
+#define RCX			instruction::asm_reg( C_REG, 8 )
+#define RDX			instruction::asm_reg( D_REG, 8 )
+#define RBP			instruction::asm_reg( BP_REG, 8 )
+#define RSI			instruction::asm_reg( SI_REG, 8 )
+#define RDI			instruction::asm_reg( DI_REG, 8 )
+#define RSP			instruction::asm_reg( SP_REG, 8 )
+#define R8			instruction::asm_reg( R8_REG, 8 )
+#define R9			instruction::asm_reg( R9_REG, 8 )
+#define R10			instruction::asm_reg( R10_REG, 8 )
 
 struct instruction {
 	struct asm_reg;
@@ -32,7 +47,7 @@ struct instruction {
 		ADD, SUB, IMUL, IDIV,
 		FADD, FSUB, FMUL, FDIV,
 		AND, OR, XOR, ANDN, 
-		SETE, SETNE,
+		SETE, SETNE, SETL, SETG, SETLE, SETGE,
 		JMP, JE, JNE, JL, JG, JLE, JGE,
 		SYSCALL,
 		COUNT
@@ -84,20 +99,22 @@ std::ostream& operator<<( std::ostream& os, instruction i );
 class assemblyGenerator {
 	std::stringstream definitions;
 	std::deque<instruction> instructions;
+	register_t volatile_register_cycle;
+	std::vector<variable_t> register_variables;
 	registerAllocation ra;
-	std::vector<variable_t> register_variable;
-	std::unordered_map<variable_t,register_t> variable_register;
 	size_t extra_definition_offset;
+	stackFrame sf;
 public:
-	void generateInstruction( iop_t, std::string prefix );
-	void generateFunction( const intermediateCode::function&, std::string prefix );
+	void generateInstruction( iop_t, std::string prefix, size_t instruction_index );
+	void generateFunction( const intermediateCode::function&, std::string prefix, bool main );
 	void generateProgram( const intermediateCode& );
-	void print( std::ostream& os ) const;
-	void storeRegister( register_t );
+	void print( std::ostream& os, bool h = true ) const;
+	void storeRegister( register_t, size_t instruction_index );
 	void loadVariable( variable_t, register_t );
-	void evacuateRegisters();
+	void evacuateRegisters( size_t instruction_index );
+	void restoreRegisters( size_t instruction_index );
 	label_t addStringDefinition( std::string );
-	register_t getRegister( variable_t x, bool define = false );
+	register_t getRegister( variable_t x, size_t instruction_index, bool define = false );
 	assemblyGenerator( const intermediateCode& );
 	assemblyGenerator();
 };

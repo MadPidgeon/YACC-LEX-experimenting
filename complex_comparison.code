@@ -1,0 +1,9 @@
+int i = 0, j = 1, k = 2;
+if( i < j < k )
+	print( "Correct" );
+else
+	print( "Incorrect" );
+if( i > j < k )
+	print( "Correct" );
+else
+	print( "Incorrect" );

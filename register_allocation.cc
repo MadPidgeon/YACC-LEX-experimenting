@@ -37,6 +37,8 @@ void registerAllocation::linearScan() {
 			active.insert( i );
 		}
 	}
+	for( const auto& li : liveness )
+		var_to_reg[li.variable] = li.assigned_register;
 }
 
 void registerAllocation::expireOldIntervals( live_interval_index_t i ) {
@@ -60,6 +62,33 @@ void registerAllocation::spillAtInterval( live_interval_index_t i ) {
 std::vector<live_interval_t> registerAllocation::getRegisterAssignment() const {
 	return liveness;
 }
+
+const std::vector<variable_t>& registerAllocation::getStackVariables() const {
+	return variables_to_stack;
+}
+
+register_t registerAllocation::getVariableRegister( variable_t v ) const {
+	auto itr = var_to_reg.find( v );
+	return itr == var_to_reg.end() ? ERROR_REGISTER : itr->second;
+}
+
+bool registerAllocation::isActive( variable_t v, size_t time ) const {
+	for( const auto& li : liveness )
+		if( li.variable == v )
+			return li.begin <= time and time < li.end;
+	return false;
+}
+
+
+std::vector<variable_t> registerAllocation::activeVariables( size_t time ) const {
+	std::vector<variable_t> ret;
+	for( const auto& li : liveness )
+		if( li.begin <= time and time < li.end )
+			ret.push_back( li.variable );
+	return ret;
+}
+
+
 
 void registerAllocation::reset( size_t r, std::vector<live_interval_t> l ) {
 	registers.resize( r, ERROR_VARIABLE );

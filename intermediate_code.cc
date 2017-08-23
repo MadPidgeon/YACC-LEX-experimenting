@@ -1,44 +1,51 @@
 #include <iomanip>
+#include <stack>
 #include "intermediate_code.h"
 
 const std::vector<std::string> iop_id_to_str = {
 	"NOP",
+	"GARBAGE",
 	"INT_MOVE",
 	"STR_MOVE",
 	"LABEL",
 	"JUMP", 
+	"JT", "JF",
 	"JE", "JN", "JL", "JG", "JLE", "JGE",
 	"FJ",
 	"ADD_PARAM", "RESERVE_RETURN",
 	"FUNCTION", 
 	"RETURN",
+	"INT_ANDEQ", "INT_OREQ", "INT_XOREQ", "INT_NANDEQ",
 	"INT_ADDEQ", "INT_SUBEQ", "INT_MULEQ", 
 	"INT_MODDIV",
 	"FLT_ADDEQ", "FLT_SUBEQ", "FLT_MULEQ", "FLT_DIVEQ",
 	"STR_CONEQ",
-	"INT_EQ", "INT_NEQ",
+	"INT_EQ", "INT_NEQ", "INT_L", "INT_G", "INT_LE", "INT_GE",
 	"INT_ARR_LOAD", "INT_ARR_STORE",
 	"LIST_ALLOCATE"
 };
 
 const std::vector<uint8_t> iop_fields = {
 	0,
-	IOFR|IOFA,
-	IOFR|IOFA,
+	IOFR|IOFS,
+	IOFR|IOFA|IOFS,
+	IOFR|IOFA|IOFS,
 	IOFL,
-	IOFL,
-	IOFA|IOFL, IOFA|IOFL, IOFA|IOFL, IOFA|IOFL, IOFA|IOFL, IOFA|IOFL,
-	IOFR|IOFL,
+	IOFL|IOFJ,
+	IOFA|IOFL|IOFJ, IOFA|IOFL|IOFJ,
+	IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ,
+	IOFR|IOFL|IOFJ,
 	IOFA, IOFA,
-	IOFR|IOFL,
+	IOFR|IOFL|IOFS,
 	IOFA,
+	IOFR|IOFA, IOFR|IOFA, IOFR|IOFA ,IOFR|IOFA,
 	IOFR|IOFA, IOFR|IOFA, IOFR|IOFA,
 	IOFR|IOFA|IOFB,
 	IOFR|IOFA|IOFF, IOFR|IOFA|IOFF, IOFR|IOFA|IOFF, IOFR|IOFA|IOFF,
 	IOFR|IOFA,
-	IOFR|IOFA|IOFB, IOFR|IOFA|IOFB,
-	IOFR|IOFA|IOFB, IOFR|IOFA|IOFB,
-	IOFR|IOFA
+	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
+	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB,
+	IOFR|IOFA|IOFS
 };
 
 
@@ -60,6 +67,10 @@ bool iop_t::usesReadParameterA() const {
 
 bool iop_t::usesReadParameterB() const {
 	return iop_fields.at(id) & IOFB;
+}
+
+bool iop_t::isJump() const {
+	return iop_fields.at(id) & IOFJ;
 }
 
 bool iop_t::usesLabel() const {
@@ -145,7 +156,7 @@ bool iop_t::parameterIsWritten( int i ) const {
 bool iop_t::parameterIsRead( int i ) const {
 	switch( i ) {
 		case 0:
-			return usesResultParameter() and ( id != IOP_INT_MOV and id != IOP_STR_MOV and id != IOP_FUNCTION and id != IOP_LIST_ALLOCATE and id != IOP_INT_ARR_LOAD );
+			return usesResultParameter() and not ( iop_fields.at(id) & IOFS );
 		case 1:
 			return usesReadParameterA();
 		case 2:
@@ -209,6 +220,37 @@ bool iop_t::operator==( const iop_t& other ) const {
 	return true;
 }
 
+void iop_t::invertJump() {
+	assert( isJump() );
+	switch( id ) {
+		case id_t::IOP_JT:
+			id = id_t::IOP_JF;
+			break;
+		case id_t::IOP_JF:
+			id = id_t::IOP_JT;
+			break;
+		case id_t::IOP_JE:
+			id = id_t::IOP_JN;
+			break;
+		case id_t::IOP_JN:
+			id = id_t::IOP_JE;
+			break;
+		case id_t::IOP_JL:
+			id = id_t::IOP_JGE;
+			break;
+		case id_t::IOP_JG:
+			id = id_t::IOP_JLE;
+			break;
+		case id_t::IOP_JLE:
+			id = id_t::IOP_JG;
+			break;
+		case id_t::IOP_JGE:
+			id = id_t::IOP_JL;
+			break;
+		default:;
+	}
+}
+
 // ********************************************
 // * Translation
 // ********************************************
@@ -218,13 +260,21 @@ size_t intermediateCode::function::addOperation( iop_t::id_t type, variable_t r,
 	return operations.size()-1;
 }
 
-void intermediateCode::function::translateNode( const syntaxTree::node* n ) {
+void intermediateCode::function::translateNode( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
+	#ifdef SYNTAX_TREE_DEBUG
+	std::cout << "translateNode(" << n->type << "):";
+	n->print( std::cout, 0, 1 );
+	std::cout << std::endl;
+	#endif
 	switch( n->type ) {
 		case N_EMPTY:
 			addOperation( iop_t::id_t::IOP_NOP );
 			break;
 		case N_ASSIGN:
 			translateAssign( n );
+			break;
+		case N_GARBAGE:
+			translateGarbage( n );
 			break;
 		case N_ARGUMENT_LIST:
 			translateArguments( n );
@@ -234,10 +284,10 @@ void intermediateCode::function::translateNode( const syntaxTree::node* n ) {
 			translateExpression( n );
 			break;
 		case N_IF: case N_WHILE: case N_FOR:
-			translateBranching( n );
+			translateBranching( n, loop_stack );
 			break;
 		case N_SEQUENTIAL_BLOCK: case N_PARALLEL_BLOCK:
-			translateBlock( n );
+			translateBlock( n, loop_stack );
 			break;
 		case N_FUNCTION_CALL:
 			translateFunctionCall( n );
@@ -245,8 +295,11 @@ void intermediateCode::function::translateNode( const syntaxTree::node* n ) {
 		case N_JOIN: case N_MEET:
 			translateFunctionOperation( n );
 			break;
+		case N_BREAK: case N_CONTINUE:
+			translateControlFlow( n, loop_stack );
+			break;
 		default:
-			lerr << error_line(true) << "Operation " << n->type << " not yet implemented" << std::endl;
+			lerr << error_line(true) << "Operation ST(" << n->type << ") not yet implemented" << std::endl;
 	}
 }
 
@@ -263,6 +316,8 @@ variable_t intermediateCode::function::translateExpression( const syntaxTree::no
 		return translateFunctionOperation( n );
 	if( n->type == N_LIST_INDEXING )
 		return translateReadIndexing( n );
+	if( n->type == N_COMPARISON_CHAIN )
+		return translateComparisonChain( n );
 	return translateArithmetic( n );
 }
 
@@ -282,6 +337,11 @@ void intermediateCode::function::translateLValue( const syntaxTree::node* n, var
 	}
 }
 
+void intermediateCode::function::translateGarbage( const syntaxTree::node* n ) {
+	assert( n->type == N_GARBAGE );
+	addOperation( iop_t::id_t::IOP_GARBAGE, variable_t( n->data.integer ) );
+}
+
 void intermediateCode::function::translateArguments( const syntaxTree::node* n ) {
 	assert( n->type == N_ARGUMENT_LIST );
 	variable_t a = translateExpression( n->children[0] );
@@ -291,7 +351,7 @@ void intermediateCode::function::translateArguments( const syntaxTree::node* n )
 }
 
 variable_t intermediateCode::function::translateArithmetic( const syntaxTree::node* n ) {
-	if( not ( n->type == N_EQUALS or n->type == N_NOT_EQUALS or n->type == N_ADD or n->type == N_SUBTRACT or n->type == N_MULTIPLY or n->type == N_DIVIDE or n->type == N_REMAINDER or n->type == N_UMIN ) ) {
+	if( not ( n->type == N_ADD or n->type == N_SUBTRACT or n->type == N_MULTIPLY or n->type == N_DIVIDE or n->type == N_REMAINDER or n->type == N_UMIN ) ) {
 		std::cerr << error_line() << "translateArithmetic received " << n->type << std::endl;
 		throw;
 	}
@@ -302,12 +362,13 @@ variable_t intermediateCode::function::translateArithmetic( const syntaxTree::no
 	iop_t::id_t id;
 	if( n->data_type == INT_TYPE ) {
 		if( n->type == N_NOT_EQUALS or n->type == N_EQUALS ) { // 3 argument ops
-			if( n->type == N_NOT_EQUALS )
+			lerr << error_line() << "Depricated block reached" << std::endl;
+			/*if( n->type == N_NOT_EQUALS )
 				id = iop_t::id_t::IOP_INT_NEQ;
 			else if( n->type == N_EQUALS )
 				id = iop_t::id_t::IOP_INT_EQ;
 			addOperation( id, r, s[0], s[1] );
-			return r;
+			return r;*/
 		} else { // 2 argument ops
 			addOperation( iop_t::id_t::IOP_INT_MOV, r, s[0] );
 			if( n->type == N_ADD )
@@ -325,21 +386,21 @@ variable_t intermediateCode::function::translateArithmetic( const syntaxTree::no
 		lerr << error_line() << "Arithmetic on type " << n->data_type << " not yet implemented" << std::endl;
 }
 
-void intermediateCode::function::translateBranching( const syntaxTree::node* n ) {
+void intermediateCode::function::translateBranching( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
 	assert( n->type == N_IF or n->type == N_WHILE or n->type == N_FOR );
 	if( n->type == N_IF ) {
-		variable_t a = translateArithmetic( n->children[0] );
+		variable_t a = translateExpression( n->children[0] );
 		label_t endif = parent->newLabel();
-		addOperation( iop_t::id_t::IOP_JN, ERROR_VARIABLE, a, ERROR_VARIABLE, endif );
+		addOperation( iop_t::id_t::IOP_JF, ERROR_VARIABLE, a, ERROR_VARIABLE, endif );
 		if( n->children[1]->type == N_ELSE ) {
-			translateNode( n->children[1]->children[0] );
+			translateNode( n->children[1]->children[0], loop_stack );
 			label_t endelse = parent->newLabel();
 			addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, endelse );
 			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, endif );
-			translateNode( n->children[1]->children[1] );
+			translateNode( n->children[1]->children[1], loop_stack );
 			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, endelse );
 		} else {
-			translateNode( n->children[1] );
+			translateNode( n->children[1], loop_stack );
 			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, endif );
 		}
 	} else if( n->type == N_WHILE ) {
@@ -347,29 +408,54 @@ void intermediateCode::function::translateBranching( const syntaxTree::node* n )
 		label_t abrupt_exit = n->children[1]->type == N_ELSE ? parent->newLabel() : natural_exit;
 		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
 		variable_t exp = translateExpression( n->children[0] );
-		addOperation( iop_t::id_t::IOP_JN, ERROR_VARIABLE, exp, ERROR_VARIABLE, natural_exit );
+		addOperation( iop_t::id_t::IOP_JF, ERROR_VARIABLE, exp, ERROR_VARIABLE, natural_exit );
+		loop_stack.push_back( std::make_pair( abrupt_exit, condition_check ) );
 		if( n->children[1]->type == N_ELSE )
-			translateNode( n->children[1]->children[0] );
+			translateNode( n->children[1]->children[0], loop_stack );
 		else 
-			translateNode( n->children[1] );
+			translateNode( n->children[1], loop_stack );
+		loop_stack.pop_back();
 		addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
 		if( n->children[1]->type == N_ELSE ) {
 			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, natural_exit );
-			translateNode( n->children[1]->children[1] );
+			translateNode( n->children[1]->children[1], loop_stack );
 		}
 		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
 	} else 
 		lerr << error_line() << "Branching operation " << n->type << " not yet implemented" << std::endl;
 }
 
-void intermediateCode::function::translateBlock( const syntaxTree::node* n ) {
+void intermediateCode::function::translateControlFlow( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
+	assert( n->type == N_BREAK or n->type == N_CONTINUE );
+	label_t target;
+	if( n->type == N_BREAK ) {
+		int back_num = n->data.integer;
+		assert( back_num > 0 );
+		if( back_num > loop_stack.size() ) 
+			lerr << error_line() << "There are not enough loops to break free from" << std::endl;
+		target = loop_stack.at( loop_stack.size() - back_num ).first;
+	} else {
+		if( loop_stack.size() == 0 )
+			lerr << error_line() << "There is no loop to continue" << std::endl;
+		target = loop_stack.back().second;
+	}
+	addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, target );
+}
+
+
+void intermediateCode::function::translateSequentialBlock( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
+	for( int i = 0; i < 2; ++i )
+		if( n->children[i] ) 
+			if( n->children[i]->type == N_BLOCK_LIST )
+				translateSequentialBlock( n->children[i], loop_stack );
+			else
+				translateNode( n->children[i], loop_stack );
+}
+
+void intermediateCode::function::translateBlock( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
 	assert( n->type == N_SEQUENTIAL_BLOCK or n->type == N_PARALLEL_BLOCK );
 	if( n->type == N_SEQUENTIAL_BLOCK ) {
-		const syntaxTree::node* h = n;
-		do {
-			translateNode( h->children[0] );
-			h = h->children[1];
-		} while( h != nullptr );
+		translateSequentialBlock( n, loop_stack );
 	} else
 		lerr << error_line() << "Parallel blocks not yet implemented" << std::endl;
 }
@@ -446,6 +532,27 @@ variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::
 	return r;
 }
 
+variable_t intermediateCode::function::translateComparisonChain( const syntaxTree::node* n ) {
+	assert( n->type == N_COMPARISON_CHAIN );
+	return translateComparison( n->children[0] ).second;
+}
+
+std::pair<variable_t,variable_t> intermediateCode::function::translateComparison( const syntaxTree::node* n ) {
+	// (child_left, comparison_result)
+	variable_t left = translateExpression( n->children[0] );
+	variable_t result = parent->newTemporaryVariable( BOOL_TYPE );
+	if( n->children[1]->type < N_EQUALS or n->children[1]->type > N_GREATER_EQ ) {
+		variable_t right = translateExpression( n->children[1] );
+		addOperation( iop_t::id_t( iop_t::id_t::IOP_INT_EQ + n->type - N_EQUALS ), result, left, right );
+	} else {
+		auto p = translateComparison( n->children[1] );
+		variable_t right = p.first;
+		addOperation( iop_t::id_t( iop_t::id_t::IOP_INT_EQ + n->type - N_EQUALS ), result, left, right );
+		addOperation( iop_t::id_t::IOP_INT_ANDEQ, result, p.second );
+	}
+	return std::make_pair( left, result );
+}
+
 void intermediateCode::declareFunction( function_t f ) {
 	assert( f == functions.size() );
 	label_t l = newLabel();
@@ -454,7 +561,8 @@ void intermediateCode::declareFunction( function_t f ) {
 }
 
 void intermediateCode::defineFunction( function_t f, const syntaxTree::node* n ) {
-	functions.at( f ).translateNode( n );
+	loop_stack_t loop_stack;
+	functions.at( f ).translateNode( n, loop_stack );
 }
 
 label_t intermediateCode::getFunctionLabel( function_t f ) const {
@@ -484,6 +592,116 @@ intermediateCode::intermediateCode( scopeTable* t ) {
 	assert( iop_fields.size() == iop_t::id_t::COUNT );
 	for( function_t f = 0; f < scptab->getFunctionCount(); ++f )
 		declareFunction( f );
+}
+
+type_t intermediateCode::function::getReturnType() const {
+	return parent->scptab->getFunctionReturnType( id );
+}
+
+type_t intermediateCode::function::getArgumentType( size_t i ) const {
+	return parent->scptab->getVariableType( parent->scptab->getFunctionArguments( id ).at(i) );
+}
+
+const std::vector<variable_t>& intermediateCode::function::getArguments() const {
+	return parent->scptab->getFunctionArguments( id );
+}
+
+// ********************************************
+// * Strength Reduction
+// ********************************************
+
+bool iop_t::reduceStrength() {
+	if( usesReadParameterA() and parameterIsVariable( 1 ) )
+		return false;
+	if( usesReadParameterB() and parameterIsVariable( 2 ) )
+		return false;
+	bool j = isJump();
+	switch( id ) {
+		case id_t::IOP_JF:
+			id = ( c_a.integer & 1 ) ? id_t::IOP_NOP : id_t::IOP_JUMP;
+			break;
+		case id_t::IOP_JT:
+			id = (! ( c_a.integer & 1 ) ) ? id_t::IOP_NOP : id_t::IOP_JUMP;
+			break;
+		case id_t::IOP_JE:
+			id = ( c_a.integer == c_b.integer ) ? id_t::IOP_JUMP : id_t::IOP_NOP;
+			break;
+		case id_t::IOP_JN:
+			id = ( c_a.integer != c_b.integer ) ? id_t::IOP_JUMP : id_t::IOP_NOP;
+			break;
+		case id_t::IOP_JL:
+			id = ( c_a.integer <  c_b.integer ) ? id_t::IOP_JUMP : id_t::IOP_NOP;
+			break;
+		case id_t::IOP_JG:
+			id = ( c_a.integer >  c_b.integer ) ? id_t::IOP_JUMP : id_t::IOP_NOP;
+			break;
+		case id_t::IOP_JLE:
+			id = ( c_a.integer <= c_b.integer ) ? id_t::IOP_JUMP : id_t::IOP_NOP;
+			break;
+		case id_t::IOP_JGE:
+			id = ( c_a.integer >= c_b.integer ) ? id_t::IOP_JUMP : id_t::IOP_NOP;
+			break;
+		case id_t::IOP_INT_EQ:
+			c_a.integer = ( c_a.integer == c_b.integer );
+			break;
+		case id_t::IOP_INT_NEQ:
+			c_a.integer = ( c_a.integer != c_b.integer );
+			break;
+		case id_t::IOP_INT_L:
+			c_a.integer = ( c_a.integer < c_b.integer );
+			break;
+		case id_t::IOP_INT_G:
+			c_a.integer = ( c_a.integer > c_b.integer );
+			break;
+		case id_t::IOP_INT_LE:
+			c_a.integer = ( c_a.integer <= c_b.integer );
+			break;
+		case id_t::IOP_INT_GE:
+			c_a.integer = ( c_a.integer >= c_b.integer );
+			break;
+		case id_t::IOP_INT_ANDEQ:
+			if( c_a.integer != 0 )
+				return false;
+			break;
+		case id_t::IOP_INT_OREQ: case id_t::IOP_INT_XOREQ: case IOP_INT_ANDNEQ:
+			if( c_a.integer == 0 ) {
+				id = id_t::IOP_NOP;
+				return true;
+			}
+			return false;
+		default:
+			return false;
+	}
+	if( not j )
+		id = id_t::IOP_INT_MOV;
+	else 
+		a = b = ERROR_VARIABLE;
+	return true;
+}
+
+bool iop_t::reduceStrengthEq( int64_t i ) {
+	if( usesReadParameterA() and parameterIsVariable( 1 ) )
+		return false;
+	if( usesReadParameterB() and parameterIsVariable( 2 ) )
+		return false;
+	switch( id ) {
+		case id_t::IOP_INT_ANDEQ:
+			c_a.integer &= i;
+			break;
+		case id_t::IOP_INT_OREQ:
+			c_a.integer |= i;
+			break;
+		case id_t::IOP_INT_XOREQ:
+			c_a.integer ^= i;
+			break;
+		case id_t::IOP_INT_ANDNEQ:
+			c_a.integer &= ~i;
+			break;
+		default:
+			return false;
+	}
+	id = id_t::IOP_INT_MOV;
+	return true;
 }
 
 // ********************************************
@@ -531,11 +749,11 @@ std::ostream& operator<<( std::ostream& os, iop_t o ) {
 		x = "     ";
 	os << x << " ";
 	if( IOFB & iop_fields.at( o.id ) ) {
-		if( o.b != 0 ) {
+		if( o.b != 0 )
 			x = symtab->getName( scptab->getVariableSymbol( o.b ) );
-			x.resize( 5, ' ' );
-		} else
+		else
 			x = std::to_string( o.c_b.integer );
+		x.resize( 5, ' ' );
 	} else			
 		x = "     ";
 	os << x << " ";

@@ -6,8 +6,6 @@
 #include "intermediate_code.h"
 #include "error_reporting.h"
 
-#define OPTIMIZATION_DEBUG
-
 typedef uint64_t basic_block_t;
 
 #define NO_BASIC_BLOCK		0
@@ -37,13 +35,12 @@ public:
 		constant_data( double x );
 	};
 	struct node {
-		basic_block_t id;
-		basic_block_t direct_child;
-		basic_block_t jump_child;
+		iterator id;
+		std::vector<iterator> children;
+		std::vector<iterator> parents;
+		std::vector<iop_t> operations;
 		size_t instruction_offset;
 		label_t label;
-		std::vector<basic_block_t> parents;
-		std::vector<iop_t> operations;
 		std::set<variable_t> def;
 		std::set<variable_t> use;
 		std::set<variable_t> in;
@@ -55,30 +52,24 @@ public:
 		std::vector<live_interval_t> computeLiveness() const;
 		bool constantPropagation();
 		int cyclicEquivalence( flowGraph* );
-		void setJumpsToChildren( const flowGraph* );
-		void upgradeJump();
 	};
 private:
-	std::vector<node> basic_blocks;
-	std::unordered_map<label_t,basic_block_t> labeled_blocks;
-	const intermediateCode::function* original_function;
-	void print( std::ostream& os, bool info = true ) const;
-	void resolveCyclicEquivalence( node* n, int i, const std::set<variable_t>& eq, variable_t target );
-	void walkGraph( basic_block_t i, std::set<basic_block_t>& visited );
-public:
-	void removeDeadCode();
+	typedef std::list<node>::iterator iterator;
+	std::list<node> basic_blocks;
+	std::unordered_map<label_t,iterator> labeled_blocks;
+	intermediateCode::function* original_function;
 	void computeLiveness();
+	void print( std::ostream& os, bool info = true ) const;
+	void resolveCyclicEquivalence( iterator n, int i, const std::set<variable_t>& eq, variable_t target );
+	void insertBasicBlockBefore( iterator x, label_t l,  )
+public:
+	label_t newLabel();
 	void cyclicEquivalence();
 	void constantPropagation();
 	void removeWriteOnlyMemory();
 	void clearNOP();
 	void removeMoveIdempotent();
 	void removeUselessBooleans();
-	void expandBlocks();
-	void contractBlocks();
-	const node& getBlock( basic_block_t ) const;
-	void splitBranch( basic_block_t block, basic_block_t parent );
-	std::vector<std::vector<iop_t>> generateCodeByBlock() const;
 	void optimize();
 	intermediateCode::function generateFunction() const;
 	std::vector<live_interval_t> naiveLiveIntervals() const;

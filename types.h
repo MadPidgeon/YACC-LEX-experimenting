@@ -23,6 +23,9 @@
 #define TUP_STRUCTURE		8	// POD tup(type,...)
 #define LAST_POD_TYPEDEF	TUP_TYPEDEF
 
+// temporary
+#define BOOL_TYPE			INT_TYPE
+
 class type_t;
 class typedefTable;
 class structureTable;
