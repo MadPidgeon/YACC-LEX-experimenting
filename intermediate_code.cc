@@ -5,43 +5,45 @@
 const std::vector<std::string> iop_id_to_str = {
 	"NOP",
 	"GARBAGE",
-	"INT_MOVE",
-	"STR_MOVE",
+	"INT_MOVE", "STR_MOVE", "FLT_MOVE",
 	"LABEL",
 	"JUMP", 
 	"JT", "JF",
 	"JE", "JN", "JL", "JG", "JLE", "JGE",
 	"FJ",
-	"ADD_PARAM", "RESERVE_RETURN",
+	"INT_ADD_PARAM", "FLT_ADD_PARAM", "RESERVE_RETURN",
 	"FUNCTION", 
+	"LABEL_TO_PTR",
 	"RETURN",
 	"INT_ANDEQ", "INT_OREQ", "INT_XOREQ", "INT_NANDEQ",
 	"INT_ADDEQ", "INT_SUBEQ", "INT_MULEQ", 
 	"INT_MODDIV",
 	"FLT_ADDEQ", "FLT_SUBEQ", "FLT_MULEQ", "FLT_DIVEQ",
+	"FLT_ADD", "FLT_SUB", "FLT_MUL", "FLT_DIV",
 	"STR_CONEQ",
 	"INT_EQ", "INT_NEQ", "INT_L", "INT_G", "INT_LE", "INT_GE",
 	"INT_ARR_LOAD", "INT_ARR_STORE",
 	"LIST_ALLOCATE"
 };
 
-const std::vector<uint8_t> iop_fields = {
+const std::vector<uint8_t> iop_t::iop_fields = {
 	0,
 	IOFR|IOFS,
-	IOFR|IOFA|IOFS,
-	IOFR|IOFA|IOFS,
+	IOFR|IOFA|IOFS, IOFR|IOFA|IOFS, IOFR|IOFA|IOFS|IOFF,
 	IOFL,
 	IOFL|IOFJ,
 	IOFA|IOFL|IOFJ, IOFA|IOFL|IOFJ,
 	IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ,
 	IOFR|IOFL|IOFJ,
-	IOFA, IOFA,
+	IOFA, IOFA|IOFF, IOFA,
+	IOFR|IOFA|IOFL|IOFS, // FUNCTION is not a jump!
 	IOFR|IOFL|IOFS,
 	IOFA,
 	IOFR|IOFA, IOFR|IOFA, IOFR|IOFA ,IOFR|IOFA,
 	IOFR|IOFA, IOFR|IOFA, IOFR|IOFA,
 	IOFR|IOFA|IOFB,
 	IOFR|IOFA|IOFF, IOFR|IOFA|IOFF, IOFR|IOFA|IOFF, IOFR|IOFA|IOFF,
+	IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF,
 	IOFR|IOFA,
 	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
 	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB,
@@ -112,6 +114,21 @@ void iop_t::setParameterInteger( int i, int64_t x ) {
 	}
 }
 
+void iop_t::setParameterFloating( int i, double x ) {
+	switch( i ) {
+		case 1:
+			a = ERROR_VARIABLE;
+			c_a.floating = x;
+			break;
+		case 2:
+			b = ERROR_VARIABLE;
+			c_b.floating = x;
+			break;
+		default:
+			throw;
+	}
+}
+
 variable_t iop_t::getParameterVariable( int i ) const {
 	switch( i ) {
 		case 0:
@@ -135,6 +152,18 @@ int64_t iop_t::getParameterInteger( int i ) const {
 			throw;
 	}
 }
+
+double iop_t::getParameterFloating( int i ) const {
+	switch( i ) {
+		case 1:
+			return c_a.floating;
+		case 2:
+			return c_b.floating;
+		default:
+			throw;
+	}
+}
+
 
 bool iop_t::parameterIsVariable( int i ) const {
 	return getParameterVariable( i ) != ERROR_VARIABLE;
@@ -220,8 +249,7 @@ bool iop_t::operator==( const iop_t& other ) const {
 	return true;
 }
 
-void iop_t::invertJump() {
-	assert( isJump() );
+void iop_t::negateCompare() {
 	switch( id ) {
 		case id_t::IOP_JT:
 			id = id_t::IOP_JF;
@@ -247,7 +275,68 @@ void iop_t::invertJump() {
 		case id_t::IOP_JGE:
 			id = id_t::IOP_JL;
 			break;
+		case id_t::IOP_INT_EQ:
+			id = id_t::IOP_INT_NEQ;
+			break;
+		case id_t::IOP_INT_NEQ:
+			id = id_t::IOP_INT_EQ;
+			break;
+		case id_t::IOP_INT_L:
+			id = id_t::IOP_INT_GE;
+			break;
+		case id_t::IOP_INT_G:
+			id = id_t::IOP_INT_LE;
+			break;
+		case id_t::IOP_INT_LE:
+			id = id_t::IOP_INT_G;
+			break;
+		case id_t::IOP_INT_GE:
+			id = id_t::IOP_INT_L;
+			break;
 		default:;
+	}
+}
+
+void iop_t::rotateCompare() {
+	switch( id ) {
+		case id_t::IOP_JL:
+			id = id_t::IOP_JG;
+			break;
+		case id_t::IOP_JG:
+			id = id_t::IOP_JL;
+			break;
+		case id_t::IOP_JLE:
+			id = id_t::IOP_JGE;
+			break;
+		case id_t::IOP_JGE:
+			id = id_t::IOP_JLE;
+			break;
+		case id_t::IOP_INT_L:
+			id = id_t::IOP_INT_G;
+			break;
+		case id_t::IOP_INT_G:
+			id = id_t::IOP_INT_L;
+			break;
+		case id_t::IOP_INT_LE:
+			id = id_t::IOP_INT_GE;
+			break;
+		case id_t::IOP_INT_GE:
+			id = id_t::IOP_INT_LE;
+			break;
+		default:
+			return;
+	}
+	std::swap( a, b );
+	std::swap( c_a, c_b );
+}
+
+void iop_t::legalizeCompare() {
+	if( id >= id_t::IOP_JE and id <= id_t::IOP_JGE ) {
+		if( a == ERROR_VARIABLE )
+			rotateCompare();
+	} else if( id >= id_t::IOP_INT_EQ and id <= id_t::IOP_INT_GE ) {
+		if( a == ERROR_VARIABLE )
+			rotateCompare();
 	}
 }
 
@@ -295,7 +384,7 @@ void intermediateCode::function::translateNode( const syntaxTree::node* n, loop_
 		case N_JOIN: case N_MEET:
 			translateFunctionOperation( n );
 			break;
-		case N_BREAK: case N_CONTINUE:
+		case N_BREAK: case N_CONTINUE: case N_RETURN:
 			translateControlFlow( n, loop_stack );
 			break;
 		default:
@@ -318,6 +407,8 @@ variable_t intermediateCode::function::translateExpression( const syntaxTree::no
 		return translateReadIndexing( n );
 	if( n->type == N_COMPARISON_CHAIN )
 		return translateComparisonChain( n );
+	if( n->type == N_FUNCTION_DEFINITION )
+		return translateFunctionDefinition( n );
 	return translateArithmetic( n );
 }
 
@@ -328,12 +419,20 @@ void intermediateCode::function::translateAssign( const syntaxTree::node* n ) {
 
 void intermediateCode::function::translateLValue( const syntaxTree::node* n, variable_t value ) {
 	assert( n->type == N_VARIABLE or n->type == N_LIST_INDEXING );
-	if( n->type == N_VARIABLE )
-		addOperation( iop_t::id_t::IOP_INT_MOV, translateVariable( n ), value );
+	if( n->type == N_VARIABLE ) {
+		if( n->data_type == INT_TYPE or n->data_type.isFunction() )
+			addOperation( iop_t::id_t::IOP_INT_MOV, translateVariable( n ), value );
+		else if( n->data_type == FLT_TYPE )
+			addOperation( iop_t::id_t::IOP_FLT_MOV, translateVariable( n ), value );
+		else
+			lerr << error_line() << "Assignment to type " << n->data_type << " not yet implemented" << std::endl;
+	}
 	else if( n->type == N_LIST_INDEXING ) {
 		variable_t index = translateExpression( n->children[1] );
 		variable_t list = translateVariable( n->children[0] );
 		addOperation( iop_t::id_t::IOP_INT_ARR_STORE, list, index, value );
+	} else {
+		lerr << error_line() << "Cannot assign to anything other than a variable" << std::endl;
 	}
 }
 
@@ -345,7 +444,10 @@ void intermediateCode::function::translateGarbage( const syntaxTree::node* n ) {
 void intermediateCode::function::translateArguments( const syntaxTree::node* n ) {
 	assert( n->type == N_ARGUMENT_LIST );
 	variable_t a = translateExpression( n->children[0] );
-	addOperation( iop_t::id_t::IOP_ADD_PARAM, ERROR_VARIABLE, a );
+	if( n->children[0]->data_type == FLT_TYPE )
+		addOperation( iop_t::id_t::IOP_FLT_ADD_PARAM, ERROR_VARIABLE, a );
+	else
+		addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, a );
 	if( n->children[1] )
 		translateArguments( n->children[1] );
 }
@@ -382,8 +484,30 @@ variable_t intermediateCode::function::translateArithmetic( const syntaxTree::no
 			addOperation( id, r, s[1] );
 			return r;
 		}
-	} else
-		lerr << error_line() << "Arithmetic on type " << n->data_type << " not yet implemented" << std::endl;
+	} else if( n->data_type == FLT_TYPE ) {
+		if( n->type == N_ADD )
+			id = iop_t::id_t::IOP_FLT_ADD;
+		else if( n->type == N_SUBTRACT )
+			id = iop_t::id_t::IOP_FLT_SUB;
+		else if( n->type == N_MULTIPLY )
+			id = iop_t::id_t::IOP_FLT_MUL;
+		else if( n->type == N_DIVIDE )
+			id = iop_t::id_t::IOP_FLT_DIV;
+		else
+			lerr << error_line() << "Arithmetic operation " << n->type << " not yet implemented for integers" << std::endl;
+		addOperation( id, r, s[0], s[1] );
+		return r;
+		
+	}
+	lerr << error_line() << "Arithmetic on type " << n->data_type << " not yet implemented" << std::endl;
+}
+
+variable_t intermediateCode::function::translateFunctionDefinition( const syntaxTree::node* n ) {
+	assert( n->type == N_FUNCTION_DEFINITION );
+	parent->defineFunction( n->data.integer, n->children[1] );
+	variable_t r = parent->newTemporaryVariable( n->data_type );
+	addOperation( iop_t::id_t::IOP_LABEL_TO_PTR, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( n->data.integer ) );
+	return r;
 }
 
 void intermediateCode::function::translateBranching( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
@@ -426,15 +550,20 @@ void intermediateCode::function::translateBranching( const syntaxTree::node* n, 
 }
 
 void intermediateCode::function::translateControlFlow( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
-	assert( n->type == N_BREAK or n->type == N_CONTINUE );
+	assert( n->type == N_BREAK or n->type == N_CONTINUE or n->type == N_RETURN );
 	label_t target;
+	if( n->type == N_RETURN ) {
+		addOperation( iop_t::id_t::IOP_RETURN, ERROR_VARIABLE, translateExpression( n->children[0] ) );
+		return;
+	}
+	// break or continue
 	if( n->type == N_BREAK ) {
 		int back_num = n->data.integer;
 		assert( back_num > 0 );
 		if( back_num > loop_stack.size() ) 
 			lerr << error_line() << "There are not enough loops to break free from" << std::endl;
 		target = loop_stack.at( loop_stack.size() - back_num ).first;
-	} else {
+	} else{
 		if( loop_stack.size() == 0 )
 			lerr << error_line() << "There is no loop to continue" << std::endl;
 		target = loop_stack.back().second;
@@ -463,26 +592,39 @@ void intermediateCode::function::translateBlock( const syntaxTree::node* n, loop
 variable_t intermediateCode::function::translateFunctionCall( const syntaxTree::node* n ) {
 	assert( n->type == N_FUNCTION_CALL );
 	function_t f = n->data.integer;
-	type_t t = parent->scptab->getFunctionReturnType( f );
-	variable_t r = ( t != VOID_TYPE ) ? parent->newTemporaryVariable( t ) : ERROR_VARIABLE;
-	if( r != ERROR_VARIABLE )
-		addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=t.rawSize()} );
-	if( n->children[0] )
-		translateArguments( n->children[0] );
-	addOperation( iop_t::id_t::IOP_FUNCTION, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = f } );
-	return r; 
+	if( f == 0 ) { // function pointer, children[1] != nullptr
+		assert( n->children[1] );
+		type_t t = n->children[1]->data_type.getParameter(1);
+		variable_t r = ( t != VOID_TYPE ) ? parent->newTemporaryVariable( t ) : ERROR_VARIABLE;
+		if( r != ERROR_VARIABLE )
+			addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=t.rawSize()} );
+		if( n->children[0] )
+			translateArguments( n->children[0] );
+		addOperation( iop_t::id_t::IOP_FUNCTION, r, translateVariable( n->children[1] ), ERROR_VARIABLE, ERROR_LABEL, iop_t::constant_t{ .integer = 0 } );
+		return r; 
+	} else {
+		type_t t = parent->scptab->getFunctionReturnType( f );
+		variable_t r = ( t != VOID_TYPE ) ? parent->newTemporaryVariable( t ) : ERROR_VARIABLE;
+		if( r != ERROR_VARIABLE )
+			addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=t.rawSize()} );
+		if( n->children[0] )
+			translateArguments( n->children[0] );
+		addOperation( iop_t::id_t::IOP_FUNCTION, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = 0 } );
+		return r; 
+	}
+	
 }
 
 variable_t intermediateCode::function::translateFunctionOperation( const syntaxTree::node* n ) {
 	assert( n->type == N_JOIN or n->type == N_MEET );
 	function_t f = JOIN_STR_FUNCTION; // others to be implemented
-	addOperation( iop_t::id_t::IOP_RESERVE_RETURN );
+	addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=8} );
 	variable_t a = translateExpression( n->children[0] );
-	addOperation( iop_t::id_t::IOP_ADD_PARAM, ERROR_VARIABLE, a );
+	addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, a );
 	variable_t b = translateExpression( n->children[1] );
-	addOperation( iop_t::id_t::IOP_ADD_PARAM, ERROR_VARIABLE, b );
+	addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, b );
 	variable_t r = parent->newTemporaryVariable( n->data_type );
-	addOperation( iop_t::id_t::IOP_FUNCTION, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = f } );
+	addOperation( iop_t::id_t::IOP_FUNCTION, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = /*f*/ 0 } );
 	return r;
 }
 
@@ -500,8 +642,10 @@ variable_t intermediateCode::function::translateConstant( const syntaxTree::node
 	} else if( n->type == N_STRING ) {
 		r = parent->newTemporaryVariable( STR_TYPE );
 		addOperation( iop_t::id_t::IOP_STR_MOV, r, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, iop_t::constant_t{ .string = n->data.string } );
-	} else 
-		lerr << error_line() << "Floating-point constants not yet implemented" << std::endl;
+	} else  {
+		r = parent->newTemporaryVariable( FLT_TYPE );
+		addOperation( iop_t::id_t::IOP_FLT_MOV, r, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, iop_t::constant_t{ .floating = n->data.floating } );
+	}
 	return r;	
 }
 
@@ -589,7 +733,7 @@ intermediateCode::intermediateCode( scopeTable* t ) {
 	scptab = t;
 	label_count = 0;
 	assert( iop_id_to_str.size() == iop_t::id_t::COUNT );
-	assert( iop_fields.size() == iop_t::id_t::COUNT );
+	assert( iop_t::iop_fields.size() == iop_t::id_t::COUNT );
 	for( function_t f = 0; f < scptab->getFunctionCount(); ++f )
 		declareFunction( f );
 }
@@ -719,9 +863,9 @@ void escape( char c, std::string& out ) {
 
 std::string shorthand( std::string in ) {
 	std::string out;
-	if( in.size() < 5 )
+	if( in.size() < 7 )
 		return in;
-	for( int i = 0; i < 3; ++i )
+	for( int i = 0; i < 5; ++i )
 		escape( in.at(i), out );
 	out += "..";
 	return out;
@@ -731,40 +875,44 @@ std::ostream& operator<<( std::ostream& os, iop_t o ) {
 	const int w = 18;
 	os << std::setw(w) << iop_id_to_str[o.id];
 	std::string x;
-	if( (IOFR & iop_fields.at( o.id )) and (o.id != iop_t::id_t::IOP_FUNCTION or o.r != 0) ) {
+	if( o.usesResultParameter() and (o.id != iop_t::id_t::IOP_FUNCTION or o.r != 0) ) {
 		x = symtab->getName( scptab->getVariableSymbol( o.r ) );
-		x.resize( 5, ' ' );
+		x.resize( 7, ' ' );
 	} else			
-		x = "     ";
+		x = "       ";
 	os << x << " ";
-	if( IOFA & iop_fields.at( o.id ) ) {
+	if( o.usesReadParameterA() ) {
 		if( o.a != 0 )
 			x = symtab->getName( scptab->getVariableSymbol( o.a ) );
+		else if( o.isFloating() )
+			x = std::to_string( o.c_a.floating );
 		else if( o.id != iop_t::id_t::IOP_STR_MOV )
 			x = std::to_string( o.c_a.integer );
 		else
 			x = shorthand( std::string( o.c_a.string ) );
-		x.resize( 5, ' ' );
+		x.resize( 7, ' ' );
 	} else			
-		x = "     ";
+		x = "       ";
 	os << x << " ";
-	if( IOFB & iop_fields.at( o.id ) ) {
+	if( o.usesReadParameterB() ) {
 		if( o.b != 0 )
 			x = symtab->getName( scptab->getVariableSymbol( o.b ) );
+		else if( o.isFloating() )
+			x = std::to_string( o.c_b.floating );
 		else
 			x = std::to_string( o.c_b.integer );
-		x.resize( 5, ' ' );
+		x.resize( 7, ' ' );
 	} else			
-		x = "     ";
+		x = "       ";
 	os << x << " ";
-	if( IOFL & iop_fields.at( o.id ) )
-		os << std::setw(4) << o.label;
+	if( o.usesLabel() )
+		os << std::setw(7) << o.label;
 	return os;
 }
 
 std::ostream& operator<<( std::ostream& os, const intermediateCode::function& f ) {
 	const int w = 18;
-	os << std::setw(3) << f.id <<  "| " << std::setw(w) << symtab->getName( f.symbol ) << "r     a     b     l\n---+-----------------------------------------\n";
+	os << std::setw(3) << f.id <<  "| " << std::setw(w) << symtab->getName( f.symbol ) << "r       a       b       l\n---+-------------------------------------------------\n";
 	size_t i = 0;
 	for( const auto& o : f.operations )
 		os << std::setw(3) << (i++) << "| " << o << std::endl;

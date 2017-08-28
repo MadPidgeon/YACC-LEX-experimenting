@@ -88,13 +88,14 @@ std::vector<variable_t> registerAllocation::activeVariables( size_t time ) const
 	return ret;
 }
 
-
-
 void registerAllocation::reset( size_t r, std::vector<live_interval_t> l ) {
+	registers.clear();
 	registers.resize( r, ERROR_VARIABLE );
 	liveness = l;
 	std::sort( liveness.begin(), liveness.end(), startCompare );
-	//assigned_registers.resize( liveness.size(), -1 );
+	variables_to_stack.clear();
+	active.clear();
+	var_to_reg.clear();
 }
 
 

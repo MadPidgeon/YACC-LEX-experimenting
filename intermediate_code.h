@@ -26,6 +26,7 @@ struct iop_t {
 		IOP_GARBAGE,	// [r---]
 		IOP_INT_MOV,	// [ra--]
 		IOP_STR_MOV,	// [ra--]
+		IOP_FLT_MOV,	// [ra--]
 		IOP_LABEL,		// [---l]
 		// jumping instructions (4-14)
 		IOP_JUMP, 		// [---l]
@@ -34,10 +35,12 @@ struct iop_t {
 						// [-abl]
 		IOP_FJ,			// [r--l] (counter,head)
 		// function instructions (15-18)
-		IOP_ADD_PARAM,	// [-a--]
+		IOP_INT_ADD_PARAM,	// [-a--]
+		IOP_FLT_ADD_PARAM,	// [-a--]
 		IOP_RESERVE_RETURN, // [-a--]
-		IOP_FUNCTION, 	// [r--l]
-		IOP_RETURN,		// [-a--]
+		IOP_FUNCTION, 	    // [ra-l] r = (*(a+l))( param_1, param_2, ... )
+		IOP_LABEL_TO_PTR,   // [r--l]
+		IOP_RETURN,		    // [-a--]
 		// arithmetic instructions (19-31)
 		IOP_INT_ANDEQ, IOP_INT_OREQ, IOP_INT_XOREQ, IOP_INT_ANDNEQ,
 		IOP_INT_ADDEQ, IOP_INT_SUBEQ, IOP_INT_MULEQ, 
@@ -45,6 +48,8 @@ struct iop_t {
 		IOP_INT_MODDIV,	// [rab-] (dividend,divisor,remaider (W))
 		IOP_FLT_ADDEQ, IOP_FLT_SUBEQ, IOP_FLT_MULEQ, IOP_FLT_DIVEQ,
 						// [ra--]
+		IOP_FLT_ADD, IOP_FLT_SUB, IOP_FLT_MUL, IOP_FLT_DIV,
+						// [rab-]
 		IOP_STR_CONEQ,	// [ra--]
 		// comparison instructions (32-37)
 		IOP_INT_EQ, IOP_INT_NEQ, IOP_INT_L, IOP_INT_G, IOP_INT_LE, IOP_INT_GE,
@@ -68,14 +73,17 @@ struct iop_t {
 		double floating;
 		char* string;
 	} c_a, c_b;
+	static const std::vector<uint8_t> iop_fields;
 	std::vector<variable_t> getReadVariables() const;
 	std::vector<variable_t> getWrittenVariables() const;
 	std::vector<variable_t> getReadOnlyVariables() const;
 	std::vector<variable_t> getWriteOnlyVariables() const;
 	void setParameterVariable( int i, variable_t v );
 	void setParameterInteger( int i, int64_t x );
+	void setParameterFloating( int i, double x );
 	variable_t getParameterVariable( int i ) const;
 	int64_t getParameterInteger( int i ) const;
+	double getParameterFloating( int i ) const;
 	bool parameterIsVariable( int i ) const;
 	bool parameterIsWritten( int i ) const;
 	bool parameterIsRead( int i ) const;
@@ -87,7 +95,9 @@ struct iop_t {
 	bool reduceStrengthEq( int64_t i );
 	bool isJump() const;
 	bool usesLabel() const;
-	void invertJump();
+	void negateCompare();
+	void rotateCompare();
+	void legalizeCompare();
 	std::string debugName() const;
 	bool operator==( const iop_t& ) const;
 };
@@ -115,6 +125,7 @@ public:
 		std::pair<variable_t,variable_t> translateComparison( const syntaxTree::node* );
 		variable_t translateConstant( const syntaxTree::node* n );
 		variable_t translateContainer( const syntaxTree::node* n );
+		variable_t translateFunctionDefinition( const syntaxTree::node* n );
 		void translateGarbage( const syntaxTree::node* n );
 		void translateControlFlow( const syntaxTree::node* n, loop_stack_t& );
 		variable_t translateExpression( const syntaxTree::node* n );
@@ -145,6 +156,3 @@ public:
 std::ostream& operator<<( std::ostream&, iop_t );
 std::ostream& operator<<( std::ostream&, const intermediateCode::function& );
 std::ostream& operator<<( std::ostream&, const intermediateCode& );
-
-
-extern const std::vector<uint8_t> iop_fields;

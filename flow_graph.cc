@@ -218,6 +218,15 @@ void flowGraph::removeMoveIdempotent() {
 // * Ad Hoc
 // ***********************************************
 
+void flowGraph::flipConstantCompares() {
+	#ifdef OPTIMIZATION_DEBUG
+	std::cout << "Applying optimization flipConstantCompares..." << std::endl;
+	#endif
+	for( auto& b : basic_blocks )
+		for( auto& o : b.operations )
+			o.legalizeCompare();
+}
+
 void flowGraph::removeWriteOnlyMemory() {
 	#ifdef OPTIMIZATION_DEBUG
 	std::cout << "Applying optimization removeWriteOnlyMemory..." << std::endl;
@@ -304,7 +313,7 @@ void flowGraph::node::upgradeJump() {
 			jump.b = o.b;
 			jump.c_b = o.c_b;
 			if( inverse )
-				jump.invertJump();
+				jump.negateCompare();
 			return;
 		} else
 			for( variable_t x : o.getWrittenVariables() )
@@ -471,10 +480,18 @@ bool flowGraph::node::constantPropagation() {
 	for( auto& op : operations ) {
 		// substitute in known constants
 		for( int i = 1; i < 3; ++i ) {
-			if( op.parameterIsVariable( i ) and op.parameterIsRead( i ) and not op.parameterIsWritten( i ) ) {
-				auto itr = constants.find( op.getParameterVariable( i ) );
-				if( itr != constants.end() ) 
-					op.setParameterInteger( i, itr->second.data.integer );
+			if( op.isFloating() ) {
+				if( op.id == iop_t::id_t::IOP_FLT_MOV and op.parameterIsVariable( i ) ) {
+					auto itr = constants.find( op.getParameterVariable( i ) );
+					if( itr != constants.end() ) 
+						op.setParameterFloating( i, itr->second.data.floating );
+				}
+			} else {
+				if( op.parameterIsVariable( i ) and op.parameterIsRead( i ) and not op.parameterIsWritten( i ) ) {
+					auto itr = constants.find( op.getParameterVariable( i ) );
+					if( itr != constants.end() ) 
+						op.setParameterInteger( i, itr->second.data.integer );
+				}
 			}
 		}
 		// reduce strength
@@ -486,9 +503,13 @@ bool flowGraph::node::constantPropagation() {
 			auto itr = constants.find( op.getParameterVariable( 0 ) );
 			if( itr == constants.end() or itr->second.data.integer != op.getParameterInteger( 1 ) )
 				constants[ op.getParameterVariable(0) ] = constant_data( op.getParameterInteger( 1 ) );
+		} else if( op.id == iop_t::id_t::IOP_FLT_MOV and not op.parameterIsVariable( 1 ) ) {
+			auto itr = constants.find( op.getParameterVariable( 0 ) );
+			if( itr == constants.end() or itr->second.data.floating != op.getParameterFloating( 1 ) )
+				constants[ op.getParameterVariable(0) ] = constant_data( op.getParameterFloating( 1 ) );
 		}
 		// lose constants
-		if( op.id != iop_t::id_t::IOP_INT_MOV )
+		if( op.id != iop_t::id_t::IOP_INT_MOV and op.id != iop_t::id_t::IOP_FLT_MOV )
 			for( int i = 0; i < 3; ++i )
 				if( op.parameterIsWritten( i ) )
 					constants.erase( op.getParameterVariable( i ) );
@@ -736,6 +757,7 @@ void flowGraph::optimize() {
 	clearNOP();
 	removeDeadCode();
 	// final optimization
+	flipConstantCompares();
 	contractBlocks();
 	computeLiveness(); // temp
 	print( std::cout, true );

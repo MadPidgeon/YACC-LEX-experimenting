@@ -76,6 +76,7 @@ public:
 	void removeUselessBooleans();
 	void expandBlocks();
 	void contractBlocks();
+	void flipConstantCompares();
 	const node& getBlock( basic_block_t ) const;
 	void splitBranch( basic_block_t block, basic_block_t parent );
 	std::vector<std::vector<iop_t>> generateCodeByBlock() const;

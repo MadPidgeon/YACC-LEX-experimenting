@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include <map>
 #include <deque>
 #include <iostream>
 #include "types.h"
@@ -17,7 +16,8 @@
 #define SCAN_FUNCTION		2
 #define ITOA_FUNCTION		3
 #define JOIN_STR_FUNCTION	4
-#define GLOBAL_FUNCTION		5	// should always be the last predefined function
+#define FTOA_FUNCTION		5
+#define GLOBAL_FUNCTION		6	// should always be the last predefined function
 
 typedef uint64_t scope_t;
 typedef uint64_t variable_t;
@@ -36,7 +36,7 @@ class scopeTable {
 		scope_t super_scope;
 		std::vector<scope_t> sub_scopes;
 		std::map<symbol_t,variable_t> declarations;
-		std::map<symbol_t,variable_t> function_declarations;
+		std::map<std::pair<symbol_t,std::vector<type_t>>,variable_t> function_declarations;
 		typedefTable typedefs;
 	};
 	struct function_declaration {
@@ -59,8 +59,9 @@ public:
 	function_t addFunctionDeclaration( scope_t, symbol_t, type_t, std::vector<variable_t> = {} );
 	type_t getFunctionReturnType( function_t ) const;
 	const std::vector<variable_t>& getFunctionArguments( function_t ) const;
+	std::vector<variable_t> getAllVariables( scope_t ) const;
 	function_t getFunctionCount() const;
-	function_t getFunction( scope_t, symbol_t ) const;
+	function_t getFunction( scope_t, symbol_t, type_t ) const;
 	symbol_t getFunctionSymbol( function_t ) const;
 	scope_t getFunctionScope( function_t ) const;
 	scope_t getVariableScope( variable_t ) const;

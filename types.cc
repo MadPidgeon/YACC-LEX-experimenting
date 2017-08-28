@@ -131,6 +131,10 @@ bool type_t::isSet() const {
 	return getBase() == SET_STRUCTURE;
 }
 
+bool type_t::isFunction() const {
+	return getBase() == FNC_STRUCTURE;
+}
+
 bool type_t::operator==( const type_t& other ) const {
 	if( ( not root ) or ( not other.root ) )
 		return root == other.root;
@@ -157,6 +161,20 @@ type_t type_t::rightFlattenTypeProduct( type_t left ) const{
 	return r;
 }
 
+std::vector<type_t> type_t::unpackProduct() const {
+	assert( getBase() == TUP_STRUCTURE );
+	std::vector<type_t> r;
+	for( node* n : getRoot()->parameters )
+		r.push_back( type_t( n->clone() ) );
+	return r;
+}
+
+type_t type_t::getParameter( int i ) const {
+	assert( getRoot() and i < getRoot()->parameters.size() );
+	return getRoot()->parameters.at( i )->clone();
+}
+
+
 type_t& type_t::operator=( const type_t& t ) {
 	if( t.getRoot() )
 		root = t.getRoot()->clone();
@@ -164,6 +182,27 @@ type_t& type_t::operator=( const type_t& t ) {
 		root = nullptr;
 	return *this;
 }
+
+int type_t::node::cmp( const type_t::node& other ) const {
+	if( free_id != other.free_id )
+		return free_id - other.free_id;
+	if( structure != other.structure )
+		return int64_t( structure ) - int64_t( other.structure );
+	if( parameters.size() != other.parameters.size() )
+		return int64_t( parameters.size() ) - int64_t( other.parameters.size() );
+	size_t b = parameters.size();
+	for( size_t i = 0; i < b; ++i ) {
+		int c = parameters.at( i )->cmp( *other.parameters.at( i ) );
+		if( c != 0 )
+			return c;
+	}
+	return 0;
+}
+
+bool type_t::operator<( const type_t& other ) const {
+	return getRoot()->cmp( *other.getRoot() ) < 0;
+}
+
 
 type_t::type_t( const type_t& t ) : type_t( t.getRoot()->clone() ) {
 }
@@ -267,6 +306,7 @@ structureTable::structureTable() {
 	assert( addStructure( LST_SYMBOL, {type_t()} ) == LST_STRUCTURE );
 	assert( addStructure( SET_SYMBOL, {type_t()} ) == SET_STRUCTURE );
 	assert( addStructure( TUP_SYMBOL ) == TUP_STRUCTURE );
+	assert( addStructure( FNC_SYMBOL, {type_t(),type_t()} ) == FNC_STRUCTURE );
 	assert( ERROR_TYPE == ERROR_TYPE );
 	assert( INT_TYPE != ERROR_TYPE );
 }

@@ -14,6 +14,7 @@
 #define TUP_SYMBOL		8
 #define PRINT_SYMBOL	9
 #define SCAN_SYMBOL		10
+#define FNC_SYMBOL		11
 
 typedef uint64_t symbol_t;
 

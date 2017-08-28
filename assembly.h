@@ -39,13 +39,13 @@ struct instruction {
 	struct parameter;
 	enum id_t {
 		NOP,
-		MOV, LEA,
+		MOV, MOVSD, LEA,
 		PUSH, POP,
 		LABEL,
 		CALL, RET,
 		CMP, TEST,
 		ADD, SUB, IMUL, IDIV,
-		FADD, FSUB, FMUL, FDIV,
+		VADDSD, VSUBSD, VMULSD, VDIVSD,
 		AND, OR, XOR, ANDN, 
 		SETE, SETNE, SETL, SETG, SETLE, SETGE,
 		JMP, JE, JNE, JL, JG, JLE, JGE,
@@ -88,8 +88,8 @@ struct instruction {
 		parameter( complex_address ca );
 		parameter( int64_t i );
 		parameter() = default;
-	} arg[2];
-	instruction( id_t, parameter a = parameter( 0 ), parameter b = parameter( 0 ) );
+	} arg[3];
+	instruction( id_t, parameter a = parameter( 0 ), parameter b = parameter( 0 ), parameter c = parameter( 0 ) );
 	static const std::vector<int> parameter_count;
 	static const std::vector<std::string> names;
 };
@@ -100,9 +100,13 @@ class assemblyGenerator {
 	std::stringstream definitions;
 	std::deque<instruction> instructions;
 	register_t volatile_register_cycle;
+	register_t volatile_floating_register_cycle;
 	std::vector<variable_t> register_variables;
 	registerAllocation ra;
+	registerAllocation ra_flt;
 	size_t extra_definition_offset;
+	variable_t return_variable;
+	label_t end_of_function;
 	stackFrame sf;
 public:
 	void generateInstruction( iop_t, std::string prefix, size_t instruction_index );
@@ -113,7 +117,10 @@ public:
 	void loadVariable( variable_t, register_t );
 	void evacuateRegisters( size_t instruction_index );
 	void restoreRegisters( size_t instruction_index );
+	void resetRegisters();
 	label_t addStringDefinition( std::string );
+	label_t addFloatingDefinition( double );
+	label_t addFunctionPointerDefinition( label_t l );
 	register_t getRegister( variable_t x, size_t instruction_index, bool define = false );
 	assemblyGenerator( const intermediateCode& );
 	assemblyGenerator();

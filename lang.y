@@ -49,8 +49,11 @@ scopeTable *scptab;
 syntaxTree *syntree;
 std::string input_str;
 
-scope_t current_scope = GLOBAL_SCOPE;
+scope_t previous_nested_scope = ERROR_SCOPE;
+std::stack<scope_t> scopes;
+std::stack<function_t> functions;
 std::stack<type_t> decllisttypes;
+
 
 syntaxTree::node* symbolToVariable( symbol_t id );
 syntaxTree::node* symbolToVariable( symbol_t id, type_t type );
@@ -64,7 +67,7 @@ syntaxTree::node* handleRelop( int id, syntaxTree::node* a, syntaxTree::node* b 
 
 /* Tokens */
 
-%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE FUNC IF WHILE ELSE FOR IN RELOP ELLIPSIS JOIN_MEET BREAK CONTINUE
+%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE FUNC IF WHILE ELSE FOR IN RELOP ELLIPSIS JOIN_MEET BREAK CONTINUE RETURN MAPSTO
 
 %union {
 	char *str;
@@ -88,7 +91,8 @@ entry_point:			statement_list {
 							$<node>1->type = N_SEQUENTIAL_BLOCK;
 							syntree->setRoot( $<node>1 );
 						}
-sequential_block:		LSEQ statement_list RSEQ {
+
+sequential_block:		lseq statement_list rseq {
 							syntaxTree::node* n = $<node>2;
 							n->setType( N_SEQUENTIAL_BLOCK );
 							$<node>$ = n;
@@ -127,6 +131,9 @@ statement:				declarations SEMICOLON {
 							$<node>$ = $<node>1;
 						}
 						| function_definition
+						| return SEMICOLON {
+							$<node>$ = $<node>1;
+						}
 						| error SEMICOLON;
 
 id:						ID {
@@ -146,17 +153,27 @@ type:					VTYPE id {
 							pmesg( 90, "ERROR: variadic types not yet implemented\n" );
 							$<typ>$ = &ERROR_TYPE;
 						}
-						| id LBRA typelist RBRA {
+						| id lbra typelist rbra {
 							pmesg( 90, "Lexer: TYPENAME %s\n", symtab->getName( $<num>1 ).c_str() );
-							$<typ>$ = new type_t( scptab->getTypeDefinition( current_scope, $<num>1, *$<typlst>3 ) );
+							$<typ>$ = new type_t( scptab->getTypeDefinition( scopes.top(), $<num>1, *$<typlst>3 ) );
 							if( *$<typ>$ == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
 						}
 						| id {
 							pmesg( 90, "Lexer: TYPENAME %s\n", symtab->getName( $<num>1 ).c_str() );
-							$<typ>$ = new type_t( scptab->getTypeDefinition( current_scope, $<num>1 ) );
+							$<typ>$ = new type_t( scptab->getTypeDefinition( scopes.top(), $<num>1 ) );
 							if( *$<typ>$ == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
+						}
+						| lbra typelist rbra {
+							if( $<typlst>2->size() == 1 )
+								$<typ>$ = new type_t( $<typlst>2->back() );
+							else {
+								type_t t = TUP_TYPE;
+								for( auto itr = $<typlst>2->rbegin(); itr != $<typlst>2->rend(); ++itr )
+									t = t.rightFlattenTypeProduct( *itr );
+								$<typ>$ = new type_t( t );
+							}
 						}
 
 declarations:			type {
@@ -190,7 +207,7 @@ declaration_list_el:	id ASSIGNMENT expression {
 							$<node>$ = new syntaxTree::node( N_ASSIGN, symbolToVariable( $<num>1, decllisttypes.top() ), $<node>3 );
 						}
 						| id {
-							$<node>$ = new syntaxTree::node( N_GARBAGE, nullptr, nullptr, {.integer=scptab->addVariable( current_scope, $<num>1, decllisttypes.top() ) } );
+							$<node>$ = new syntaxTree::node( N_GARBAGE, nullptr, nullptr, {.integer=scptab->addVariable( scopes.top(), $<num>1, decllisttypes.top() ) } );
 						};
 
 assignment:				lvalue ASSIGNMENT expression {
@@ -200,16 +217,18 @@ assignment:				lvalue ASSIGNMENT expression {
 leaf_expression:		constant | variable {
 							$<node>$ = $<node>1;
 						} 
-						| function_call | LBRA expression RBRA {
+						| function_call | lbra expression rbra {
 							$<node>$ = $<node>2;
 						};
 
 expression:				relational;
 
-expression_list:		expression {
+expression_list:		{ $<node>$ = nullptr; } | expression_list_ne;
+
+expression_list_ne:		expression {
 							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1 );
 						} 
-						| expression COMMA expression_list {
+						| expression COMMA expression_list_ne {
 							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1, $<node>3 );
 						};
 
@@ -217,12 +236,6 @@ relational:				join_meet {
 							$<node>$ = $<node>1;
 						}
 						| join_meet RELOP chain_relational {
-							node_t type;
-							int c = $<num>2;
-							if( c == 1 )
-								type = N_NOT_EQUALS;
-							else if( c == 0 )
-								type = N_EQUALS;
 							$<node>$ = new syntaxTree::node( N_COMPARISON_CHAIN, handleRelop( $<num>2, $<node>1, $<node>3 ) );
 						};
 
@@ -286,11 +299,29 @@ constant:				INT {
 						}
 						| list {
 							$<node>$ = $<node>1;
+						}
+						| tuple
+						| inline_function;
+
+tuple_list:				expression COMMA tuple_list_ne {
+							$<node>$ = new syntaxTree::node( N_TUPLE, $<node>1, $<node>3 );
 						};
-list:					LSEQ list_items RSEQ {
+
+tuple_list_ne:			expression {
+							$<node>$ = new syntaxTree::node( N_TUPLE_LIST, $<node>1 );
+						}
+						| expression COMMA tuple_list_ne {
+							$<node>$ = new syntaxTree::node( N_TUPLE_LIST, $<node>1, $<node>3 );
+						};
+
+tuple:					lbra tuple_list rbra {
+							$<node>$ = $<node>2;
+						}
+
+list:					lseq list_items rseq {
 							$<node>$ = new syntaxTree::node( N_LIST, $<node>2, nullptr, {.integer=$<node>2->data.integer+1} );
 						}
-						| LSEQ RSEQ {
+						| lseq rseq {
 							$<node>$ = new syntaxTree::node( N_LIST );
 						};
 
@@ -319,9 +350,12 @@ variable:				id {
 							$<node>$ = symbolToVariable( $<num>1 );
 						};
 
-function_call:			id LBRA expression_list RBRA {
-							function_t f = scptab->getFunction( current_scope, $<num>1 );
-							variable_t v = scptab->getVariable( current_scope, $<num>1 );
+function_call:			id lbra expression_list rbra {
+							/*std::cout << "function_call: " << ($<num>1) << " ";
+							$<node>3->print(std::cout);
+							std::cout << std::endl;*/
+							function_t f = scptab->getFunction( scopes.top(), $<num>1, $<node>3->data_type );
+							variable_t v = scptab->getVariable( scopes.top(), $<num>1 );
 							if( f == ERROR_FUNCTION and v == ERROR_VARIABLE )
 								lerr << error_line() << "Undeclared function " << symtab->getName( $<num>1 ) << std::endl;
 							if( v == ERROR_VARIABLE or scptab->getVariableScope( v ) <= scptab->getFunctionScope( f ) ) { // function
@@ -333,24 +367,40 @@ function_call:			id LBRA expression_list RBRA {
 									if( n->children[1] )
 										lerr << error_line(true) << "Expected 1 list index, others are ignored" << std::endl;
 									$<node>$ = new syntaxTree::node( N_LIST_INDEXING, new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = v } ), n->children[0] );
-								} else {
-									lerr << error_line() << "Variable " << symtab->getName( $<num>1 ) << " is not a list (but " << t << ")" << std::endl;
+								} else if( t.isFunction() ) {
+									std::cout << "Lexer: Function call by function pointer!\n";
+									$<node>$ = new syntaxTree::node( N_FUNCTION_CALL, $<node>3, new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = v} ) );
+									std::cout << "kaas\n";
+								} else	{
+									lerr << error_line() << "Variable " << symtab->getName( $<num>1 ) << " is neither list nor function (but " << t << ")" << std::endl;
 									$<node>$ = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
 								}
 							}
 						};
 
-function_definition:	FUNC id LBRA parameter_list RBRA sequential_block {
+function_definition:	FUNC id lbra parameter_list rbra sequential_block {
 							lerr << "function_definition" << std::endl;
 						}
 
-declaration:			type variable {
-							/*symtab->setType( $<num>2, $<num>1 );
-							$<node>$ = new syntaxTree::node( N_VARIABLE, $<num>2 );*/
+inline_function:		lbra parameter_list rbra MAPSTO type LSEQ {
+							scopes.push( previous_nested_scope );
+							function_t f = scptab->addFunctionDeclaration( scopes.top(), NONE_SYMBOL, *$<typ>5, scptab->getAllVariables( scopes.top() ) );
+							functions.push( f );
+						} statement_list rseq {
+							type_t t( FNC_STRUCTURE, { $<node>2->data_type, *$<typ>5 } );
+							$<node>8->type = N_SEQUENTIAL_BLOCK;
+							$<node>$ = new syntaxTree::node( N_FUNCTION_DEFINITION, $<node>2, $<node>8, {.integer = functions.top() } );
+							functions.pop();
+							$<node>$->data_type = t;
+						}
+
+declaration:			type id {
+							variable_t v = scptab->addVariable( scopes.top(), $<num>2, *$<typ>1 ); // scoping issues
+							$<node>$ = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=v} );
 						};
 
 parameter_list: 		declaration {
-							$<node>$ = $<node>1;
+							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1 );
 						}
 						| declaration COMMA parameter_list {
 							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1, $<node>3 );
@@ -371,20 +421,20 @@ for:					FOR LBRA id IN expression RBRA {
 								new syntaxTree::node( N_WHILE, new syntaxTree::node( N_EMPTY ) /*rip*/, $<node>8 ) );
 						};
 
-while:					WHILE LBRA expression RBRA statement {
+while:					WHILE lbra expression rbra statement {
 							$<node>$ = new syntaxTree::node( N_WHILE, $<node>3, $<node>5 );
 						}
-						| WHILE LBRA expression RBRA statement ELSE statement {
+						| WHILE lbra expression rbra statement ELSE statement {
 							$<node>$ = new syntaxTree::node( N_WHILE, 
 								$<node>3, 
 								new syntaxTree::node( N_ELSE, $<node>5, $<node>7 )
 							);
 						};
 
-if:						IF LBRA expression RBRA statement {
+if:						IF lbra expression rbra statement {
 							$<node>$ = new syntaxTree::node( N_IF, $<node>3, $<node>5 );
 						}
-						| IF LBRA expression RBRA statement ELSE statement {
+						| IF lbra expression rbra statement ELSE statement {
 							$<node>$ = new syntaxTree::node( N_IF, $<node>3, new syntaxTree::node( N_ELSE, $<node>5, $<node>7 ) );
 						};
 
@@ -399,18 +449,40 @@ continue:				CONTINUE {
 							$<node>$ = new syntaxTree::node( N_CONTINUE );
 						}
 
+return:					RETURN expression {
+							$<node>$ = new syntaxTree::node( N_RETURN, $<node>2 );
+						}
+
+lbra:					LBRA {
+							scopes.push( scptab->addScope( scopes.top() ) );
+						}
+
+rbra:					RBRA {
+							previous_nested_scope = scopes.top();
+							scopes.pop();
+						}
+
+lseq:					LSEQ {
+							scopes.push( scptab->addScope( scopes.top() ) );
+						}
+
+rseq:					RSEQ {
+							previous_nested_scope = scopes.top();
+							scopes.pop();
+						}
+
 %%
 
 /* C-CODE */
 
 
 syntaxTree::node* symbolToVariable( symbol_t symbol ) {
-	variable_t variable = scptab->getVariable( current_scope, symbol );
+	variable_t variable = scptab->getVariable( scopes.top(), symbol );
 	return new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=variable} );
 }
 
 syntaxTree::node* symbolToVariable( symbol_t symbol, type_t type ) {
-	variable_t variable = scptab->addVariable( current_scope, symbol, type );
+	variable_t variable = scptab->addVariable( scopes.top(), symbol, type );
 	return new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=variable} );
 }
 
@@ -426,6 +498,7 @@ int main( int argc, char** argv ) {
 	strtab = new structureTable;
 	scptab = new scopeTable( symtab, strtab );
 	syntree = new syntaxTree( scptab );
+	scopes.push( GLOBAL_SCOPE );
 	if( argc < 2 ) {
 		printf("Missing input file!\n");
 		return -1;
@@ -446,6 +519,7 @@ int main( int argc, char** argv ) {
 	assemblyGenerator ag( ic );
 	ag.print( std::cout, false );
 	std::ofstream ofile( "a.out" );
+	std::cout << "Printing..." << std::endl;
 	// std::cout << "Assembly:" << std::endl << ag << std::endl;
 	ofile << ag << std::endl;
 	return 0;

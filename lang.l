@@ -39,9 +39,9 @@ DHEX	0x[0-9a-fA-F]+
 DBIN	0b[01]+
 DANY	({LETTER}|{DIGIT})+"_"{DDEC}
 
-DDEC_TAIL	("."{DDEC})
+DDEC_TAIL	"."{DDEC}
 DDEC_EXP	((("e"|"E")("+"|"-")?{DDEC}))
-FLT			{DDEC}"."{DDEC_TAIL}|{DDEC}{DDEC_EXP}|{DDEC}"."{DDEC_TAIL}{DDEC_EXP}
+FLT			{DDEC}{DDEC_TAIL}|{DDEC}{DDEC_EXP}|{DDEC}{DDEC_TAIL}{DDEC_EXP}
 INT			{DDEC}|{DHEX}|{DBIN}
 ASSIGNMENT	"="
 SEMICOLON   ";"
@@ -92,6 +92,14 @@ ELLIPSIS	"..."
 <STRING_ESCAPE_STATE>n {
 				yylval.str = (char*) malloc(2*sizeof(char));
 				yylval.str[0] = '\n';
+				yylval.str[1] = 0;
+				string_state = 1;
+				BEGIN(STRING_STATE);
+				return STRING_PARTICLE;
+			}
+<STRING_ESCAPE_STATE>"\"" {
+				yylval.str = (char*) malloc(2*sizeof(char));
+				yylval.str[0] = '\"'; //"
 				yylval.str[1] = 0;
 				string_state = 1;
 				BEGIN(STRING_STATE);
@@ -156,6 +164,11 @@ ELLIPSIS	"..."
 				return INT;
 			}
 
+"->"		{
+				pmesg(90, "Lexer: MAPSTO\n");
+				return MAPSTO;
+			}
+
 break		{
 				pmesg(90, "Lexer: BREAK\n" );
 				return BREAK;
@@ -199,7 +212,12 @@ for			{
 in			{
 				pmesg(90, "Lexer: IN\n");
 				return IN;
-			}	
+			}
+
+return		{
+				pmesg(90, "Lexer: RETURN\n");
+				return RETURN;
+			}
 
 
 "*"|"/"|"%"	{

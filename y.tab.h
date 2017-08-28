@@ -72,7 +72,9 @@ extern int yydebug;
     ELLIPSIS = 282,
     JOIN_MEET = 283,
     BREAK = 284,
-    CONTINUE = 285
+    CONTINUE = 285,
+    RETURN = 286,
+    MAPSTO = 287
   };
 #endif
 
@@ -81,7 +83,7 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 69 "lang.y" /* glr.c:197  */
+#line 72 "lang.y" /* glr.c:197  */
 
 	char *str;
 	int64_t num;
@@ -90,7 +92,7 @@ union YYSTYPE
 	std::vector<type_t>* typlst;
 	struct syntaxTree::node *node;
 
-#line 94 "y.tab.h" /* glr.c:197  */
+#line 96 "y.tab.h" /* glr.c:197  */
 };
 
 typedef union YYSTYPE YYSTYPE;

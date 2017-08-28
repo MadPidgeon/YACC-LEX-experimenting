@@ -1,5 +1,6 @@
 #include "scope_table.h"
 #include <iomanip>
+#include <algorithm>
 
 bool scopeTable::addTypeDefinition( scope_t scope, symbol_t symbol, structure_t structure, std::vector<type_t> par, std::vector<type_t> sub ) {
 	return scopes.at( scope ).typedefs.addType( symbol, structure, par, sub );
@@ -30,7 +31,8 @@ variable_t scopeTable::addVariable( scope_t scope, symbol_t symbol, type_t type 
 	variable_t id = declarations.size();
 	declaration d = { id, type, symbol, scope };
 	declarations.push_back( d );
-	scopes.at( scope ).declarations[symbol] = id;
+	if( symbol != NONE_SYMBOL )
+		scopes.at( scope ).declarations[symbol] = id;
 	return id;
 }
 
@@ -47,14 +49,32 @@ symbol_t scopeTable::getVariableSymbol( variable_t variable ) const {
 }
 
 function_t scopeTable::addFunctionDeclaration( scope_t scope, symbol_t symbol, type_t type, std::vector<variable_t> args ) {
-	if( scopes.at( scope ).function_declarations.find( symbol ) != scopes.at( scope ).function_declarations.end() )
+	std::vector<type_t> a;
+	for( variable_t v : args )
+		a.push_back( getVariableType( v ) );
+	auto i = std::make_pair(symbol,a);
+	std::cout << "addFunctionDeclaration " << symbol;
+	for( type_t t : a )
+		std::cout << ", " << t;
+	std::cout << std::endl;
+	if( scopes.at( scope ).function_declarations.find( i ) != scopes.at( scope ).function_declarations.end() )
 		return ERROR_FUNCTION;
 	function_t id = function_declarations.size();
 	function_declaration d = { id, type, args, symbol, scope };
 	function_declarations.push_back( d );
-	scopes.at( scope ).function_declarations[symbol] = id;
+	if( symbol != NONE_SYMBOL )
+		scopes.at( scope ).function_declarations[i] = id;
 	return id;
 }
+
+std::vector<variable_t> scopeTable::getAllVariables( scope_t scope ) const {
+	std::vector<variable_t> r;
+	for( const auto& p : scopes.at( scope ).declarations )
+		r.push_back( p.second );
+	std::sort( r.begin(), r.end() );
+	return r;
+}
+
 
 type_t scopeTable::getFunctionReturnType( function_t function ) const {
 	return function_declarations.at( function ).return_type;
@@ -76,10 +96,12 @@ function_t scopeTable::getFunctionCount() const {
 	return function_declarations.size();
 }
 
-function_t scopeTable::getFunction( scope_t deep, symbol_t symbol ) const {
+function_t scopeTable::getFunction( scope_t deep, symbol_t symbol, type_t type ) const {
 	scope_t scope = deep;
+	auto arg_types = type.unpackProduct();
+	auto to_find = std::make_pair( symbol, arg_types );
 	while( scope != ERROR_SCOPE ) {
-		auto loc = scopes.at( scope ).function_declarations.find( symbol );
+		auto loc = scopes.at( scope ).function_declarations.find( to_find );
 		if( loc != scopes.at( scope ).function_declarations.end() )
 			return loc->second;
 		scope = scopes.at( scope ).super_scope;
@@ -109,11 +131,14 @@ scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
 	addTypeDefinition( GLOBAL_SCOPE, STR_SYMBOL, STR_STRUCTURE );
 	addTypeDefinition( GLOBAL_SCOPE, LST_SYMBOL, LST_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 	addTypeDefinition( GLOBAL_SCOPE, SET_SYMBOL, SET_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
+	addTypeDefinition( GLOBAL_SCOPE, FNC_SYMBOL, FNC_STRUCTURE, { type_t(int64_t(0)), type_t(int64_t(1)) }, { type_t(int64_t(0)), type_t(int64_t(1)) } );
+
 	assert( addFunctionDeclaration( ERROR_SCOPE, ERROR_SYMBOL, ERROR_TYPE ) == ERROR_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, PRINT_SYMBOL, VOID_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ) } ) == PRINT_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, SCAN_SYMBOL, STR_TYPE ) == SCAN_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, INT_TYPE ) } ) == ITOA_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, NONE_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ), addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ) } ) == JOIN_STR_FUNCTION );
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, FLT_TYPE ) } ) == FTOA_FUNCTION );
 	assert( addFunctionDeclaration( ERROR_SCOPE, NONE_SYMBOL, VOID_TYPE ) == GLOBAL_FUNCTION );
 }
 

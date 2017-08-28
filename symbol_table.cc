@@ -42,4 +42,5 @@ symbolTable::symbolTable() {
 	assert( addSymbol("tup") == TUP_SYMBOL );
 	assert( addSymbol("print") == PRINT_SYMBOL );
 	assert( addSymbol("scan") == SCAN_SYMBOL );
+	assert( addSymbol("fnc") == FNC_SYMBOL );
 }

@@ -204,59 +204,40 @@ main:
 _5:
 	push rbp
 	mov rbp, rsp
-	add rsp, 56
+	add rsp, 48
 	mov r8, 0
+	mov r9, 3
 _6:
 	cmp r8, 10
 	jge _7
+	mov r10, 0
+	mov r9, 4
+	test r8, 1
+	je _8
+	mov r10, 1
+_8:
 	add r8, 1
-	cmp r8, 3
-	jne _8
-_7:
 	sub rsp, 8
 	push r8
 	mov qword [-8+rbp], r8
+	mov qword [-16+rbp], r9
+	mov qword [-24+rbp], r10
 	call _3
-	pop r9
-	push r9
+	pop r11
+	push r11
 	call _1
-	mov r8, 0
-_9:
-	cmp r8, 10
-	jge _10
-	mov r9, 0
-_12:
-	cmp r9, 10
-	jge _13
-	cmp r8, r9
-	setl r10b
-	cmp r8, 4
-	setg r11b
-	and r11, r10
-	test r11, 1
-	je _15
-	jmp _11
-_8:
+	sub rsp, 8
+	mov r10, qword [-24+rbp]
+	push r10
+	call _3
+	pop r10
+	push r10
+	call _1
+	mov r8, qword [-8+rbp]
+	mov r9, qword [-16+rbp]
 	jmp _6
-_15:
-	add r9, 1
-	jmp _12
-_13:
-	add r8, 2
-	add r8, 1
-	jmp _9
-_10:
-	mov r8, 0
-_11:
+_7:
 	sub rsp, 8
-	push r8
-	mov qword [-24+rbp], r9
-	call _3
-	pop r8
-	push r8
-	call _1
-	sub rsp, 8
-	mov r9, qword [-24+rbp]
 	push r9
 	call _3
 	pop r8

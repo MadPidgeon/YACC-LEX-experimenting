@@ -1,0 +1,6 @@
+flt x = 1.1;
+flt y = 1000000000000.1;
+print(str(x)|"\n");
+print(str(y)|"\n");
+print(str(x+y)|"\n");
+print(str(x*y)|"\n");

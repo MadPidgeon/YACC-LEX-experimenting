@@ -1,10 +1,21 @@
+section .data
+  _def_1 dq 1.10000000000000009e+00
+  _def_2 dq 1.00000000000009998e+12
+  _def_3_data db 0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0a
+  _def_3 equ _def_3_data+8
+  _def_4_data db 0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0a
+  _def_4 equ _def_4_data+8
+  _def_5_data db 0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0a
+  _def_5 equ _def_5_data+8
+  _def_6_data db 0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0a
+  _def_6 equ _def_6_data+8
+
 ; TAKEN FROM https://github.com/davidad/asm_concurrency/blob/master/os_dependent_stuff.asm
 ; syscalls
 %ifidn __OUTPUT_FORMAT__,elf64
 ; http://lxr.linux.no/linux+v3.13.5/arch/x86/syscalls/syscall_64.tbl
   %define SYSCALL_OPEN      2
   %define SYSCALL_WRITE     1
-  %define SYSCALL_READ      0
   %define SYSCALL_MMAP      9
   %define SYSCALL_FTRUNCATE 77
   %define SYSCALL_PWRITE    18
@@ -15,7 +26,6 @@
 ; http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/bsd/kern/syscalls.master
   %define SYSCALL_OPEN      0x2000005
   %define SYSCALL_WRITE     0x2000004
-  %define SYSCALL_READ      0x2000003
   %define SYSCALL_MMAP      0x20000C5
   %define SYSCALL_FTRUNCATE 0x20000C9
   %define SYSCALL_PWRITE    0x200009A
@@ -127,7 +137,7 @@ _1: ; print
   ret 8
 
 _2:
-  mov rax, SYSCALL_READ ; read
+  mov rax, 0 ; read
   mov rdi, 0 ; stream
   lea rsi, [_2_buffer]
   mov rdx, _2_buffer.len
@@ -286,7 +296,7 @@ _5:
   mov qword [r9+_5_buffer], '*2^!'
   add r9, 3
   cmp rax, 0
-  mov rcx, 5
+  mov rcx, 4
   jge .non_negative_exp
 
   ; negative exp
@@ -295,7 +305,7 @@ _5:
   neg rax
 
 .non_negative_exp:
-  add r9, 4
+  add r9, 3
 
 .exp_loop:
   mov rdx, 0               ; clear most significant part of dividend
@@ -355,3 +365,79 @@ global start
 start:
 global main
 main:
+_6:
+  push rbp
+  mov rbp, rsp
+  add rsp, 128
+  movsd xmm6, qword [0+_def_1]
+  movsd xmm7, qword [0+_def_2]
+  sub rsp, 8
+  sub rsp, 8
+  sub rsp, 8
+  movsd qword [0+rsp], xmm6
+  movsd qword [-8+rbp], xmm6
+  movsd qword [-16+rbp], xmm7
+  call _5
+  pop r8
+  push r8
+  lea r8, [0+_def_3]
+  push r8
+  call _4
+  pop r8
+  push r8
+  call _1
+  sub rsp, 8
+  sub rsp, 8
+  movsd xmm7, qword [-16+rbp]
+  sub rsp, 8
+  movsd qword [0+rsp], xmm7
+  movsd qword [-16+rbp], xmm7
+  call _5
+  pop r8
+  push r8
+  lea r8, [0+_def_4]
+  push r8
+  call _4
+  pop r8
+  push r8
+  call _1
+  sub rsp, 8
+  sub rsp, 8
+  movsd xmm4, qword [-72+rbp]
+  movsd xmm6, qword [-8+rbp]
+  movsd xmm7, qword [-16+rbp]
+  vaddsd xmm4, xmm6, xmm7
+  sub rsp, 8
+  movsd qword [0+rsp], xmm4
+  movsd qword [-8+rbp], xmm6
+  movsd qword [-16+rbp], xmm7
+  call _5
+  pop r8
+  push r8
+  lea r8, [0+_def_5]
+  push r8
+  call _4
+  pop r8
+  push r8
+  call _1
+  sub rsp, 8
+  sub rsp, 8
+  movsd xmm5, qword [-104+rbp]
+  movsd xmm6, qword [-8+rbp]
+  movsd xmm7, qword [-16+rbp]
+  vmulsd xmm5, xmm6, xmm7
+  sub rsp, 8
+  movsd qword [0+rsp], xmm5
+  call _5
+  pop r8
+  push r8
+  lea r8, [0+_def_6]
+  push r8
+  call _4
+  pop r8
+  push r8
+  call _1
+  mov rax, 60
+  mov rdi, 0
+  syscall
+

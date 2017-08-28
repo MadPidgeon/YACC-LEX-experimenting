@@ -1,0 +1,2 @@
+fnc((int,int),int) x = ( int a, int b ) -> int [ return a + b; ];
+print( str( x( 2, 4 ) ) );

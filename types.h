@@ -21,7 +21,8 @@
 #define LST_STRUCTURE		6	// POD lst(type)
 #define SET_STRUCTURE		7	// POD set(type)
 #define TUP_STRUCTURE		8	// POD tup(type,...)
-#define LAST_POD_TYPEDEF	TUP_TYPEDEF
+#define FNC_STRUCTURE		9	// POD fnc(tup,tup)
+#define LAST_POD_TYPEDEF	FNC_TYPEDEF
 
 // temporary
 #define BOOL_TYPE			INT_TYPE
@@ -46,6 +47,7 @@ public:
 		node* intersect( const node* ) const;
 		node* applySubstitution( size_t, type_t );
 		void print( std::ostream& os ) const;
+		int cmp( const node& ) const;
 		~node();
 	};
 private:
@@ -59,6 +61,7 @@ public:
 	bool isFinal() const;
 	bool isList() const;
 	bool isSet() const;
+	bool isFunction() const;
 	bool operator==( const type_t& ) const;
 	bool operator!=( const type_t& ) const;
 	type_t intersect( const type_t& ) const;
@@ -66,8 +69,11 @@ public:
 	type_t getChildType() const;
 	void applySubstitution( size_t, type_t );
 	type_t rightFlattenTypeProduct( type_t left ) const;
+	std::vector<type_t> unpackProduct() const;
+	type_t getParameter( int i ) const;
 	size_t rawSize() const;
 	type_t& operator=( const type_t& );
+	bool operator<( const type_t& ) const;
 	type_t( const type_t& );
 	type_t( type_t&& );
 	// type_t( structure_t, std::vector<const type_t*> );

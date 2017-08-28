@@ -18,7 +18,7 @@ const std::vector<std::string> node_t_to_str = {
 
 	"ARGUMENT_LIST",
 
-	"IF", "WHILE", "ELSE", "FOR", "BREAK", "CONTINUE",
+	"IF", "WHILE", "ELSE", "FOR", "BREAK", "CONTINUE", "RETURN",
 
 	"SEQUENTIAL_BLOCK", "PARALLEL_BLOCK", "BLOCK_LIST",
 
@@ -26,7 +26,7 @@ const std::vector<std::string> node_t_to_str = {
 
 	"TUPLE", "TUPLE_LIST",
 
-	"FUNCTION_CALL",
+	"FUNCTION_CALL", "FUNCTION_DEFINITION",
 
 	"LIST_INDEXING",
 
@@ -58,12 +58,15 @@ type_t syntaxTree::node::computeDatatype() {
 			if( c != 0 )
 				return ERROR_TYPE;
 			break;
+		// both optional
+		case N_FUNCTION_CALL:
+			break;
 		// 1 child (left)
 		case N_COMPARISON_CHAIN:
 		case N_UMIN: 
 		case N_LIST: 
 		case N_SET:
-		case N_FUNCTION_CALL:
+		case N_RETURN:
 			if( c != 1 or children[1] != nullptr )
 				return ERROR_TYPE;
 			break;
@@ -98,13 +101,17 @@ type_t syntaxTree::node::computeDatatype() {
 			return FLT_TYPE;
 		case N_STRING:
 			return STR_TYPE;
-		case N_ASSIGN:   case N_GARBAGE:
+		case N_GARBAGE:
 		case N_IF:       case N_WHILE:    case N_ELSE:     case N_FOR:
 		case N_EMPTY:
 		case N_SEQUENTIAL_BLOCK:          case N_PARALLEL_BLOCK:
 		case N_BLOCK_LIST:
-		case N_BREAK:    case N_CONTINUE:
+		case N_BREAK:    case N_CONTINUE: case N_RETURN:
 			return VOID_TYPE;
+		case N_ASSIGN:
+			if( children[0]->data_type != children[1]->data_type )
+				return ERROR_TYPE;
+			return children[0]->data_type;
 		case N_MULTIPLY: case N_DIVIDE:   case N_REMAINDER:
 		case N_ADD:      case N_SUBTRACT:
 			if( not ( children[0]->isIntegral() and children[1]->isIntegral() ) )
@@ -128,7 +135,11 @@ type_t syntaxTree::node::computeDatatype() {
 			return type_t( SET_STRUCTURE, { children[0]->data_type } );
 		case N_FUNCTION_CALL:
 			// implement argument checking as well
-			return syntaxTree::scopes->getFunctionReturnType( data.integer );
+			if( children[1] ) {
+				assert( children[1]->data_type.isFunction() );
+				return children[1]->data_type.getParameter(1);
+			} else
+				return syntaxTree::scopes->getFunctionReturnType( data.integer );
 		case N_TUPLE: case N_TUPLE_LIST: case N_ARGUMENT_LIST:
 			return (children[1] ? children[1]->data_type : TUP_TYPE).rightFlattenTypeProduct( children[0]->data_type );
 		case N_LIST_INDEXING:
@@ -139,6 +150,8 @@ type_t syntaxTree::node::computeDatatype() {
 			if( ( children[0]->data_type == STR_TYPE or children[0]->data_type.isList() or children[0]->data_type.isSet() ) and children[0]->data_type == children[1]->data_type )
 				return children[0]->data_type;
 			return ERROR_TYPE;
+		case N_FUNCTION_DEFINITION:
+			return ERROR_TYPE; // entered by other code
 		default:
 			pmesg(90,"ERROR: operation N(%s) not yet implemented!\n", node_t_to_str[type].c_str() );
 			return ERROR_TYPE;

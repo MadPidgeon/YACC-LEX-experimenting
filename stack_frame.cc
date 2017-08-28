@@ -23,6 +23,7 @@ void stackFrame::reset( std::vector<variable_storage> returns, std::vector<varia
 	old_bp = variable_storage( ERROR_VARIABLE, 8, 0 );
 	stack_offset_t off = 8; 
 	size_t index = function_arguments.size()-1;
+	variable_location.clear();
 	for( auto itr = function_arguments.rbegin(); itr != function_arguments.rend(); ++itr ) {
 		off += itr->size;
 		itr->offset = off;
@@ -35,6 +36,8 @@ void stackFrame::reset( std::vector<variable_storage> returns, std::vector<varia
 		variable_location[itr->variable] = std::make_pair( 2, index-- );
 	}
 	byte_count = off;
+	saved_variables.clear();
+	argument_stack.clear();
 }
 
 stack_offset_t stackFrame::addVariable( variable_t v, size_t s ) {
