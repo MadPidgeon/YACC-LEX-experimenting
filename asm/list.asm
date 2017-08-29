@@ -6,6 +6,7 @@ section .data
 ; http://lxr.linux.no/linux+v3.13.5/arch/x86/syscalls/syscall_64.tbl
   %define SYSCALL_OPEN      2
   %define SYSCALL_WRITE     1
+  %define SYSCALL_READ      0
   %define SYSCALL_MMAP      9
   %define SYSCALL_FTRUNCATE 77
   %define SYSCALL_PWRITE    18
@@ -16,6 +17,7 @@ section .data
 ; http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/bsd/kern/syscalls.master
   %define SYSCALL_OPEN      0x2000005
   %define SYSCALL_WRITE     0x2000004
+  %define SYSCALL_READ      0x2000003
   %define SYSCALL_MMAP      0x20000C5
   %define SYSCALL_FTRUNCATE 0x20000C9
   %define SYSCALL_PWRITE    0x200009A
@@ -110,8 +112,11 @@ section .data
 %define ECHILD       10
 
 section .bss
-	_3_buffer:    resb 21
-	_3_registers: resq 1
+  _2_buffer:    resb 100
+  .len: equ $ - _2_buffer
+  _3_buffer:    resb 21
+  _3_registers: resq 1
+  _5_buffer:    resb 30
 
 default rel
 section .text
@@ -123,77 +128,228 @@ _1: ; print
   syscall
   ret 8
 
+_2:
+  mov rax, SYSCALL_READ ; read
+  mov rdi, 0 ; stream
+  lea rsi, [_2_buffer]
+  mov rdx, _2_buffer.len
+  syscall
+  push rax
+
+  ; --- TO BE REPLACED WITH BETTER ALLOCATION CODE
+  lea rsi, [rax+8]
+  mov rax, SYSCALL_MMAP
+  xor edi, edi
+  mov rdx, PROT_READ | PROT_WRITE
+  mov r10, MAP_PRIVATE | MAP_ANON
+  mov r8, -1
+  xor r9d, r9d
+  syscall
+  ; ---
+
+  pop rcx
+  mov [rax], rcx
+  lea rdi, [rax+8]
+  mov [rsp+8], rdi
+  lea rsi, [_2_buffer]
+  cld
+  rep movsb
+  ret
+
 _3:
-	mov rax, [rsp+8]    ; load integer
-	lea rcx, [_3_buffer+20] ; load buffer adress
-	mov rsi, 10         ; load divider
+  mov rax, [rsp+8]    ; load integer
+  lea rcx, [_3_buffer+20] ; load buffer adress
+  mov rsi, 10         ; load divider
 
 .loop:
-	mov rdx, 0          ; clear most significant part of dividend
-	div rsi             ; divide by 10
-	add rdx, '0'        ; add '0' character
-	mov [rcx], dl       ; write digit to string
-	test rax, rax       ; if non-zero
-	loopne .loop        ; decrease rcx and jump to _iota_loop
-	inc rcx
-	mov [_3_registers], rcx
-	;push rcx
+  mov rdx, 0          ; clear most significant part of dividend
+  div rsi             ; divide by 10
+  add rdx, '0'        ; add '0' character
+  mov [rcx], dl       ; write digit to string
+  test rax, rax       ; if non-zero
+  loopne .loop        ; decrease rcx and jump to _iota_loop
+  inc rcx
+  mov [_3_registers], rcx
+  ;push rcx
 
-	; --- TO BE REPLACED WITH BETTER ALLOCATION CODE
-	mov rax, SYSCALL_MMAP
-	xor edi, edi
-	lea rsi, [21+8+_3_buffer]
-	sub rsi, rcx 
-	mov rdx, PROT_READ | PROT_WRITE
-	mov r10, MAP_PRIVATE | MAP_ANON
-	mov r8, -1
-	xor r9d, r9d
-	syscall
-	; ---
+  ; --- TO BE REPLACED WITH BETTER ALLOCATION CODE
+  mov rax, SYSCALL_MMAP
+  xor edi, edi
+  lea rsi, [21+8+_3_buffer]
+  sub rsi, rcx 
+  mov rdx, PROT_READ | PROT_WRITE
+  mov r10, MAP_PRIVATE | MAP_ANON
+  mov r8, -1
+  xor r9d, r9d
+  syscall
+  ; ---
 
-	lea rcx, [rsi-8]	; load length
-	mov [rax], rcx		; write length to string
-	mov rsi, [_3_registers]	; get read position
-	;pop rsi
-	lea rdi, [rax+8]	; get write position
+  lea rcx, [rsi-8]  ; load length
+  mov [rax], rcx    ; write length to string
+  mov rsi, [_3_registers] ; get read position
+  ;pop rsi
+  lea rdi, [rax+8]  ; get write position
   mov [rsp+16], rdi ; set pointer as return value
-	cld
-	rep movsb			    ; copy string 
+  cld
+  rep movsb         ; copy string 
 
-	ret 8               ; return
+  ret 8               ; return
 
 _4: ; concat
-	; reserve string
-	mov rax, [rsp+8]	; load first string address
-	mov rsi, [rax-8]	; load first string size
-	mov rax, [rsp+16]	; load second string address
-	add rsi, [rax-8]	; add second string size
-	add rsi, 8		   	; add string header size
-	mov rax, SYSCALL_MMAP
-	xor edi, edi
-	mov rdx, PROT_READ | PROT_WRITE
-	mov r10, MAP_PRIVATE | MAP_ANON
-	mov r8, -1
-	xor r9d, r9d
-	syscall
-	; write length to string
-	sub rsi, 8
-	mov [rax], rsi
-	; copy first string
-	mov rsi, [rsp+16]	; load first string adress
-	mov rcx, [rsi-8]	; load first string size
-	mov rdx, rcx		  ; save first string size
-	lea rdi, [rax+8]	; load write adress
+  ; reserve string
+  mov rax, [rsp+8]  ; load first string address
+  mov rsi, [rax-8]  ; load first string size
+  mov rax, [rsp+16] ; load second string address
+  add rsi, [rax-8]  ; add second string size
+  add rsi, 8        ; add string header size
+  mov rax, SYSCALL_MMAP
+  xor edi, edi
+  mov rdx, PROT_READ | PROT_WRITE
+  mov r10, MAP_PRIVATE | MAP_ANON
+  mov r8, -1
+  xor r9d, r9d
+  syscall
+  ; write length to string
+  sub rsi, 8
+  mov [rax], rsi
+  ; copy first string
+  mov rsi, [rsp+16] ; load first string adress
+  mov rcx, [rsi-8]  ; load first string size
+  mov rdx, rcx      ; save first string size
+  lea rdi, [rax+8]  ; load write adress
   mov [rsp+24], rdi ; push return value
-	cld 
-	rep movsb			; copy string
-	; copy second string
-	mov rsi, [rsp+8]	; load second string adress
-	mov rcx, [rsi-8]	; load second string size
-	; add rdi, rdx		; load write adress
-	rep movsb			    ; copy string
-	; return
-	ret 16
+  cld 
+  rep movsb     ; copy string
+  ; copy second string
+  mov rsi, [rsp+8]  ; load second string adress
+  mov rcx, [rsi-8]  ; load second string size
+  ; add rdi, rdx    ; load write adress
+  rep movsb         ; copy string
+  ; return
+  ret 16
+
+_5:
+  ; rsp+8 : float
+  mov r9, 0
+  mov rdi, [rsp+8]
+  mov rsi, 0b1000000000000000000000000000000000000000000000000000000000000000
+  and rsi, rdi
+  je .non_negative
+  mov byte [r9+_5_buffer], '-'
+  inc r9
+  xor rdi, rsi
+.non_negative:
+  mov rsi, rdi
+  shr rsi, 52  ; rsi = exponent
+  mov rdx, 0b0000000000001111111111111111111111111111111111111111111111111111
+  and rdi, rdx ; rdi = fraction
+  test rsi, 0b11111111111
+  je .sub_normal
+  cmp rsi, 2047
+  je .nan_and_infty
+  
+  ; regular float
+  mov word [r9+_5_buffer], '1.'
+  add r9, 2
+  mov rcx, 52
+  mov rdx, 500000000000000000
+  mov r10, 0b1000000000000000000000000000000000000000000000000000
+  mov rax, 0
+
+.bin_to_dec_loop:
+  mov r8, 0
+  test rdi, r10
+  cmovne r8, rdx
+  add rax, r8
+  shr r10, 1
+  shr rdx, 1
+  loop .bin_to_dec_loop
+
+  mov rcx, 18
+  mov rdi, 10
+  add r9, 17
+.dec_to_str_loop:
+  mov rdx, 0               ; clear most significant part of dividend
+  div rdi                  ; divide by 10
+  add rdx, '0'             ; add '0' character
+  mov [r9+_5_buffer], dl   ; write digit to string
+  dec r9
+  loop .dec_to_str_loop
+
+  lea rcx, [r9+17]
+.remove_zeroes:
+  cmp byte [rcx+_5_buffer], '0'
+  loope .remove_zeroes
+  lea r9, [rcx+2]
+
+  lea rax, [rsi-1023]
+  cmp rax, 0
+  je .to_string
+  mov qword [r9+_5_buffer], '*2^!'
+  add r9, 3
+  cmp rax, 0
+  mov rcx, 5
+  jge .non_negative_exp
+
+  ; negative exp
+  mov byte [r9+_5_buffer], '-'
+  inc r9
+  neg rax
+
+.non_negative_exp:
+  add r9, 4
+
+.exp_loop:
+  mov rdx, 0               ; clear most significant part of dividend
+  div rdi                  ; divide by 10
+  add rdx, '0'             ; add '0' character
+  mov [r9+_5_buffer], dl   ; write digit to string
+  dec r9
+  loop .exp_loop
+
+  add r9, 5
+  jmp .to_string
+
+.sub_normal:
+  mov word [r9+_5_buffer], '0.'
+  add r9, 2
+  mov byte [r9+_5_buffer], '0' ; temp
+  add r9, 1
+  jmp .to_string
+
+.nan_and_infty:
+  cmp rdi, 0
+  je .infty
+
+  ; nan
+  mov qword [r9+_5_buffer], 'NaN '
+  add r9, 3
+  jmp .to_string
+
+.infty:
+  mov qword [r9+_5_buffer], 0x009e88e2 ; utf-8 infty
+  add r9, 3
+  
+.to_string:
+  ; reserve string
+  lea rsi, [r9+8]
+  mov rax, 9
+  xor rdi, rdi
+  mov rdx, 3
+  mov r10, 34
+  mov r8, -1
+  xor r9, r9
+  syscall
+
+  lea rcx, [rsi-8]
+  lea rdi, [rax+8] 
+  mov [rax], rcx
+  mov [rsp+16], rdi
+  lea rsi, [_5_buffer]
+  cld
+  rep movsb
+
+  ret 8
 
 global _start
 _start:
@@ -201,51 +357,44 @@ global start
 start:
 global main
 main:
-_5:
-	push r8
-	push r9
-	push r10
-	mov rax, 9
+_6:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 56
 	mov rsi, 40
-	xor edi, edi
+	mov qword [-8+rbp], r8
+	mov rax, 9
+	xor rdi, rdi
 	mov rdx, 3
 	mov r10, 34
 	mov r8, -1
-	xor r9d, r9d
+	xor r9, r9
 	syscall
-	pop r10
-	pop r9
-	pop r8
 	mov qword [0+rax], 32
 	lea r8, [8+rax]
-	mov r9, 2
-	mov qword [0+r8], r9
-	mov r9, 4
-	mov qword [8+r8], r9
-	mov r9, 6
-	mov qword [16+r8], r9
-	mov r9, 8
-	mov qword [24+r8], r9
+	mov qword [0+r8], 2
+	mov qword [8+r8], 4
+	mov qword [16+r8], 6
+	mov qword [24+r8], 8
 	mov r9, r8
 	sub rsp, 8
-	mov r8, 2
-	mov r10, qword [0+r9+8*r8]
-	push r10
+	mov r8, qword [16+r9]
+	push r8
+	mov qword [-16+rbp], r9
 	call _3
 	pop r8
 	push r8
 	call _1
-	mov r8, 1
-	mov r10, r8
-	mov qword [0+r9+8*r10], r10
+	mov r9, qword [-16+rbp]
+	mov qword [8+r9], 1
 	sub rsp, 8
-	mov r8, 1
-	mov r10, qword [0+r9+8*r8]
-	push r10
+	mov r8, qword [8+r9]
+	push r8
 	call _3
-	pop r9
-	push r9
+	pop r8
+	push r8
 	call _1
+_8:
 	mov rax, 60
 	mov rdi, 0
 	syscall

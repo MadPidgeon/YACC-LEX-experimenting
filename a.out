@@ -360,19 +360,36 @@ main:
 _6:
 	push rbp
 	mov rbp, rsp
-	add rsp, 80
-	mov qword [-8+rbp], 3
-	mov qword [-16+rbp], 4
-	mov r8, qword [-8+rbp]
-	mov qword [-32+rbp], r8
-	mov r8, qword [-16+rbp]
-	mov qword [-40+rbp], r8
+	sub rsp, 56
+	mov rsi, 40
+	mov qword [-8+rbp], r8
+	mov rax, 9
+	xor rdi, rdi
+	mov rdx, 3
+	mov r10, 34
+	mov r8, -1
+	xor r9, r9
+	syscall
+	mov qword [0+rax], 32
+	lea r8, [8+rax]
+	mov qword [0+r8], 2
+	mov qword [8+r8], 4
+	mov qword [16+r8], 6
+	mov qword [24+r8], 8
+	mov r9, r8
 	sub rsp, 8
-	mov r8, qword [-32+rbp]
-	mov r9, qword [-40+rbp]
-	mov r10, r8
-	add r10, r9
-	push r10
+	mov r8, qword [16+r9]
+	push r8
+	mov qword [-16+rbp], r9
+	call _3
+	pop r8
+	push r8
+	call _1
+	mov r9, qword [-16+rbp]
+	mov qword [8+r9], 1
+	sub rsp, 8
+	mov r8, qword [8+r9]
+	push r8
 	call _3
 	pop r8
 	push r8

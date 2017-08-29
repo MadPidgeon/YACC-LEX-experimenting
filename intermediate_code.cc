@@ -422,7 +422,7 @@ void intermediateCode::function::translateAssign( const syntaxTree::node* n ) {
 void intermediateCode::function::translateLValue( const syntaxTree::node* n, variable_t value ) {
 	assert( n->type == N_VARIABLE or n->type == N_LIST_INDEXING );
 	if( n->type == N_VARIABLE ) {
-		if( n->data_type == INT_TYPE or n->data_type.isFunction() )
+		if( n->data_type == INT_TYPE or n->data_type.isFunction() or n->data_type.isList() or n->data_type.isSet() )
 			addOperation( iop_t::id_t::IOP_INT_MOV, translateVariable( n ), value );
 		else if( n->data_type == FLT_TYPE )
 			addOperation( iop_t::id_t::IOP_FLT_MOV, translateVariable( n ), value );

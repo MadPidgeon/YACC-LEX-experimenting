@@ -193,6 +193,7 @@ instruction::complex_address::operator bool() const {
 
 void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_t instruction_index ) {
 	std::cout << std::setw(3) << instruction_index << ": " << op << std::endl;
+	// instructions.emplace_back( instruction::id_t::NOP ); // separates ir instructions
 	// annoying special cases
 	if( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ) {
 		instruction::parameter target = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, true ), 8 } );
@@ -210,8 +211,6 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 
 	// compute common parameters
 	instruction::parameter par[4];
-	if( op.usesResultParameter() and op.id != iop_t::id_t::IOP_FUNCTION )
-		par[0] = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, not op.parameterIsRead( 0 ) ), 8 } );
 	if( op.usesReadParameterA() ) {
 		if( op.a == ERROR_VARIABLE )
 			par[1] = instruction::parameter( op.c_a.integer );
@@ -224,6 +223,9 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 		else
 			par[2] = instruction::parameter( instruction::asm_reg{ getRegister( op.b, instruction_index, not op.parameterIsRead( 2 ) ), 8 } );
 	}
+	if( op.usesResultParameter() and op.id != iop_t::id_t::IOP_FUNCTION )
+		par[0] = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, not op.parameterIsRead( 0 ) ), 8 } );
+	
 	par[3] = instruction::parameter( op.label );
 
 	static const instruction::parameter rsp( RSP );
@@ -361,6 +363,10 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 				par[1] = instruction::parameter( instruction::asm_reg{ getRegister( op.a, instruction_index, not op.parameterIsRead( 1 ) ), 8 } );
 			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( rax, ERROR_ASM_REG ), par[1] );
 			instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( rax.reg, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
+			register_variables.at( usable_registers.at( ra.getVariableRegister( op.r ) ) ) = op.r;
+			for( variable_t x : register_variables )
+				std::cout << x << " ";
+			std::cout << std::endl;
 			break;
 		default:
 			lerr << error_line() << "Unknown IR instruction " << op.id << std::endl;
@@ -448,7 +454,7 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 	instructions.emplace_back( instruction::id_t::PUSH, RBP );
 	// 	instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( instruction::complex_address( instruction::asm_reg( RSP_REG, 8 ), instruction::asm_reg(), -8, 8, ERROR_LABEL ) ), instruction::asm_reg( RBP_REG, 8 ) );
 	instructions.emplace_back( instruction::id_t::MOV, RBP, RSP );
-	instructions.emplace_back( instruction::id_t::ADD, RSP, sf.localVariableSize() );
+	instructions.emplace_back( instruction::id_t::SUB, RSP, sf.localVariableSize()+8 );
 	// Generate code
 	end_of_function = f.parent->newLabel();
 	size_t bi = 1;
