@@ -1,8 +1,11 @@
+#include <iostream>
 #include "error_reporting.h"
 
 int err_line_number = 0;
 int err_character_number = 0;
 int err_line_character_number = 0;
+optional_output lexer_out( std::cout );
+optional_output syntree_out( std::cout );
 
 error_line::error_line( bool w ) {
 	line = err_line_number;
@@ -24,3 +27,8 @@ std::ostream& operator<<( std::ostream& os, error_line e ) {
 		os << "\033[1;31mError:\033[0m ";
 	return os;
 }
+
+optional_output::optional_output( std::ostream& os )
+	: enabled( false ), stream( os ) {
+}
+

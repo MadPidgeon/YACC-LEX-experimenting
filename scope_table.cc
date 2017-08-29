@@ -53,10 +53,6 @@ function_t scopeTable::addFunctionDeclaration( scope_t scope, symbol_t symbol, t
 	for( variable_t v : args )
 		a.push_back( getVariableType( v ) );
 	auto i = std::make_pair(symbol,a);
-	std::cout << "addFunctionDeclaration " << symbol;
-	for( type_t t : a )
-		std::cout << ", " << t;
-	std::cout << std::endl;
 	if( scopes.at( scope ).function_declarations.find( i ) != scopes.at( scope ).function_declarations.end() )
 		return ERROR_FUNCTION;
 	function_t id = function_declarations.size();

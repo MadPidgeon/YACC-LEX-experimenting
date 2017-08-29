@@ -5,8 +5,8 @@ CXXFLAGS=-Wall -std=c++11 -Wno-narrowing -Wfatal-errors
 #bin/$.o: $.cc
 #	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
-bin/debug.o: debug.c
-	$(CXX) -c debug.c -o bin/debug.o $(CXXFLAGS)
+bin/debug.o: debug.cc
+	$(CXX) -c debug.cc -o bin/debug.o $(CXXFLAGS)
 
 bin/symbol_table.o: symbol_table.cc
 	$(CXX) -c symbol_table.cc -o bin/symbol_table.o $(CXXFLAGS)
@@ -38,6 +38,9 @@ bin/assembly.o: assembly.cc
 bin/stack_frame.o: stack_frame.cc
 	$(CXX) -c stack_frame.cc -o bin/stack_frame.o $(CXXFLAGS)
 
+bin/interface.o: interface.cc
+	$(CXX) -c interface.cc -o bin/interface.o $(CXXFLAGS)
+
 bin/y.tab.o: y.tab.c
 	$(CXX) -c y.tab.c -o bin/y.tab.o $(CXXFLAGS)
 
@@ -50,5 +53,5 @@ y.tab.c y.tab.h: lang.y
 lex.yy.c lex.yy.h: lang.l y.tab.h
 	lex lang.l
 
-lexer: bin/lex.yy.o bin/y.tab.o bin/debug.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o bin/stack_frame.o
-	$(CXX) bin/debug.o bin/y.tab.o bin/lex.yy.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o bin/stack_frame.o -o lexer $(CXXFLAGS)
+lexer: bin/lex.yy.o bin/y.tab.o bin/debug.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o bin/stack_frame.o bin/interface.o
+	$(CXX) bin/debug.o bin/y.tab.o bin/lex.yy.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o bin/stack_frame.o bin/interface.o -o lexer $(CXXFLAGS)

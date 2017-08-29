@@ -18,6 +18,7 @@
 #include "flow_graph.h"
 #include "register_allocation.h"
 #include "assembly.h"
+#include "interface.h"
 
 #undef DEBUG
 
@@ -154,7 +155,7 @@ type:					VTYPE id {
 							$<typ>$ = &ERROR_TYPE;
 						}
 						| id lbra typelist rbra {
-							pmesg( 90, "Lexer: TYPENAME %s\n", symtab->getName( $<num>1 ).c_str() );
+							lexer_out << "TYPENAME " << symtab->getName( $<num>1 );
 							$<typ>$ = new type_t( scptab->getTypeDefinition( scopes.top(), $<num>1, *$<typlst>3 ) );
 							if( *$<typ>$ == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
@@ -509,12 +510,10 @@ int main( int argc, char** argv ) {
 	scptab = new scopeTable( symtab, strtab );
 	syntree = new syntaxTree( scptab );
 	scopes.push( GLOBAL_SCOPE );
-	if( argc < 2 ) {
-		printf("Missing input file!\n");
+	command_line_data settings;
+	if( not settings.parse( argc, argv ) )
 		return -1;
-	}
-	input_file_name = argv[1];
-	FILE* input_file = fopen(input_file_name,"r");
+	FILE* input_file = fopen( settings.infilenames[0].c_str(), "r" );
 	if( !input_file ) {
 		printf("Couldn't open input file!\n");
 		return -1;
