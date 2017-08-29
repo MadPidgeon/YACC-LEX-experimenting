@@ -28,7 +28,7 @@ const std::vector<std::string> node_t_to_str = {
 
 	"FUNCTION_CALL", "FUNCTION_DEFINITION",
 
-	"LIST_INDEXING",
+	"LIST_INDEXING", "TUPLE_INDEXING",
 
 	"EMPTY"
 };
@@ -67,6 +67,7 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_LIST: 
 		case N_SET:
 		case N_RETURN:
+		case N_TUPLE_INDEXING:
 			if( c != 1 or children[1] != nullptr )
 				return ERROR_TYPE;
 			break;
@@ -145,6 +146,10 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_LIST_INDEXING:
 			if( children[0]->data_type.isList() and children[1]->data_type == INT_TYPE )
 				return children[0]->data_type.getChildType();
+			return ERROR_TYPE;
+		case N_TUPLE_INDEXING:
+			if( children[0]->data_type.isTuple() and data.integer >= 0 and data.integer < children[0]->data_type.getParameterCount() )
+				return children[0]->data_type.getParameter( data.integer );
 			return ERROR_TYPE;
 		case N_JOIN: case N_MEET:
 			if( ( children[0]->data_type == STR_TYPE or children[0]->data_type.isList() or children[0]->data_type.isSet() ) and children[0]->data_type == children[1]->data_type )

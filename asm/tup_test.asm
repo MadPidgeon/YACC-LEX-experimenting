@@ -358,27 +358,27 @@ start:
 global main
 main:
 _6:
-	push rbp
-	mov rbp, rsp
-	add rsp, 80
-	mov qword [-8+rbp], 3
-	mov qword [-16+rbp], 4
-	mov r8, qword [-8+rbp]
-	mov qword [-32+rbp], r8
-	mov r8, qword [-16+rbp]
-	mov qword [-40+rbp], r8
-	sub rsp, 8
-	mov r8, qword [-32+rbp]
-	mov r9, qword [-40+rbp]
-	mov r10, r8
-	add r10, r9
-	push r10
-	call _3
-	pop r8
-	push r8
-	call _1
+  push rbp
+  mov rbp, rsp
+  add rsp, 80
+  mov qword [-8+rbp], 3
+  mov qword [-16+rbp], 4
+  mov r8, qword [-8+rbp]
+  mov qword [-32+rbp], r8
+  mov r8, qword [-16+rbp]
+  mov qword [-40+rbp], r8
+  sub rsp, 8
+  mov r8, qword [-32+rbp]
+  mov r9, qword [-40+rbp]
+  mov r10, r8
+  add r10, r9
+  push r10
+  call _3
+  pop r8
+  push r8
+  call _1
 _8:
-	mov rax, 60
-	mov rdi, 0
-	syscall
+  mov rax, 60
+  mov rdi, 0
+  syscall
 

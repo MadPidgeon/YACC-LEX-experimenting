@@ -23,6 +23,7 @@ const std::vector<std::string> iop_id_to_str = {
 	"STR_CONEQ",
 	"INT_EQ", "INT_NEQ", "INT_L", "INT_G", "INT_LE", "INT_GE",
 	"INT_ARR_LOAD", "INT_ARR_STORE",
+	"INT_TUP_LOAD", "INT_TUP_STORE",
 	"LIST_ALLOCATE"
 };
 
@@ -46,6 +47,7 @@ const std::vector<uint8_t> iop_t::iop_fields = {
 	IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF,
 	IOFR|IOFA,
 	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
+	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB,
 	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB,
 	IOFR|IOFA|IOFS
 };
@@ -369,7 +371,7 @@ void intermediateCode::function::translateNode( const syntaxTree::node* n, loop_
 			translateArguments( n );
 			break;
 		case N_EQUALS: case N_NOT_EQUALS: case N_ADD: case N_SUBTRACT: case N_MULTIPLY: case N_DIVIDE: case N_REMAINDER: case N_UMIN: 
-		case N_VARIABLE: case N_INTEGER: case N_FLOAT: case N_STRING: case N_LIST: case N_SET:
+		case N_VARIABLE: case N_INTEGER: case N_FLOAT: case N_STRING: case N_LIST: case N_SET: case N_TUPLE:
 			translateExpression( n );
 			break;
 		case N_IF: case N_WHILE: case N_FOR:
@@ -397,13 +399,13 @@ variable_t intermediateCode::function::translateExpression( const syntaxTree::no
 		return translateVariable( n );
 	if( n->type == N_INTEGER or n->type == N_FLOAT or n->type == N_STRING )
 		return translateConstant( n );
-	if( n->type == N_LIST or n->type == N_SET )
+	if( n->type == N_LIST or n->type == N_SET or n->type == N_TUPLE )
 		return translateContainer( n );
 	if( n->type == N_FUNCTION_CALL )
 		return translateFunctionCall( n );
 	if( n->type == N_JOIN or n->type == N_MEET )
 		return translateFunctionOperation( n );
-	if( n->type == N_LIST_INDEXING )
+	if( n->type == N_LIST_INDEXING or n->type == N_TUPLE_INDEXING )
 		return translateReadIndexing( n );
 	if( n->type == N_COMPARISON_CHAIN )
 		return translateComparisonChain( n );
@@ -424,16 +426,39 @@ void intermediateCode::function::translateLValue( const syntaxTree::node* n, var
 			addOperation( iop_t::id_t::IOP_INT_MOV, translateVariable( n ), value );
 		else if( n->data_type == FLT_TYPE )
 			addOperation( iop_t::id_t::IOP_FLT_MOV, translateVariable( n ), value );
+		else if( n->data_type.isTuple() )
+			translateTupleAssignment( translateVariable( n ), value, 0, n->data_type );
 		else
 			lerr << error_line() << "Assignment to type " << n->data_type << " not yet implemented" << std::endl;
-	}
-	else if( n->type == N_LIST_INDEXING ) {
+	} else if( n->type == N_LIST_INDEXING ) {
 		variable_t index = translateExpression( n->children[1] );
 		variable_t list = translateVariable( n->children[0] );
 		addOperation( iop_t::id_t::IOP_INT_ARR_STORE, list, index, value );
+	} else if( n->type == N_TUPLE_INDEXING ) {
+		variable_t tup = translateVariable( n->children[0] );
+		size_t offset = 0;
+		for( int i = 0; i < n->data.integer; ++i )
+			offset += n->data_type.getParameter( i ).rawSize();
+		addOperation( iop_t::id_t::IOP_INT_TUP_STORE, tup, ERROR_VARIABLE, value, ERROR_LABEL, {.integer = offset} );
 	} else {
 		lerr << error_line() << "Cannot assign to anything other than a variable" << std::endl;
 	}
+}
+
+size_t intermediateCode::function::translateTupleAssignment( variable_t target, variable_t source, size_t offset, type_t t ) {
+	assert( t.isTuple() );
+	for( type_t st : t.unpackProduct() ) {
+		if( st.isTuple() )
+			offset = translateTupleAssignment( target, source, offset, st );
+		else if( st == INT_TYPE ) {
+			variable_t t = parent->newTemporaryVariable( INT_TYPE );
+			addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, t, source, ERROR_VARIABLE, ERROR_LABEL, {.integer=0}, {.integer = offset} );
+			addOperation( iop_t::id_t::IOP_INT_TUP_STORE, target, ERROR_VARIABLE, t, ERROR_LABEL, {.integer = offset } );
+			offset += st.rawSize();
+		} else
+			lerr << error_line() << "Tuple assignment of type " << t << " not yet implemented" << std::endl; 		
+	}
+	return offset;
 }
 
 void intermediateCode::function::translateGarbage( const syntaxTree::node* n ) {
@@ -656,6 +681,10 @@ variable_t intermediateCode::function::translateContainer( const syntaxTree::nod
 		addOperation( iop_t::id_t::IOP_LIST_ALLOCATE, r, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, { .integer = s*n->data.integer } ); 
 		translateListElements( n->children[0], r, n->data.integer );
 		return r;
+	} else if( n->type == N_TUPLE ) {
+		variable_t r = parent->newTemporaryVariable( n->data_type );
+		translateTupleElements( n, r, 0 );
+		return r;
 	}
 	lerr << error_line() << "Sets not yet implemented" << std::endl;
 }
@@ -668,11 +697,30 @@ void intermediateCode::function::translateListElements( const syntaxTree::node* 
 		translateListElements( n->children[1], r, abstract_size );
 }
 
+void intermediateCode::function::translateTupleElements( const syntaxTree::node* n, variable_t r, size_t current_offset ) {
+	assert( n->type == N_TUPLE or n->type == N_TUPLE_LIST );
+	variable_t x = translateExpression( n->children[0] );
+	addOperation( iop_t::id_t::IOP_INT_TUP_STORE, r, ERROR_VARIABLE, x, ERROR_LABEL, {.integer = current_offset} );
+	if( n->children[1] )
+		translateTupleElements( n->children[1], r, current_offset + n->children[0]->data_type.rawSize() );
+}
+
 variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::node* n ) {
-	variable_t list = translateExpression( n->children[0] );
-	variable_t offset = translateExpression( n->children[1] );
+	assert( n->type ==  N_LIST_INDEXING or n->type == N_TUPLE_INDEXING );
 	variable_t r = parent->newTemporaryVariable( n->data_type );
-	addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, r, list, offset );
+	if( n->type == N_LIST_INDEXING ) {
+		assert( n->data_type == INT_TYPE );
+		variable_t list = translateExpression( n->children[0] );
+		variable_t offset = translateExpression( n->children[1] );
+		addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, r, list, offset );
+	} else {
+		assert( n->data_type == INT_TYPE );
+		variable_t tuple = translateExpression( n->children[0] );
+		size_t offset = 0;
+		for( int i = 0; i < n->data.integer; ++i )
+			offset += n->children[0]->data_type.getParameter( i ).rawSize();
+		addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, r, tuple, ERROR_VARIABLE, ERROR_LABEL, {.integer=0}, {.integer=offset} );
+	}	
 	return r;
 }
 

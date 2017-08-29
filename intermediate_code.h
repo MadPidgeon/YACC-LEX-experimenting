@@ -56,9 +56,13 @@ struct iop_t {
 						// [rab-]
 		// container instructions (38-40)
 		IOP_INT_ARR_LOAD, 
-						// [rab-] (variable, base, offset)
+						// [rab-] (variable, base, offset) r = *( a + offset )
 		IOP_INT_ARR_STORE,
 						// [rab-] ((R) base, offset, variable)
+		IOP_INT_TUP_LOAD,
+						// [rab-] (variable, base, offset)  r = *( (&a) + offset )
+		IOP_INT_TUP_STORE,
+						// [rab-] ((R) base, offset, variable)		
 		IOP_LIST_ALLOCATE,	
 						// [ra--] (memory adress,size in bytes)
 
@@ -132,10 +136,12 @@ public:
 		variable_t translateFunctionCall( const syntaxTree::node* n );
 		variable_t translateFunctionOperation( const syntaxTree::node* n );
 		void translateListElements( const syntaxTree::node* n, variable_t, size_t );
+		size_t translateTupleAssignment( variable_t target, variable_t source, size_t offset, type_t t );
 		void translateLValue( const syntaxTree::node* n, variable_t value );
 		variable_t translateVariable( const syntaxTree::node* n );
 		variable_t translateReadIndexing( const syntaxTree::node* n );
 		void translateSequentialBlock( const syntaxTree::node* n, loop_stack_t& );
+		void translateTupleElements( const syntaxTree::node* n, variable_t, size_t );
 		size_t addOperation( iop_t::id_t type, variable_t r = ERROR_VARIABLE, variable_t a = ERROR_VARIABLE, variable_t b = ERROR_VARIABLE, label_t l = ERROR_LABEL, iop_t::constant_t = {.integer=0}, iop_t::constant_t = {.integer=0} );
 	};
 private:

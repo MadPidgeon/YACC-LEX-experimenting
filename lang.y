@@ -354,6 +354,7 @@ function_call:			id lbra expression_list rbra {
 							/*std::cout << "function_call: " << ($<num>1) << " ";
 							$<node>3->print(std::cout);
 							std::cout << std::endl;*/
+							std::cout << ($<node>3->data_type) << std::endl;
 							function_t f = scptab->getFunction( scopes.top(), $<num>1, $<node>3->data_type );
 							variable_t v = scptab->getVariable( scopes.top(), $<num>1 );
 							if( f == ERROR_FUNCTION and v == ERROR_VARIABLE )
@@ -362,16 +363,25 @@ function_call:			id lbra expression_list rbra {
 								$<node>$ = new syntaxTree::node( N_FUNCTION_CALL, $<node>3, nullptr, {.integer = f } );
 							} else { // variable
 								type_t t = scptab->getVariableType( v );
+								syntaxTree::node* n = $<node>3;
 								if( t.isList() ) {
-									syntaxTree::node* n = $<node>3;
 									if( n->children[1] )
 										lerr << error_line(true) << "Expected 1 list index, others are ignored" << std::endl;
 									$<node>$ = new syntaxTree::node( N_LIST_INDEXING, new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = v } ), n->children[0] );
+									n->children[0] = nullptr;
+									delete n;
 								} else if( t.isFunction() ) {
-									std::cout << "Lexer: Function call by function pointer!\n";
 									$<node>$ = new syntaxTree::node( N_FUNCTION_CALL, $<node>3, new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = v} ) );
-									std::cout << "kaas\n";
-								} else	{
+								} else if( t.isTuple() ) {
+									std::cout << "TUPLES!" << std::endl;
+									if( n->children[1] == nullptr /*single argument*/
+											and n->children[0]->type == N_INTEGER /*constant argument*/ ) {
+										$<node>$ = new syntaxTree::node( N_TUPLE_INDEXING, new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = v } ), nullptr, {.integer = n->children[0]->data.integer } );
+										delete n;
+									} else {
+										lerr << error_line() << "Tuples can only be indexed by constants" << std::endl;
+									}									
+								} else {
 									lerr << error_line() << "Variable " << symtab->getName( $<num>1 ) << " is neither list nor function (but " << t << ")" << std::endl;
 									$<node>$ = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
 								}

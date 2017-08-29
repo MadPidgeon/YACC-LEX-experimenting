@@ -59,7 +59,13 @@ type_t::node* type_t::node::applySubstitution( size_t f, type_t target ) {
 }
 
 size_t type_t::node::rawSize() const {
-	return 8; // temp
+	if( structure == TUP_STRUCTURE ) {
+		size_t sum = 0;
+		for( node* n : parameters )
+			sum += n->rawSize();
+		return sum;
+	} else
+		return 8; // int, lst*, set*, flt
 }
 
 void type_t::node::print( std::ostream& os ) const {
@@ -135,6 +141,10 @@ bool type_t::isFunction() const {
 	return getBase() == FNC_STRUCTURE;
 }
 
+bool type_t::isTuple() const {
+	return getBase() == TUP_STRUCTURE;
+}
+
 bool type_t::operator==( const type_t& other ) const {
 	if( ( not root ) or ( not other.root ) )
 		return root == other.root;
@@ -174,6 +184,10 @@ type_t type_t::getParameter( int i ) const {
 	return getRoot()->parameters.at( i )->clone();
 }
 
+size_t type_t::getParameterCount() const {
+	assert( getRoot() );
+	return getRoot()->parameters.size();
+}
 
 type_t& type_t::operator=( const type_t& t ) {
 	if( t.getRoot() )

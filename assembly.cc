@@ -193,6 +193,21 @@ instruction::complex_address::operator bool() const {
 
 void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_t instruction_index ) {
 	std::cout << std::setw(3) << instruction_index << ": " << op << std::endl;
+	// annoying special cases
+	if( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ) {
+		instruction::parameter target = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, true ), 8 } );
+		instructions.emplace_back( instruction::id_t::MOV, target, instruction::complex_address( RBP, ERROR_ASM_REG, sf.getVariableLocation( op.a ) - op.c_b.integer, 8 , ERROR_LABEL ) );
+		return;
+	} else if( op.id == iop_t::id_t::IOP_INT_TUP_STORE ) {
+		instruction::parameter source;
+		if( op.b == ERROR_VARIABLE )
+			source = instruction::parameter( op.c_b.integer );
+		else
+			source = instruction::parameter( instruction::asm_reg{ getRegister( op.b, instruction_index, false ), 8 } );
+		instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( RBP, ERROR_ASM_REG, sf.getVariableLocation( op.r ) - op.c_a.integer, 8, ERROR_LABEL ), source );
+		return;
+	}
+
 	// compute common parameters
 	instruction::parameter par[4];
 	if( op.usesResultParameter() and op.id != iop_t::id_t::IOP_FUNCTION )
@@ -379,7 +394,7 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 	for( live_interval_t li : graph.naiveLiveIntervals() ) {
 		if( scptab->getVariableType( li.variable ) == FLT_TYPE )
 			floating_intervals.push_back( li );
-		else
+		else if( not scptab->getVariableType( li.variable ).isTuple() )
 			integer_intervals.push_back( li );
 	}
 	ra.reset( usable_register_count, integer_intervals );

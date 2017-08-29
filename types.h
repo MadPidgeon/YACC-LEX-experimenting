@@ -62,6 +62,7 @@ public:
 	bool isList() const;
 	bool isSet() const;
 	bool isFunction() const;
+	bool isTuple() const;
 	bool operator==( const type_t& ) const;
 	bool operator!=( const type_t& ) const;
 	type_t intersect( const type_t& ) const;
@@ -70,6 +71,7 @@ public:
 	void applySubstitution( size_t, type_t );
 	type_t rightFlattenTypeProduct( type_t left ) const;
 	std::vector<type_t> unpackProduct() const;
+	size_t getParameterCount() const;
 	type_t getParameter( int i ) const;
 	size_t rawSize() const;
 	type_t& operator=( const type_t& );

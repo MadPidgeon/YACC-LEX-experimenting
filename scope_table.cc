@@ -97,6 +97,8 @@ function_t scopeTable::getFunctionCount() const {
 }
 
 function_t scopeTable::getFunction( scope_t deep, symbol_t symbol, type_t type ) const {
+	if( type == ERROR_TYPE )
+		return ERROR_FUNCTION;
 	scope_t scope = deep;
 	auto arg_types = type.unpackProduct();
 	auto to_find = std::make_pair( symbol, arg_types );
