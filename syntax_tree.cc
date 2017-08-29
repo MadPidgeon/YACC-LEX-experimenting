@@ -158,7 +158,7 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_FUNCTION_DEFINITION:
 			return ERROR_TYPE; // entered by other code
 		default:
-			pmesg(90,"ERROR: operation N(%s) not yet implemented!\n", node_t_to_str[type].c_str() );
+			lerr << error_line() << "Operation N(" << node_t_to_str[type] << ") not yet implemented!" << std::endl;
 			return ERROR_TYPE;
 	}
 }

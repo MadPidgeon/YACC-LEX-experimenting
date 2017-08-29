@@ -6,6 +6,9 @@ int err_character_number = 0;
 int err_line_character_number = 0;
 optional_output lexer_out( std::cout );
 optional_output syntree_out( std::cout );
+optional_output ic_out( std::cout );
+optional_output opt_out( std::cout );
+optional_output asm_out( std::cout );
 
 error_line::error_line( bool w ) {
 	line = err_line_number;
@@ -25,6 +28,12 @@ std::ostream& operator<<( std::ostream& os, error_line e ) {
 		os << "\033[35mWarning:\033[0m ";
 	else
 		os << "\033[1;31mError:\033[0m ";
+	return os;
+}
+
+optional_output& operator<<( optional_output& os, decltype(std::endl<char, std::char_traits<char>> ) t ) {
+	if( os.enabled )
+		os.stream << t;
 	return os;
 }
 

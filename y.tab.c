@@ -312,14 +312,14 @@ static const unsigned short int yyrline[] =
 {
        0,    91,    91,    96,   101,   104,   107,   110,   113,   116,
      119,   122,   125,   128,   131,   134,   135,   138,   140,   145,
-     148,   153,   157,   163,   169,   180,   180,   194,   203,   207,
-     210,   214,   218,   218,   221,   221,   225,   227,   227,   229,
-     232,   236,   239,   243,   243,   247,   248,   258,   261,   271,
-     274,   286,   288,   291,   294,   301,   304,   305,   307,   311,
-     314,   318,   322,   325,   329,   332,   339,   343,   348,   348,
-     350,   354,   392,   396,   396,   408,   413,   416,   420,   420,
-     435,   438,   445,   448,   452,   455,   459,   463,   467,   471,
-     476,   480
+     148,   153,   157,   163,   169,   180,   180,   193,   202,   206,
+     209,   213,   217,   217,   220,   220,   224,   226,   226,   228,
+     231,   235,   238,   242,   242,   246,   247,   257,   260,   270,
+     273,   285,   287,   290,   293,   300,   303,   304,   306,   310,
+     313,   317,   321,   324,   328,   331,   338,   342,   347,   347,
+     349,   353,   390,   394,   394,   406,   411,   414,   418,   418,
+     433,   436,   443,   446,   450,   453,   457,   461,   465,   469,
+     474,   478
 };
 #endif
 
@@ -1209,7 +1209,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
   case 22:
 #line 157 "lang.y" /* glr.c:816  */
     {
-							lexer_out << "TYPENAME " << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) );
+							lexer_out << "TYPENAME " << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) ) << std::endl;
 							((*yyvalp).typ) = new type_t( scptab->getTypeDefinition( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), *(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst) ) );
 							if( *((*yyvalp).typ) == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) ).c_str() << "'" << std::endl;
@@ -1220,7 +1220,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
   case 23:
 #line 163 "lang.y" /* glr.c:816  */
     {
-							pmesg( 90, "Lexer: TYPENAME %s\n", symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) ).c_str() );
+							lexer_out << "TYPENAME " << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) ) << std::endl;
 							((*yyvalp).typ) = new type_t( scptab->getTypeDefinition( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) ) );
 							if( *((*yyvalp).typ) == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) ).c_str() << "'" << std::endl;
@@ -1246,16 +1246,15 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
   case 25:
 #line 180 "lang.y" /* glr.c:816  */
     {
-							//pmesg( 90, "Declaring variables of type %d\n", $<num>1 );
-							std::cout << "Declaring variables of type " << (*(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typ)) << std::endl;
+							lexer_out << "Declaring variables of type " << (*(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typ)) << std::endl;
 							decllisttypes.push( *(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typ)  );
 							delete (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typ);
 						}
-#line 1255 "y.tab.c" /* glr.c:816  */
+#line 1254 "y.tab.c" /* glr.c:816  */
     break;
 
   case 26:
-#line 185 "lang.y" /* glr.c:816  */
+#line 184 "lang.y" /* glr.c:816  */
     {
 							syntaxTree::node* n = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node); // <- 3
 							if( n == nullptr )
@@ -1264,11 +1263,11 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								((*yyvalp).node) = n;
 							decllisttypes.pop();
 						}
-#line 1268 "y.tab.c" /* glr.c:816  */
+#line 1267 "y.tab.c" /* glr.c:816  */
     break;
 
   case 27:
-#line 194 "lang.y" /* glr.c:816  */
+#line 193 "lang.y" /* glr.c:816  */
     {
 							if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node) == nullptr ) {
 								((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
@@ -1278,105 +1277,105 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								((*yyvalp).node) = new syntaxTree::node( N_BLOCK_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 							}
 						}
-#line 1282 "y.tab.c" /* glr.c:816  */
+#line 1281 "y.tab.c" /* glr.c:816  */
     break;
 
   case 28:
-#line 203 "lang.y" /* glr.c:816  */
+#line 202 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1290 "y.tab.c" /* glr.c:816  */
+#line 1289 "y.tab.c" /* glr.c:816  */
     break;
 
   case 29:
-#line 207 "lang.y" /* glr.c:816  */
+#line 206 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ASSIGN, symbolToVariable( (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.num), decllisttypes.top() ), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1298 "y.tab.c" /* glr.c:816  */
+#line 1297 "y.tab.c" /* glr.c:816  */
     break;
 
   case 30:
-#line 210 "lang.y" /* glr.c:816  */
+#line 209 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_GARBAGE, nullptr, nullptr, {.integer=scptab->addVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num), decllisttypes.top() ) } );
 						}
-#line 1306 "y.tab.c" /* glr.c:816  */
+#line 1305 "y.tab.c" /* glr.c:816  */
     break;
 
   case 31:
-#line 214 "lang.y" /* glr.c:816  */
+#line 213 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ASSIGN, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );	
 						}
-#line 1314 "y.tab.c" /* glr.c:816  */
+#line 1313 "y.tab.c" /* glr.c:816  */
     break;
 
   case 33:
-#line 218 "lang.y" /* glr.c:816  */
+#line 217 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1322 "y.tab.c" /* glr.c:816  */
+#line 1321 "y.tab.c" /* glr.c:816  */
     break;
 
   case 35:
-#line 221 "lang.y" /* glr.c:816  */
+#line 220 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1330 "y.tab.c" /* glr.c:816  */
+#line 1329 "y.tab.c" /* glr.c:816  */
     break;
 
   case 37:
-#line 227 "lang.y" /* glr.c:816  */
+#line 226 "lang.y" /* glr.c:816  */
     { ((*yyvalp).node) = nullptr; }
-#line 1336 "y.tab.c" /* glr.c:816  */
+#line 1335 "y.tab.c" /* glr.c:816  */
     break;
 
   case 39:
-#line 229 "lang.y" /* glr.c:816  */
+#line 228 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1344 "y.tab.c" /* glr.c:816  */
+#line 1343 "y.tab.c" /* glr.c:816  */
     break;
 
   case 40:
-#line 232 "lang.y" /* glr.c:816  */
+#line 231 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1352 "y.tab.c" /* glr.c:816  */
+#line 1351 "y.tab.c" /* glr.c:816  */
     break;
 
   case 41:
-#line 236 "lang.y" /* glr.c:816  */
+#line 235 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1360 "y.tab.c" /* glr.c:816  */
+#line 1359 "y.tab.c" /* glr.c:816  */
     break;
 
   case 42:
-#line 239 "lang.y" /* glr.c:816  */
+#line 238 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_COMPARISON_CHAIN, handleRelop( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num), (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) ) );
 						}
-#line 1368 "y.tab.c" /* glr.c:816  */
+#line 1367 "y.tab.c" /* glr.c:816  */
     break;
 
   case 44:
-#line 243 "lang.y" /* glr.c:816  */
+#line 242 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = handleRelop( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num), (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1376 "y.tab.c" /* glr.c:816  */
+#line 1375 "y.tab.c" /* glr.c:816  */
     break;
 
   case 46:
-#line 248 "lang.y" /* glr.c:816  */
+#line 247 "lang.y" /* glr.c:816  */
     { // associativity needs to be fixed in the syntax tree or intermediate code
 							node_t type;
 							int c = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num);
@@ -1386,19 +1385,19 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								type = N_MEET;
 							((*yyvalp).node) = new syntaxTree::node( type, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1390 "y.tab.c" /* glr.c:816  */
+#line 1389 "y.tab.c" /* glr.c:816  */
     break;
 
   case 47:
-#line 258 "lang.y" /* glr.c:816  */
+#line 257 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);	
 						}
-#line 1398 "y.tab.c" /* glr.c:816  */
+#line 1397 "y.tab.c" /* glr.c:816  */
     break;
 
   case 48:
-#line 261 "lang.y" /* glr.c:816  */
+#line 260 "lang.y" /* glr.c:816  */
     {
 							node_t type;
 							int c = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num);
@@ -1408,19 +1407,19 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								type = N_SUBTRACT;
 							((*yyvalp).node) = new syntaxTree::node( type, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1412 "y.tab.c" /* glr.c:816  */
+#line 1411 "y.tab.c" /* glr.c:816  */
     break;
 
   case 49:
-#line 271 "lang.y" /* glr.c:816  */
+#line 270 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1420 "y.tab.c" /* glr.c:816  */
+#line 1419 "y.tab.c" /* glr.c:816  */
     break;
 
   case 50:
-#line 274 "lang.y" /* glr.c:816  */
+#line 273 "lang.y" /* glr.c:816  */
     {
 							node_t type;
 							int c = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num);
@@ -1432,145 +1431,144 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								type = N_REMAINDER;
 							((*yyvalp).node) = new syntaxTree::node( type, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1436 "y.tab.c" /* glr.c:816  */
+#line 1435 "y.tab.c" /* glr.c:816  */
     break;
 
   case 52:
-#line 288 "lang.y" /* glr.c:816  */
+#line 287 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_INTEGER, nullptr, nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num)} );
 						}
-#line 1444 "y.tab.c" /* glr.c:816  */
+#line 1443 "y.tab.c" /* glr.c:816  */
     break;
 
   case 53:
-#line 291 "lang.y" /* glr.c:816  */
+#line 290 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_FLOAT, nullptr, nullptr, {.floating=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.flt)} );
 						}
-#line 1452 "y.tab.c" /* glr.c:816  */
+#line 1451 "y.tab.c" /* glr.c:816  */
     break;
 
   case 54:
-#line 294 "lang.y" /* glr.c:816  */
+#line 293 "lang.y" /* glr.c:816  */
     {
-							pmesg(90, "Lexer: STR: \"%s\"\n", input_str.c_str());
+							lexer_out << "STR: \"" << input_str << "\"" << std::endl;
 							syntaxTree::node::extra_data_t d;
 							d.string = strdup(input_str.c_str());
 							((*yyvalp).node) = new syntaxTree::node( N_STRING, nullptr, nullptr, d );
 							input_str.clear();
 						}
-#line 1464 "y.tab.c" /* glr.c:816  */
+#line 1463 "y.tab.c" /* glr.c:816  */
     break;
 
   case 55:
-#line 301 "lang.y" /* glr.c:816  */
+#line 300 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1472 "y.tab.c" /* glr.c:816  */
+#line 1471 "y.tab.c" /* glr.c:816  */
     break;
 
   case 58:
-#line 307 "lang.y" /* glr.c:816  */
+#line 306 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_TUPLE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1480 "y.tab.c" /* glr.c:816  */
+#line 1479 "y.tab.c" /* glr.c:816  */
     break;
 
   case 59:
-#line 311 "lang.y" /* glr.c:816  */
+#line 310 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_TUPLE_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1488 "y.tab.c" /* glr.c:816  */
+#line 1487 "y.tab.c" /* glr.c:816  */
     break;
 
   case 60:
-#line 314 "lang.y" /* glr.c:816  */
+#line 313 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_TUPLE_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1496 "y.tab.c" /* glr.c:816  */
+#line 1495 "y.tab.c" /* glr.c:816  */
     break;
 
   case 61:
-#line 318 "lang.y" /* glr.c:816  */
+#line 317 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1504 "y.tab.c" /* glr.c:816  */
+#line 1503 "y.tab.c" /* glr.c:816  */
     break;
 
   case 62:
-#line 322 "lang.y" /* glr.c:816  */
+#line 321 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data.integer+1} );
 						}
-#line 1512 "y.tab.c" /* glr.c:816  */
+#line 1511 "y.tab.c" /* glr.c:816  */
     break;
 
   case 63:
-#line 325 "lang.y" /* glr.c:816  */
+#line 324 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_LIST );
 						}
-#line 1520 "y.tab.c" /* glr.c:816  */
+#line 1519 "y.tab.c" /* glr.c:816  */
     break;
 
   case 64:
-#line 329 "lang.y" /* glr.c:816  */
+#line 328 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node), nullptr, {.integer=0} );
 						}
-#line 1528 "y.tab.c" /* glr.c:816  */
+#line 1527 "y.tab.c" /* glr.c:816  */
     break;
 
   case 65:
-#line 332 "lang.y" /* glr.c:816  */
+#line 331 "lang.y" /* glr.c:816  */
     {
 							type_t a = (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node)->data_type, b = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data_type;
 							if( a != b and a != ERROR_TYPE and b != ERROR_TYPE )
 								lerr << error_line() << "Lists and sets can only contain elements of a single type" << std::endl;
 							((*yyvalp).node) = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node), {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data.integer+1} );
 						}
-#line 1539 "y.tab.c" /* glr.c:816  */
+#line 1538 "y.tab.c" /* glr.c:816  */
     break;
 
   case 66:
-#line 339 "lang.y" /* glr.c:816  */
+#line 338 "lang.y" /* glr.c:816  */
     {
 							input_str.append( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 							free( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 						}
-#line 1548 "y.tab.c" /* glr.c:816  */
+#line 1547 "y.tab.c" /* glr.c:816  */
     break;
 
   case 67:
-#line 343 "lang.y" /* glr.c:816  */
+#line 342 "lang.y" /* glr.c:816  */
     {
 							input_str.append( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 							free( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 						}
-#line 1557 "y.tab.c" /* glr.c:816  */
+#line 1556 "y.tab.c" /* glr.c:816  */
     break;
 
   case 70:
-#line 350 "lang.y" /* glr.c:816  */
+#line 349 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = symbolToVariable( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) );
 						}
-#line 1565 "y.tab.c" /* glr.c:816  */
+#line 1564 "y.tab.c" /* glr.c:816  */
     break;
 
   case 71:
-#line 354 "lang.y" /* glr.c:816  */
+#line 353 "lang.y" /* glr.c:816  */
     {
 							/*std::cout << "function_call: " << ($<num>1) << " ";
 							$<node>3->print(std::cout);
 							std::cout << std::endl;*/
-							std::cout << ((((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type) << std::endl;
 							function_t f = scptab->getFunction( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type );
 							variable_t v = scptab->getVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) );
 							if( f == ERROR_FUNCTION and v == ERROR_VARIABLE )
@@ -1603,29 +1601,29 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								}
 							}
 						}
-#line 1607 "y.tab.c" /* glr.c:816  */
+#line 1605 "y.tab.c" /* glr.c:816  */
     break;
 
   case 72:
-#line 392 "lang.y" /* glr.c:816  */
+#line 390 "lang.y" /* glr.c:816  */
     {
 							lerr << "function_definition" << std::endl;
 						}
-#line 1615 "y.tab.c" /* glr.c:816  */
+#line 1613 "y.tab.c" /* glr.c:816  */
     break;
 
   case 73:
-#line 396 "lang.y" /* glr.c:816  */
+#line 394 "lang.y" /* glr.c:816  */
     {
 							scopes.push( previous_nested_scope );
 							function_t f = scptab->addFunctionDeclaration( scopes.top(), NONE_SYMBOL, *(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typ), scptab->getAllVariables( scopes.top() ) );
 							functions.push( f );
 						}
-#line 1625 "y.tab.c" /* glr.c:816  */
+#line 1623 "y.tab.c" /* glr.c:816  */
     break;
 
   case 74:
-#line 400 "lang.y" /* glr.c:816  */
+#line 398 "lang.y" /* glr.c:816  */
     {
 							type_t t( FNC_STRUCTURE, { (((yyGLRStackItem const *)yyvsp)[YYFILL (-7)].yystate.yysemantics.yysval.node)->data_type, *(((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.typ) } );
 							(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->type = N_SEQUENTIAL_BLOCK;
@@ -1633,36 +1631,36 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							functions.pop();
 							((*yyvalp).node)->data_type = t;
 						}
-#line 1637 "y.tab.c" /* glr.c:816  */
+#line 1635 "y.tab.c" /* glr.c:816  */
     break;
 
   case 75:
-#line 408 "lang.y" /* glr.c:816  */
+#line 406 "lang.y" /* glr.c:816  */
     {
 							variable_t v = scptab->addVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num), *(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typ) ); // scoping issues
 							((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=v} );
 						}
-#line 1646 "y.tab.c" /* glr.c:816  */
+#line 1644 "y.tab.c" /* glr.c:816  */
     break;
 
   case 76:
-#line 413 "lang.y" /* glr.c:816  */
+#line 411 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1654 "y.tab.c" /* glr.c:816  */
+#line 1652 "y.tab.c" /* glr.c:816  */
     break;
 
   case 77:
-#line 416 "lang.y" /* glr.c:816  */
+#line 414 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1662 "y.tab.c" /* glr.c:816  */
+#line 1660 "y.tab.c" /* glr.c:816  */
     break;
 
   case 78:
-#line 420 "lang.y" /* glr.c:816  */
+#line 418 "lang.y" /* glr.c:816  */
     {
 							structure_t base = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type.getBase();
 							if( base != LST_STRUCTURE and base != SET_STRUCTURE )
@@ -1670,11 +1668,11 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							type_t t = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type.getChildType();
 							symbolToVariable( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), t );
 						}
-#line 1674 "y.tab.c" /* glr.c:816  */
+#line 1672 "y.tab.c" /* glr.c:816  */
     break;
 
   case 79:
-#line 426 "lang.y" /* glr.c:816  */
+#line 424 "lang.y" /* glr.c:816  */
     {
 							symbol_t s = symtab->addTemporarySymbol();
 							((*yyvalp).node) = new syntaxTree::node( N_SEQUENTIAL_BLOCK, 
@@ -1683,112 +1681,112 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 									(((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node) ),
 								new syntaxTree::node( N_WHILE, new syntaxTree::node( N_EMPTY ) /*rip*/, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) ) );
 						}
-#line 1687 "y.tab.c" /* glr.c:816  */
+#line 1685 "y.tab.c" /* glr.c:816  */
     break;
 
   case 80:
-#line 435 "lang.y" /* glr.c:816  */
+#line 433 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_WHILE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1695 "y.tab.c" /* glr.c:816  */
+#line 1693 "y.tab.c" /* glr.c:816  */
     break;
 
   case 81:
-#line 438 "lang.y" /* glr.c:816  */
+#line 436 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_WHILE, 
 								(((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.node), 
 								new syntaxTree::node( N_ELSE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) )
 							);
 						}
-#line 1706 "y.tab.c" /* glr.c:816  */
+#line 1704 "y.tab.c" /* glr.c:816  */
     break;
 
   case 82:
-#line 445 "lang.y" /* glr.c:816  */
+#line 443 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_IF, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1714 "y.tab.c" /* glr.c:816  */
+#line 1712 "y.tab.c" /* glr.c:816  */
     break;
 
   case 83:
-#line 448 "lang.y" /* glr.c:816  */
+#line 446 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_IF, (((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.node), new syntaxTree::node( N_ELSE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) ) );
 						}
-#line 1722 "y.tab.c" /* glr.c:816  */
+#line 1720 "y.tab.c" /* glr.c:816  */
     break;
 
   case 84:
-#line 452 "lang.y" /* glr.c:816  */
+#line 450 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=1} );
 						}
-#line 1730 "y.tab.c" /* glr.c:816  */
+#line 1728 "y.tab.c" /* glr.c:816  */
     break;
 
   case 85:
-#line 455 "lang.y" /* glr.c:816  */
+#line 453 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num)} );
 						}
-#line 1738 "y.tab.c" /* glr.c:816  */
+#line 1736 "y.tab.c" /* glr.c:816  */
     break;
 
   case 86:
-#line 459 "lang.y" /* glr.c:816  */
+#line 457 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_CONTINUE );
 						}
-#line 1746 "y.tab.c" /* glr.c:816  */
+#line 1744 "y.tab.c" /* glr.c:816  */
     break;
 
   case 87:
-#line 463 "lang.y" /* glr.c:816  */
+#line 461 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_RETURN, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1754 "y.tab.c" /* glr.c:816  */
+#line 1752 "y.tab.c" /* glr.c:816  */
     break;
 
   case 88:
-#line 467 "lang.y" /* glr.c:816  */
+#line 465 "lang.y" /* glr.c:816  */
     {
 							scopes.push( scptab->addScope( scopes.top() ) );
 						}
-#line 1762 "y.tab.c" /* glr.c:816  */
+#line 1760 "y.tab.c" /* glr.c:816  */
     break;
 
   case 89:
-#line 471 "lang.y" /* glr.c:816  */
+#line 469 "lang.y" /* glr.c:816  */
     {
 							previous_nested_scope = scopes.top();
 							scopes.pop();
 						}
-#line 1771 "y.tab.c" /* glr.c:816  */
+#line 1769 "y.tab.c" /* glr.c:816  */
     break;
 
   case 90:
-#line 476 "lang.y" /* glr.c:816  */
+#line 474 "lang.y" /* glr.c:816  */
     {
 							scopes.push( scptab->addScope( scopes.top() ) );
 						}
-#line 1779 "y.tab.c" /* glr.c:816  */
+#line 1777 "y.tab.c" /* glr.c:816  */
     break;
 
   case 91:
-#line 480 "lang.y" /* glr.c:816  */
+#line 478 "lang.y" /* glr.c:816  */
     {
 							previous_nested_scope = scopes.top();
 							scopes.pop();
 						}
-#line 1788 "y.tab.c" /* glr.c:816  */
+#line 1786 "y.tab.c" /* glr.c:816  */
     break;
 
 
-#line 1792 "y.tab.c" /* glr.c:816  */
+#line 1790 "y.tab.c" /* glr.c:816  */
       default: break;
     }
 
@@ -3470,7 +3468,7 @@ yypdumpstack (yyGLRStack* yystackp)
 
 
 
-#line 485 "lang.y" /* glr.c:2584  */
+#line 483 "lang.y" /* glr.c:2584  */
 
 
 /* C-CODE */
@@ -3508,16 +3506,17 @@ int main( int argc, char** argv ) {
 		return -1;
 	}
 	yyin = input_file;
+	lexer_out << "Tokens:" << std::endl;
 	int result = yyparse();
-	std::cout << "Syntax Tree:" << (*syntree) << std::endl << std::endl;
+	syntree_out << "\nSyntax Tree:" << (*syntree) << std::endl << std::endl;
 	intermediateCode ic( scptab );
 	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
-	std::cout << "Scope Table:" << std::endl << (*scptab) << std::endl;
-	std::cout << "Intermediate Code:" << std::endl << ic << std::endl;
+	syntree_out << "Scope Table:" << std::endl << (*scptab) << std::endl;
+	ic_out << "Intermediate Code:" << std::endl << ic << std::endl;
 	assemblyGenerator ag( ic );
-	ag.print( std::cout, false );
+	if( asm_out.enabled )
+		ag.print( asm_out.stream, false );
 	std::ofstream ofile( "a.out" );
-	std::cout << "Printing..." << std::endl;
 	// std::cout << "Assembly:" << std::endl << ag << std::endl;
 	ofile << ag << std::endl;
 	return 0;

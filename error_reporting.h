@@ -24,14 +24,21 @@ std::ostream& operator<<( std::ostream& os, error_line e );
 struct optional_output {
 	bool enabled;
 	std::ostream& stream;
+//	operator std::ostream&();
 	optional_output( std::ostream& os );
 };
 
-template<typename T> optional_output& operator<<( optional_output& os, T x ) {
+template<typename T> 
+optional_output& operator<<( optional_output& os, T x ) {
 	if( os.enabled )
 		os.stream << x;
 	return os;
 }
 
+optional_output& operator<<( optional_output& os, decltype(std::endl<char, std::char_traits<char>>) );
+
 extern optional_output lexer_out;
 extern optional_output syntree_out;
+extern optional_output ic_out;
+extern optional_output opt_out;
+extern optional_output asm_out;

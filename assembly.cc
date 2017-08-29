@@ -192,7 +192,7 @@ instruction::complex_address::operator bool() const {
 // ************************************************
 
 void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_t instruction_index ) {
-	std::cout << std::setw(3) << instruction_index << ": " << op << std::endl;
+	asm_out << std::setw(3) << instruction_index << ": " << op << std::endl;
 	// instructions.emplace_back( instruction::id_t::NOP ); // separates ir instructions
 	// annoying special cases
 	if( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ) {
@@ -365,8 +365,8 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 			instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( rax.reg, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
 			register_variables.at( usable_registers.at( ra.getVariableRegister( op.r ) ) ) = op.r;
 			for( variable_t x : register_variables )
-				std::cout << x << " ";
-			std::cout << std::endl;
+				asm_out << x << " ";
+			asm_out << std::endl;
 			break;
 		default:
 			lerr << error_line() << "Unknown IR instruction " << op.id << std::endl;
@@ -389,11 +389,11 @@ void assemblyGenerator::generateProgram( const intermediateCode& ic ) {
 }
 
 void assemblyGenerator::generateFunction( const intermediateCode::function& f, std::string prefix, bool main ) {
-	std::cout << "Generating function " << prefix << std::endl;
+	asm_out << "Generating function " << prefix << std::endl;
 	// Optimize code
 	flowGraph graph( f );
 	graph.optimize();
-	std::cout << "Intermediate Code:" << std::endl << graph << std::endl;
+	asm_out << "Intermediate Code:" << std::endl << graph << std::endl;
 	// Compute register allocation
 	graph.computeLiveness();
 	std::vector<live_interval_t> integer_intervals, floating_intervals;
@@ -408,16 +408,16 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 	ra_flt.reset( usable_floating_registers.size(), floating_intervals );
 	ra_flt.linearScan();
 	{
-		std::cout << "int:" << std::endl;
+		asm_out << "int:" << std::endl;
 		auto live_intervals = ra.getRegisterAssignment();
 		std::sort( live_intervals.begin(), live_intervals.end(), startCompare );
 		for( auto li : live_intervals )
-			std::cout << li.variable << " [" << li.begin << "," << li.end << "]" << li.assigned_register << "\n";
-		std::cout << "flt:" << std::endl;
+			asm_out << li.variable << " [" << li.begin << "," << li.end << "]" << li.assigned_register << "\n";
+		asm_out << "flt:" << std::endl;
 		auto live_intervals_flt = ra_flt.getRegisterAssignment();
 		std::sort( live_intervals_flt.begin(), live_intervals_flt.end(), startCompare );
 		for( auto li : live_intervals_flt )
-			std::cout << li.variable << " [" << li.begin << "," << li.end << "]" << li.assigned_register << "\n";
+			asm_out << li.variable << " [" << li.begin << "," << li.end << "]" << li.assigned_register << "\n";
 	}
 
 	auto code = graph.generateFunction().operations;
@@ -438,15 +438,12 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 			}
 		}
 	}
-	/*for( variable_t v : register_variables )
-		std::cout << v << " ";
-	if( prefix == "_7_" )
-		std::cout << ra.getVariableRegister( 7 ) << ":" << getRegister( 7, 2, false );*/
-	std::cout << "\033[1;32m";
-	std::cout << sf << std::endl;
-	std::cout << std::endl;
 	
-	std::cout << "\033[0m\n"; 
+	asm_out << "Stack Frame: " << std::endl;
+	asm_out << "\033[1;32m";
+	asm_out << sf << std::endl;
+	asm_out << std::endl;
+	asm_out << "\033[0m\n"; 
 	/*for( auto x : live_intervals )
 		variable_register[ x.variable ] = x.assigned_register+8;*/
 	// Generate preamble
@@ -506,7 +503,7 @@ void assemblyGenerator::restoreRegisters( size_t instruction_index ) {
 }
 
 register_t assemblyGenerator::getRegister( variable_t x, size_t instruction_index, bool define ) {
-	std::cout << "getRegister(" << x << "," << instruction_index << "," << define << ");\n";
+	asm_out << "getRegister(" << x << "," << instruction_index << "," << define << ");\n";
 	if( scptab->getVariableType( x ) == FLT_TYPE ) {
 		// check if variable in volatile memory
 		for( register_t r : volatile_floating_registers )
@@ -538,15 +535,9 @@ register_t assemblyGenerator::getRegister( variable_t x, size_t instruction_inde
 			if( register_variables.at( r ) == x )
 				return r;
 
-		//if( x == 7 ) {
-			for( variable_t v : register_variables )
-				std::cout << v << " ";
-			std::cout << std::endl;
-		//}		
 		// if variable is non-volatile, get its register
 		register_t i = ra.getVariableRegister( x );	
 		if( i != ERROR_REGISTER ) {
-			// std::cout << "?";
 			register_t r = usable_registers.at( i );
 			if( register_variables.at( r ) != x )
 				if( not define )
@@ -594,7 +585,7 @@ void assemblyGenerator::resetRegisters() {
 }
 
 void assemblyGenerator::loadVariable( variable_t v, register_t r ) {
-	std::cout << "loadVariable(" << v << "," << r << ");\n";
+	asm_out << "loadVariable(" << v << "," << r << ");\n";
 	if( v == ERROR_VARIABLE )
 		return;
 	auto offset = sf.getVariableLocation( v );
@@ -635,6 +626,7 @@ label_t assemblyGenerator::addFunctionPointerDefinition( label_t l ) {
 }
 
 void assemblyGenerator::print( std::ostream& os, bool h ) const {
+	os << std::setfill(' ') << std::left;
 	if( h ) {
 		os << definitions.str() << std::endl;
 		std::ifstream header_file("header.asm");

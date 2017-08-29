@@ -61,7 +61,7 @@ ELLIPSIS	"..."
 %%
 
 "\""		{
-				pmesg(90, "Lexer: entering string\n", yytext);
+				lexer_out << "entering string" << std::endl;
 				string_state = 1;
 				BEGIN(STRING_STATE);
 				return STRING_BEGIN;
@@ -79,7 +79,7 @@ ELLIPSIS	"..."
 			}
 
 <STRING_STATE>"\"" {
-				pmesg(90, "Lexer: exiting string\n", yytext);
+				lexer_out << "exiting string" << std::endl;
 				BEGIN(INITIAL);
 				return STRING_END;
 			}
@@ -117,19 +117,19 @@ ELLIPSIS	"..."
 
 <STRING_ESCAPE_STATE>. {
 				yylval.str = strdup(yytext);
-				pmesg(90, "Lexer: Unknown escape character \\%s\n", yytext);
+				lexer_out << "Unknown escape character \\" << yytext << std::endl;
 				string_state = 1;
 				BEGIN(STRING_STATE);
 				return STRING_PARTICLE;
 			}
 
 {ELLIPSIS}	{
-				pmesg(90, "Lexer: ELLIPSIS\n");
+				lexer_out << "ELLIPSIS" << std::endl;
 				return ELLIPSIS;
 			}
 
 {FLT}		{
-				pmesg(90, "Lexer: FLT: %s\n", yytext);
+				lexer_out << "FLT: " << yytext << std::endl;
 				yylval.flt = strtod( yytext, nullptr );
 				return FLT;
 			}
@@ -140,88 +140,88 @@ ELLIPSIS	"..."
 				int base = atoi(yytext+i+1);
 				char* end_ptr;
 				yylval.num = strtol( yytext, &end_ptr, base );
-				pmesg(90, "Lexer: INT: %s base %d\n", yytext, base );
+				lexer_out << "INT: " << yytext << " base " << base << std::endl;
 				if( *end_ptr != '_' )
-					pmesg(0, "Lexer: Invalid integral %s\n", yytext );
+					lerr << error_line() << "Invalid integral " << yytext << std::endl;
 				return INT;
 			}
 
 {DDEC}		{
-				pmesg(90, "Lexer: INT: %s\n", yytext);
+				lexer_out << "INT: " << yytext << std::endl;
 				yylval.num = strtol( yytext, nullptr, 10 );
 				return INT;
 			}
 
 {DHEX}		{
-				pmesg(90, "Lexer: INT: %s\n", yytext);
+				lexer_out << "INT: " << yytext << std::endl;
 				yylval.num = strtol( yytext+2, nullptr, 16 );
 				return INT;
 			}
 
 {DBIN}		{
-				pmesg(90, "Lexer: INT: %s\n", yytext);
+				lexer_out << "INT: " << yytext << std::endl;
 				yylval.num = strtol( yytext+2, nullptr, 2 );
 				return INT;
 			}
 
 "->"		{
-				pmesg(90, "Lexer: MAPSTO\n");
+				lexer_out << "MAPSTO" << std::endl;
 				return MAPSTO;
 			}
 
 break		{
-				pmesg(90, "Lexer: BREAK\n" );
+				lexer_out << "BREAK" << std::endl;
 				return BREAK;
 			}
 
 continue	{
-				pmesg(90, "Lexer: CONTINUE\n" );
+				lexer_out << "CONTINUE" << std::endl;
 				return CONTINUE;
 			}
 
 type		{
-				pmesg(90, "Lexer: VTYPE: %s\n", yytext);
+				lexer_out << "VTYPE: " << yytext << std::endl;
 				return VTYPE;
 			}
 
 func		{
-				pmesg(90, "Lexer: FUNC\n");
+				lexer_out << "FUNC" << std::endl;
 				return FUNC;
 			}
 
 if			{
-				pmesg(90, "Lexer: IF\n");
+				lexer_out << "IF" << std::endl;
 				return IF;
 			}
 
 else		{
-				pmesg(90, "Lexer: ELSE\n");
+				lexer_out << "ELSE" << std::endl;
 				return ELSE;
 			}
 
 while		{
-				pmesg(90, "Lexer: WHILE\n");
+				lexer_out << "WHILE" << std::endl;
 				return WHILE;
 			}
 
 for			{
-				pmesg(90, "Lexer: FOR\n");
+				lexer_out << "FOR" << std::endl;
 				return FOR;
 			}
 
 in			{
-				pmesg(90, "Lexer: IN\n");
+				lexer_out << "IN" << std::endl;
 				return IN;
 			}
 
 return		{
-				pmesg(90, "Lexer: RETURN\n");
+				lexer_out << "RETURN" << std::endl;
 				return RETURN;
 			}
 
 
 "*"|"/"|"%"	{
-				pmesg(90, "Lexer: MULOP: %s\n", yytext);
+				lexer_out << "MULOP: " << yytext << std::endl;
 				if( yytext[0] == '/' )
 					yylval.num = 0;
 				else if( yytext[0] == '*' )
@@ -232,7 +232,7 @@ return		{
 			}
 
 "-"|"+"		{
-				pmesg(90, "Lexer: ADDOP: %s\n", yytext);
+				lexer_out << "ADDOP: " << yytext << std::endl;
 				if( yytext[0] == '-' )
 					yylval.num = 0;
 				else
@@ -241,19 +241,19 @@ return		{
 			}
 
 "<="|">=" {
-				pmesg(90, "Lexer: RELOP: %s\n", yytext);
+				lexer_out << "RELOP: " << yytext << std::endl;
 				yylval.num = 4+( yytext[0] == '>' );
 				return RELOP;
 			}
 
 "<"|">" {
-				pmesg(90, "Lexer: RELOP: %s\n", yytext);
+				lexer_out << "RELOP: " << yytext << std::endl;
 				yylval.num = 2+( yytext[0] == '>' );
 				return RELOP;
 			}
 
 "=="|"!="	{
-				pmesg(90, "Lexer: RELOP: %s\n", yytext);
+				lexer_out << "RELOP: " << yytext << std::endl;
 				if( yytext[0] == '=' )
 					yylval.num = 0;
 				else
@@ -261,10 +261,8 @@ return		{
 				return RELOP;
 			}
 
-
-
 "|"|"&"		{
-				pmesg(90, "Lexer: JOIN_MEET: %s\n", yytext);
+				lexer_out << "JOIN_MEET: " << yytext << std::endl;
 				if( yytext[0] == '|' )
 					yylval.num = 0;
 				else
@@ -273,19 +271,19 @@ return		{
 			}
 
 %{/*{TYPENAME}	{
-				pmesg(90, "Lexer: TYPENAME: %s\n", yytext);
+				lexer_out << "TYPENAME: " << yytext << std::endl;
 				yylval.num = 0;
 				return TYPENAME;
 			}*/%}
 
 {ID}		{ 
-				pmesg(90, "Lexer: ID: %s\n", yytext);
+				lexer_out << "ID: " << yytext << std::endl;
 				yylval.str = strdup(yytext);
 				return ID;
 			}
 
 {ASSIGNMENT} {
-				pmesg(90, "Lexer: Assignment\n", yytext);
+				lexer_out << "ASSIGNMENT" << std::endl;
 				return ASSIGNMENT;
 			}
 
@@ -324,7 +322,7 @@ return		{
 			}
 
 .			{
-				pmesg(90, "Lexer: Single non-identifier character: %s\n", yytext ); 
+				lexer_out << "Single non-identifier character: " << yytext << std::endl; 
 				return(yytext[0]);
 			}
 

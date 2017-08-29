@@ -20,7 +20,7 @@ void flowGraph::node::setJumpsToChildren( const flowGraph* fg ) {
 
 void flowGraph::expandBlocks() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization expandBlocks..." << std::endl;
+	opt_out << "Applying optimization expandBlocks..." << std::endl;
 	#endif
 	// assign every block a label
 	for( basic_block_t i = 1; i < basic_blocks.size(); ++i ) {
@@ -43,7 +43,7 @@ void flowGraph::expandBlocks() {
 
 void flowGraph::contractBlocks() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization contractBlocks..." << std::endl;
+	opt_out << "Applying optimization contractBlocks..." << std::endl;
 	#endif
 	// determine order
 	std::set<basic_block_t> visited;
@@ -152,14 +152,14 @@ void flowGraph::walkGraph( basic_block_t i, std::set<basic_block_t>& visited ) {
 
 void flowGraph::removeDeadCode() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization removeDeadCode..." << std::endl;
+	opt_out << "Applying optimization removeDeadCode..." << std::endl;
 	#endif
 	// find dead blocks
 	std::set<basic_block_t> reached_blocks = {1};
 	walkGraph( 1, reached_blocks );
 	for( int i : reached_blocks )
-		std::cout << i << " ";
-	std::cout << std::endl;
+		opt_out << i << " ";
+	opt_out << std::endl;
 	// delete blocks
 	for( int i = basic_blocks.size()-1; i > 0; --i )
 		if( reached_blocks.count( i ) == 0 )
@@ -192,7 +192,7 @@ void flowGraph::removeDeadCode() {
 
 void flowGraph::clearNOP() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization clearNOP..." << std::endl;
+	opt_out << "Applying optimization clearNOP..." << std::endl;
 	#endif
 	// todo: better complexity
 	for( auto& b : basic_blocks ) {
@@ -206,7 +206,7 @@ void flowGraph::clearNOP() {
 
 void flowGraph::removeMoveIdempotent() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization removeMoveIdempotent..." << std::endl;
+	opt_out << "Applying optimization removeMoveIdempotent..." << std::endl;
 	#endif
 	for( auto& b : basic_blocks )
 		for( auto& o : b.operations )
@@ -220,7 +220,7 @@ void flowGraph::removeMoveIdempotent() {
 
 void flowGraph::flipConstantCompares() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization flipConstantCompares..." << std::endl;
+	opt_out << "Applying optimization flipConstantCompares..." << std::endl;
 	#endif
 	for( auto& b : basic_blocks )
 		for( auto& o : b.operations )
@@ -229,7 +229,7 @@ void flowGraph::flipConstantCompares() {
 
 void flowGraph::removeWriteOnlyMemory() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization removeWriteOnlyMemory..." << std::endl;
+	opt_out << "Applying optimization removeWriteOnlyMemory..." << std::endl;
 	#endif
 	std::set<variable_t> read;
 	for( auto& b : basic_blocks ) {
@@ -238,10 +238,10 @@ void flowGraph::removeWriteOnlyMemory() {
 			read.insert( r.begin(), r.end() );
 		}
 	}
-	std::cout << "Safe variables:";
+	opt_out << "Safe variables:";
 	for( variable_t v : read )
-		std::cout << " " << symtab->getName( scptab->getVariableSymbol( v ) );
-	std::cout << std::endl;
+		opt_out << " " << symtab->getName( scptab->getVariableSymbol( v ) );
+	opt_out << std::endl;
 	for( auto& b : basic_blocks ) {
 		for( auto& o : b.operations ) {
 			auto w = o.getWrittenVariables();
@@ -260,7 +260,7 @@ void flowGraph::removeWriteOnlyMemory() {
 
 void flowGraph::removeUselessBooleans() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization removeUselessBooleans..." << std::endl;
+	opt_out << "Applying optimization removeUselessBooleans..." << std::endl;
 	#endif
 	/*for( auto& b : basic_blocks ) {
 		std::map<variable_t,size_t> comparisons;
@@ -382,13 +382,13 @@ int flowGraph::node::cyclicEquivalence( flowGraph* fg ) {
 			if( a != b ) {
 				equivalence[a].insert(b);
 				if( equivalence[b].size() > 0 ) {
-					std::cout << "Possible cyclic equivalence detected" << std::endl;
+					opt_out << "Possible cyclic equivalence detected" << std::endl;
 					std::vector<variable_t> cycle = checkForCycle( equivalence, a );
 					if( cycle.size() > 1 ) {
-						std::cout << "Cycle detected!:";
+						opt_out << "Cycle detected!:";
 						for( variable_t v : cycle )
-							std::cout << " " << symtab->getName( scptab->getVariableSymbol( v ) );
-						std::cout << std::endl;
+							opt_out << " " << symtab->getName( scptab->getVariableSymbol( v ) );
+						opt_out << std::endl;
 						std::set<variable_t> eq( cycle.begin(), cycle.end() );
 						fg->resolveCyclicEquivalence( this, i, eq, b );
 						return 2;
@@ -409,7 +409,7 @@ int flowGraph::node::cyclicEquivalence( flowGraph* fg ) {
 
 void flowGraph::cyclicEquivalence() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization cyclicEquivalence..." << std::endl;
+	opt_out << "Applying optimization cyclicEquivalence..." << std::endl;
 	#endif
 	bool change = true;
 	while( change ) {
@@ -522,7 +522,7 @@ bool flowGraph::node::constantPropagation() {
 
 void flowGraph::constantPropagation() {
 	#ifdef OPTIMIZATION_DEBUG
-	std::cout << "Applying optimization constantPropagation..." << std::endl;
+	opt_out << "Applying optimization constantPropagation..." << std::endl;
 	#endif
 	bool change = true;
 	while( change ) {
@@ -760,7 +760,10 @@ void flowGraph::optimize() {
 	flipConstantCompares();
 	contractBlocks();
 	computeLiveness(); // temp
-	print( std::cout, true );
+	if( opt_out.enabled ) {
+		print( opt_out.stream, true );
+	}
+	
 }
 
 // ***********************************************
@@ -768,6 +771,7 @@ void flowGraph::optimize() {
 // ***********************************************
 
 void flowGraph::print( std::ostream& os, bool info ) const {
+	os << std::setfill(' ') << std::left;
 	size_t s = basic_blocks.size();
 	for( size_t i = 1; i < s; ++i ) {
 		const auto& b = basic_blocks.at(i);

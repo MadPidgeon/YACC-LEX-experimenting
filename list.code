@@ -1,5 +1,0 @@
-lst(int) x = [2,4,6,8];
-print(str(x(2)));
-int y = 1;
-x(y) = y;
-print(str(x(1)));

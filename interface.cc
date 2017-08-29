@@ -21,11 +21,13 @@ bool command_line_data::parse( int argc, char** argv ) {
 				std::cout << "  -o <file>   Set output file name (default=\"a.out\")" << std::endl;
 				std::cout << "  --version   Display version information" << std::endl;
 				std::cout << "  --help      Display this help text" << std::endl;
-				std::cout << "  -v[lsia]    Display verbose (debug) information about compilation steps:" << std::endl;
+				std::cout << "  -v[lsioa]   Display verbose (debug) information about compilation steps:" << std::endl;
 				std::cout << "                l    Display token generation (lexer) information" << std::endl;
 				std::cout << "                s    Display syntax tree generation information" << std::endl;
 				std::cout << "                i    Display intermediate code generation information" << std::endl;
-				std::cout << "                i    Display assembly generation information" << std::endl;
+				std::cout << "                o    Display optimization information" << std::endl;
+				std::cout << "                a    Display assembly generation information" << std::endl;
+				std::cout << "  --verbose   Synonymous with -vlsioa" << std::endl;
 				return false;
 			} else if( argv[i][1] == 'v' ) {
 				for( int j = 2; argv[i][j] != '\0'; ++j ) {
@@ -33,11 +35,19 @@ bool command_line_data::parse( int argc, char** argv ) {
 						lexer_out.enabled = true;
 					else if( argv[i][j] == 's' )
 						syntree_out.enabled = true;
+					else if( argv[i][j] == 'i' )
+						ic_out.enabled = true;
+					else if( argv[i][j] == 'o' )
+						opt_out.enabled = true;
+					else if( argv[i][j] == 'a' )
+						asm_out.enabled = true;
 					else {
 						std::cout << ERROR_FORMATTED_STRING << "Unrecognised verbosity option \'" << argv[i][j] << "\'" << std::endl;
 						return false;
 					}
 				}
+			} else if( strcmp( argv[i]+1, "-verbose" ) == 0 ) {
+				lexer_out.enabled = syntree_out.enabled = ic_out.enabled = opt_out.enabled = asm_out.enabled = true;
 			} else {
 				std::cout << ERROR_FORMATTED_STRING << "Unrecognised option \"" << argv[i] << "\"" << std::endl;
 				return false;

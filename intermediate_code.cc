@@ -353,9 +353,9 @@ size_t intermediateCode::function::addOperation( iop_t::id_t type, variable_t r,
 
 void intermediateCode::function::translateNode( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
 	#ifdef SYNTAX_TREE_DEBUG
-	std::cout << "translateNode(" << n->type << "):";
-	n->print( std::cout, 0, 1 );
-	std::cout << std::endl;
+	ic_out << "translateNode(" << n->type << "):";
+	n->print( ic_out, 0, 1 );
+	ic_out << std::endl;
 	#endif
 	switch( n->type ) {
 		case N_EMPTY:

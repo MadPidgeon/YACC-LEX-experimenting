@@ -872,7 +872,7 @@ case 1:
 YY_RULE_SETUP
 #line 63 "lang.l"
 {
-				pmesg(90, "Lexer: entering string\n", yytext);
+				lexer_out << "entering string" << std::endl;
 				string_state = 1;
 				BEGIN(STRING_STATE);
 				return STRING_BEGIN;
@@ -900,7 +900,7 @@ case 4:
 YY_RULE_SETUP
 #line 81 "lang.l"
 {
-				pmesg(90, "Lexer: exiting string\n", yytext);
+				lexer_out << "exiting string" << std::endl;
 				BEGIN(INITIAL);
 				return STRING_END;
 			}
@@ -954,7 +954,7 @@ YY_RULE_SETUP
 #line 118 "lang.l"
 {
 				yylval.str = strdup(yytext);
-				pmesg(90, "Lexer: Unknown escape character \\%s\n", yytext);
+				lexer_out << "Unknown escape character \\" << yytext << std::endl;
 				string_state = 1;
 				BEGIN(STRING_STATE);
 				return STRING_PARTICLE;
@@ -964,7 +964,7 @@ case 10:
 YY_RULE_SETUP
 #line 126 "lang.l"
 {
-				pmesg(90, "Lexer: ELLIPSIS\n");
+				lexer_out << "ELLIPSIS" << std::endl;
 				return ELLIPSIS;
 			}
 	YY_BREAK
@@ -972,7 +972,7 @@ case 11:
 YY_RULE_SETUP
 #line 131 "lang.l"
 {
-				pmesg(90, "Lexer: FLT: %s\n", yytext);
+				lexer_out << "FLT: " << yytext << std::endl;
 				yylval.flt = strtod( yytext, nullptr );
 				return FLT;
 			}
@@ -986,9 +986,9 @@ YY_RULE_SETUP
 				int base = atoi(yytext+i+1);
 				char* end_ptr;
 				yylval.num = strtol( yytext, &end_ptr, base );
-				pmesg(90, "Lexer: INT: %s base %d\n", yytext, base );
+				lexer_out << "INT: " << yytext << " base " << base << std::endl;
 				if( *end_ptr != '_' )
-					pmesg(0, "Lexer: Invalid integral %s\n", yytext );
+					lerr << error_line() << "Invalid integral " << yytext << std::endl;
 				return INT;
 			}
 	YY_BREAK
@@ -996,7 +996,7 @@ case 13:
 YY_RULE_SETUP
 #line 149 "lang.l"
 {
-				pmesg(90, "Lexer: INT: %s\n", yytext);
+				lexer_out << "INT: " << yytext << std::endl;
 				yylval.num = strtol( yytext, nullptr, 10 );
 				return INT;
 			}
@@ -1005,7 +1005,7 @@ case 14:
 YY_RULE_SETUP
 #line 155 "lang.l"
 {
-				pmesg(90, "Lexer: INT: %s\n", yytext);
+				lexer_out << "INT: " << yytext << std::endl;
 				yylval.num = strtol( yytext+2, nullptr, 16 );
 				return INT;
 			}
@@ -1014,7 +1014,7 @@ case 15:
 YY_RULE_SETUP
 #line 161 "lang.l"
 {
-				pmesg(90, "Lexer: INT: %s\n", yytext);
+				lexer_out << "INT: " << yytext << std::endl;
 				yylval.num = strtol( yytext+2, nullptr, 2 );
 				return INT;
 			}
@@ -1023,7 +1023,7 @@ case 16:
 YY_RULE_SETUP
 #line 167 "lang.l"
 {
-				pmesg(90, "Lexer: MAPSTO\n");
+				lexer_out << "MAPSTO" << std::endl;
 				return MAPSTO;
 			}
 	YY_BREAK
@@ -1031,7 +1031,7 @@ case 17:
 YY_RULE_SETUP
 #line 172 "lang.l"
 {
-				pmesg(90, "Lexer: BREAK\n" );
+				lexer_out << "BREAK" << std::endl;
 				return BREAK;
 			}
 	YY_BREAK
@@ -1039,7 +1039,7 @@ case 18:
 YY_RULE_SETUP
 #line 177 "lang.l"
 {
-				pmesg(90, "Lexer: CONTINUE\n" );
+				lexer_out << "CONTINUE" << std::endl;
 				return CONTINUE;
 			}
 	YY_BREAK
@@ -1047,7 +1047,7 @@ case 19:
 YY_RULE_SETUP
 #line 182 "lang.l"
 {
-				pmesg(90, "Lexer: VTYPE: %s\n", yytext);
+				lexer_out << "VTYPE: " << yytext << std::endl;
 				return VTYPE;
 			}
 	YY_BREAK
@@ -1055,7 +1055,7 @@ case 20:
 YY_RULE_SETUP
 #line 187 "lang.l"
 {
-				pmesg(90, "Lexer: FUNC\n");
+				lexer_out << "FUNC" << std::endl;
 				return FUNC;
 			}
 	YY_BREAK
@@ -1063,7 +1063,7 @@ case 21:
 YY_RULE_SETUP
 #line 192 "lang.l"
 {
-				pmesg(90, "Lexer: IF\n");
+				lexer_out << "IF" << std::endl;
 				return IF;
 			}
 	YY_BREAK
@@ -1071,7 +1071,7 @@ case 22:
 YY_RULE_SETUP
 #line 197 "lang.l"
 {
-				pmesg(90, "Lexer: ELSE\n");
+				lexer_out << "ELSE" << std::endl;
 				return ELSE;
 			}
 	YY_BREAK
@@ -1079,7 +1079,7 @@ case 23:
 YY_RULE_SETUP
 #line 202 "lang.l"
 {
-				pmesg(90, "Lexer: WHILE\n");
+				lexer_out << "WHILE" << std::endl;
 				return WHILE;
 			}
 	YY_BREAK
@@ -1087,7 +1087,7 @@ case 24:
 YY_RULE_SETUP
 #line 207 "lang.l"
 {
-				pmesg(90, "Lexer: FOR\n");
+				lexer_out << "FOR" << std::endl;
 				return FOR;
 			}
 	YY_BREAK
@@ -1095,7 +1095,7 @@ case 25:
 YY_RULE_SETUP
 #line 212 "lang.l"
 {
-				pmesg(90, "Lexer: IN\n");
+				lexer_out << "IN" << std::endl;
 				return IN;
 			}
 	YY_BREAK
@@ -1103,7 +1103,7 @@ case 26:
 YY_RULE_SETUP
 #line 217 "lang.l"
 {
-				pmesg(90, "Lexer: RETURN\n");
+				lexer_out << "RETURN" << std::endl;
 				return RETURN;
 			}
 	YY_BREAK
@@ -1111,7 +1111,7 @@ case 27:
 YY_RULE_SETUP
 #line 223 "lang.l"
 {
-				pmesg(90, "Lexer: MULOP: %s\n", yytext);
+				lexer_out << "MULOP: " << yytext << std::endl;
 				if( yytext[0] == '/' )
 					yylval.num = 0;
 				else if( yytext[0] == '*' )
@@ -1125,7 +1125,7 @@ case 28:
 YY_RULE_SETUP
 #line 234 "lang.l"
 {
-				pmesg(90, "Lexer: ADDOP: %s\n", yytext);
+				lexer_out << "ADDOP: " << yytext << std::endl;
 				if( yytext[0] == '-' )
 					yylval.num = 0;
 				else
@@ -1137,7 +1137,7 @@ case 29:
 YY_RULE_SETUP
 #line 243 "lang.l"
 {
-				pmesg(90, "Lexer: RELOP: %s\n", yytext);
+				lexer_out << "RELOP: " << yytext << std::endl;
 				yylval.num = 4+( yytext[0] == '>' );
 				return RELOP;
 			}
@@ -1146,7 +1146,7 @@ case 30:
 YY_RULE_SETUP
 #line 249 "lang.l"
 {
-				pmesg(90, "Lexer: RELOP: %s\n", yytext);
+				lexer_out << "RELOP: " << yytext << std::endl;
 				yylval.num = 2+( yytext[0] == '>' );
 				return RELOP;
 			}
@@ -1155,7 +1155,7 @@ case 31:
 YY_RULE_SETUP
 #line 255 "lang.l"
 {
-				pmesg(90, "Lexer: RELOP: %s\n", yytext);
+				lexer_out << "RELOP: " << yytext << std::endl;
 				if( yytext[0] == '=' )
 					yylval.num = 0;
 				else
@@ -1165,9 +1165,9 @@ YY_RULE_SETUP
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 266 "lang.l"
+#line 264 "lang.l"
 {
-				pmesg(90, "Lexer: JOIN_MEET: %s\n", yytext);
+				lexer_out << "JOIN_MEET: " << yytext << std::endl;
 				if( yytext[0] == '|' )
 					yylval.num = 0;
 				else
@@ -1176,65 +1176,65 @@ YY_RULE_SETUP
 			}
 	YY_BREAK
 /*{TYPENAME}	{
-				pmesg(90, "Lexer: TYPENAME: %s\n", yytext);
+				lexer_out << "TYPENAME: " << yytext << std::endl;
 				yylval.num = 0;
 				return TYPENAME;
 			}*/
 case 33:
 YY_RULE_SETUP
-#line 281 "lang.l"
+#line 279 "lang.l"
 { 
-				pmesg(90, "Lexer: ID: %s\n", yytext);
+				lexer_out << "ID: " << yytext << std::endl;
 				yylval.str = strdup(yytext);
 				return ID;
 			}
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 287 "lang.l"
+#line 285 "lang.l"
 {
-				pmesg(90, "Lexer: Assignment\n", yytext);
+				lexer_out << "ASSIGNMENT" << std::endl;
 				return ASSIGNMENT;
 			}
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 292 "lang.l"
+#line 290 "lang.l"
 {
 				return LSEQ;
 			}
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 296 "lang.l"
+#line 294 "lang.l"
 {
 				return RSEQ;
 			}
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 300 "lang.l"
+#line 298 "lang.l"
 {
 				return LBRA;
 			}
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 304 "lang.l"
+#line 302 "lang.l"
 {
 				return RBRA;
 			}
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 309 "lang.l"
+#line 307 "lang.l"
 {
 				return COMMA;
 			}
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 313 "lang.l"
+#line 311 "lang.l"
 {
 				++statementno;
 				return SEMICOLON;
@@ -1243,29 +1243,29 @@ YY_RULE_SETUP
 case 41:
 /* rule 41 can match eol */
 YY_RULE_SETUP
-#line 318 "lang.l"
+#line 316 "lang.l"
 {
 				YY_READ_NEWLINE;
 			}
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 322 "lang.l"
+#line 320 "lang.l"
 {
 				/* Remove whitespace */
 			}
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 326 "lang.l"
+#line 324 "lang.l"
 {
-				pmesg(90, "Lexer: Single non-identifier character: %s\n", yytext ); 
+				lexer_out << "Single non-identifier character: " << yytext << std::endl; 
 				return(yytext[0]);
 			}
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 331 "lang.l"
+#line 329 "lang.l"
 ECHO;
 	YY_BREAK
 #line 1272 "lex.yy.c"
@@ -2234,7 +2234,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 331 "lang.l"
+#line 329 "lang.l"
 
 
 

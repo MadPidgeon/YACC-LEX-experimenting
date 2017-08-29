@@ -155,13 +155,13 @@ type:					VTYPE id {
 							$<typ>$ = &ERROR_TYPE;
 						}
 						| id lbra typelist rbra {
-							lexer_out << "TYPENAME " << symtab->getName( $<num>1 );
+							lexer_out << "TYPENAME " << symtab->getName( $<num>1 ) << std::endl;
 							$<typ>$ = new type_t( scptab->getTypeDefinition( scopes.top(), $<num>1, *$<typlst>3 ) );
 							if( *$<typ>$ == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
 						}
 						| id {
-							pmesg( 90, "Lexer: TYPENAME %s\n", symtab->getName( $<num>1 ).c_str() );
+							lexer_out << "TYPENAME " << symtab->getName( $<num>1 ) << std::endl;
 							$<typ>$ = new type_t( scptab->getTypeDefinition( scopes.top(), $<num>1 ) );
 							if( *$<typ>$ == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( $<num>1 ).c_str() << "'" << std::endl;
@@ -178,8 +178,7 @@ type:					VTYPE id {
 						}
 
 declarations:			type {
-							//pmesg( 90, "Declaring variables of type %d\n", $<num>1 );
-							std::cout << "Declaring variables of type " << (*$<typ>1) << std::endl;
+							lexer_out << "Declaring variables of type " << (*$<typ>1) << std::endl;
 							decllisttypes.push( *$<typ>1  );
 							delete $<typ>1;
 						} declaration_list {
@@ -292,7 +291,7 @@ constant:				INT {
 							$<node>$ = new syntaxTree::node( N_FLOAT, nullptr, nullptr, {.floating=$<flt>1} );
 						}
 						| STRING_BEGIN string_particles STRING_END {
-							pmesg(90, "Lexer: STR: \"%s\"\n", input_str.c_str());
+							lexer_out << "STR: \"" << input_str << "\"" << std::endl;
 							syntaxTree::node::extra_data_t d;
 							d.string = strdup(input_str.c_str());
 							$<node>$ = new syntaxTree::node( N_STRING, nullptr, nullptr, d );
@@ -355,7 +354,6 @@ function_call:			id lbra expression_list rbra {
 							/*std::cout << "function_call: " << ($<num>1) << " ";
 							$<node>3->print(std::cout);
 							std::cout << std::endl;*/
-							std::cout << ($<node>3->data_type) << std::endl;
 							function_t f = scptab->getFunction( scopes.top(), $<num>1, $<node>3->data_type );
 							variable_t v = scptab->getVariable( scopes.top(), $<num>1 );
 							if( f == ERROR_FUNCTION and v == ERROR_VARIABLE )
@@ -519,16 +517,17 @@ int main( int argc, char** argv ) {
 		return -1;
 	}
 	yyin = input_file;
+	lexer_out << "Tokens:" << std::endl;
 	int result = yyparse();
-	std::cout << "Syntax Tree:" << (*syntree) << std::endl << std::endl;
+	syntree_out << "\nSyntax Tree:" << (*syntree) << std::endl << std::endl;
 	intermediateCode ic( scptab );
 	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
-	std::cout << "Scope Table:" << std::endl << (*scptab) << std::endl;
-	std::cout << "Intermediate Code:" << std::endl << ic << std::endl;
+	syntree_out << "Scope Table:" << std::endl << (*scptab) << std::endl;
+	ic_out << "Intermediate Code:" << std::endl << ic << std::endl;
 	assemblyGenerator ag( ic );
-	ag.print( std::cout, false );
+	if( asm_out.enabled )
+		ag.print( asm_out.stream, false );
 	std::ofstream ofile( "a.out" );
-	std::cout << "Printing..." << std::endl;
 	// std::cout << "Assembly:" << std::endl << ag << std::endl;
 	ofile << ag << std::endl;
 	return 0;
