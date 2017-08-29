@@ -1,57 +1,24 @@
-CXX=g++
-CXXFLAGS=-Wall -std=c++11 -Wno-narrowing -Wfatal-errors
-
-
-#bin/$.o: $.cc
-#	$(CXX) -c $< -o $@ $(CXXFLAGS)
-
-bin/debug.o: debug.cc
-	$(CXX) -c debug.cc -o bin/debug.o $(CXXFLAGS)
-
-bin/symbol_table.o: symbol_table.cc
-	$(CXX) -c symbol_table.cc -o bin/symbol_table.o $(CXXFLAGS)
-
-bin/scope_table.o: scope_table.cc
-	$(CXX) -c scope_table.cc -o bin/scope_table.o $(CXXFLAGS)
-
-bin/syntax_tree.o: syntax_tree.cc
-	$(CXX) -c syntax_tree.cc -o bin/syntax_tree.o $(CXXFLAGS)
-
-bin/types.o: types.cc
-	$(CXX) -c types.cc -o bin/types.o $(CXXFLAGS)
-
-bin/error_reporting.o: error_reporting.cc
-	$(CXX) -c error_reporting.cc -o bin/error_reporting.o $(CXXFLAGS)
-
-bin/intermediate_code.o: intermediate_code.cc
-	$(CXX) -c intermediate_code.cc -o bin/intermediate_code.o $(CXXFLAGS)
-
-bin/flow_graph.o: flow_graph.cc
-	$(CXX) -c flow_graph.cc -o bin/flow_graph.o $(CXXFLAGS)
-
-bin/register_allocation.o: register_allocation.cc
-	$(CXX) -c register_allocation.cc -o bin/register_allocation.o $(CXXFLAGS)
-
-bin/assembly.o: assembly.cc
-	$(CXX) -c assembly.cc -o bin/assembly.o $(CXXFLAGS)
-
-bin/stack_frame.o: stack_frame.cc
-	$(CXX) -c stack_frame.cc -o bin/stack_frame.o $(CXXFLAGS)
-
-bin/interface.o: interface.cc
-	$(CXX) -c interface.cc -o bin/interface.o $(CXXFLAGS)
-
-bin/y.tab.o: y.tab.c
-	$(CXX) -c y.tab.c -o bin/y.tab.o $(CXXFLAGS)
-
-bin/lex.yy.o: lex.yy.c
-	$(CXX) -c lex.yy.c -o bin/lex.yy.o $(CXXFLAGS)
+CXX = g++
+CXXFLAGS = -Wall -std=c++11 -Wno-narrowing -Wfatal-errors
+OBJ = debug.o symbol_table.o scope_table.o syntax_tree.o types.o error_reporting.o intermediate_code.o flow_graph.o register_allocation.o assembly.o stack_frame.o interface.o  y.tab.o lex.yy.o
 
 y.tab.c y.tab.h: lang.y
 	yacc -d lang.y
 
+bin/y.tab.o: y.tab.c
+	$(CXX) -c y.tab.c -o bin/y.tab.o $(CXXFLAGS)
+
 lex.yy.c lex.yy.h: lang.l y.tab.h
 	lex lang.l
 
-lexer: bin/lex.yy.o bin/y.tab.o bin/debug.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o bin/stack_frame.o bin/interface.o
-	$(CXX) bin/debug.o bin/y.tab.o bin/lex.yy.o bin/symbol_table.o bin/syntax_tree.o bin/scope_table.o bin/types.o bin/error_reporting.o bin/intermediate_code.o bin/flow_graph.o bin/register_allocation.o bin/assembly.o bin/stack_frame.o bin/interface.o -o lexer $(CXXFLAGS)
+bin/lex.yy.o: lex.yy.c 
+	$(CXX) -c lex.yy.c -o bin/lex.yy.o $(CXXFLAGS)
+
+bin/%.o: %.cc %.h
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
+
+asm/%.asm: code/%.code lexer
+	./lexer $< -o $@ -S -vls
+
+lexer: $(addprefix bin/, $(OBJ))
+	$(CXX) $^ -o lexer $(CXXFLAGS)
