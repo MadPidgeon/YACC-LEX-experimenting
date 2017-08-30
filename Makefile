@@ -8,6 +8,7 @@ install:
 	if ! test -d obj; then mkdir obj; fi
 	if ! test -d asm; then mkdir asm; fi
 	if ! test -d code; then mkdir code; fi
+	if ! test -d tmp; then mkdir tmp; fi
 
 y.tab.c y.tab.h: lang.y
 	yacc -d lang.y

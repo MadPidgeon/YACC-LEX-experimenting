@@ -1,0 +1,2 @@
+int x = 1337;
+print( "Variable x contains the number " | str(x) );

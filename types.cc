@@ -155,6 +155,12 @@ bool type_t::operator!=( const type_t& other ) const {
 	return not operator==( other );
 }
 
+bool type_t::weaklyEqual( const type_t& other ) const {
+	if( getBase() == ERROR_STRUCTURE or other.getBase() == ERROR_STRUCTURE )
+		return true;
+	return operator==( other );
+}
+
 type_t type_t::intersect( const type_t& t ) const {
 	return type_t( root->intersect( t.getRoot() ) );
 }

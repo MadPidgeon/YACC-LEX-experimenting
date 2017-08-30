@@ -2,10 +2,23 @@
 #include "error_reporting.h"
 #include <cstring>
 
+std::string current_directory;
+
 bool command_line_data::parse( int argc, char** argv ) {
+	int last_slash = -1;
+	for( int i = 0; argv[0][i] != '\0'; ++i )
+		if( argv[0][i] == '/' or argv[0][i] == '\\' )
+			last_slash = i;
+	current_directory = std::string( argv[0], last_slash+1 );
+	if( last_slash == -1 ) {
+		std::cout << ERROR_FORMATTED_STRING << "Cannot yet execute from $PATH" << std::endl;
+		return false;
+	}
 	for( int i = 1; i < argc; ++i ) {
 		if( argv[i][0] == '-' ) {
-			if( strcmp( argv[i]+1, "S" ) == 0 ) {
+			if( strcmp( argv[i]+1, "p" ) == 0 ) {
+				output_format = PARSE;
+			} else if( strcmp( argv[i]+1, "S" ) == 0 ) {
 				output_format = ASSEMBLY;
 			} else if( strcmp( argv[i]+1, "c" ) == 0 ) {
 				output_format = OBJECT;
@@ -16,9 +29,10 @@ bool command_line_data::parse( int argc, char** argv ) {
 			} else if( strcmp( argv[i]+1, "-help" ) == 0 ) {
 				std::cout << "Usage: " << argv[0] << " file... [options]" << std::endl;
 				std::cout << "Options:" << std::endl;
+				std::cout << "  -o <file>   Set output file name (default=\"a.out\")" << std::endl;
+				std::cout << "  -p          Produce no output file, but do parse the input" << std::endl;
 				std::cout << "  -S          Output assembly in Intel syntax" << std::endl;
 				std::cout << "  -c          Output object file" << std::endl;
-				std::cout << "  -o <file>   Set output file name (default=\"a.out\")" << std::endl;
 				std::cout << "  --version   Display version information" << std::endl;
 				std::cout << "  --help      Display this help text" << std::endl;
 				std::cout << "  -v[lsioa]   Display verbose (debug) information about compilation steps:" << std::endl;

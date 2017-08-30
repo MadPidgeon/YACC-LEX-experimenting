@@ -39,6 +39,7 @@ extern FILE *yyin;
 
 int error_counter = 0;
 int warning_counter = 0;
+int syntax_errors = 0;
 
 #ifdef __cplusplus
 }
@@ -135,7 +136,17 @@ statement:				declarations SEMICOLON {
 						| return SEMICOLON {
 							$<node>$ = $<node>1;
 						}
-						| error SEMICOLON;
+						| error SEMICOLON {
+							yyerrok;
+							$<node>$ = new syntaxTree::node( N_EMPTY );
+							syntax_errors--;
+							lerr << error_line() << "Unexpected semicolon" << std::endl;
+						}
+						| assignment error {
+							lerr << error_line() << "Missing semicolon in assignment" << std::endl;
+							syntax_errors--;
+							$<node>$ = $<node>1;
+						};
 
 id:						ID {
 							$<num>$ = symtab->addSymbol( $<str>1 );
@@ -205,19 +216,31 @@ declaration_list:		declaration_list_el COMMA declaration_list {
 
 declaration_list_el:	id ASSIGNMENT expression {
 							$<node>$ = new syntaxTree::node( N_ASSIGN, symbolToVariable( $<num>1, decllisttypes.top() ), $<node>3 );
+							if( not decllisttypes.top().weaklyEqual( $<node>3->data_type ) )
+								lerr << error_line() << "Mismatched types in assignment (" << decllisttypes.top() << " and " << $<node>3->data_type << ")" << std::endl;	
 						}
 						| id {
 							$<node>$ = new syntaxTree::node( N_GARBAGE, nullptr, nullptr, {.integer=scptab->addVariable( scopes.top(), $<num>1, decllisttypes.top() ) } );
 						};
 
 assignment:				lvalue ASSIGNMENT expression {
-							$<node>$ = new syntaxTree::node( N_ASSIGN, $<node>1, $<node>3 );	
+							$<node>$ = new syntaxTree::node( N_ASSIGN, $<node>1, $<node>3 );
+							if( not $<node>1->data_type.weaklyEqual( $<node>3->data_type ) )
+								lerr << error_line() << "Mismatched types in assignment (" << $<node>1->data_type << " and " << $<node>3->data_type << ")" << std::endl;	
 						};
 
-leaf_expression:		constant | variable {
-							$<node>$ = $<node>1;
-						} 
-						| function_call | lbra expression rbra {
+leaf_expression:		constant | variable | function_call 
+						| lbra expression rbra {
+							$<node>$ = $<node>2;
+						}
+						| lbra expression error {
+							lerr << error_line() << "Missing right parenthesis" << std::endl;
+							syntax_errors--;
+							$<node>$ = $<node>2;
+						}
+						| error expression rbra {
+							lerr << error_line() << "Missing left parenthesis" << std::endl;
+							syntax_errors--;
 							$<node>$ = $<node>2;
 						};
 
@@ -230,6 +253,10 @@ expression_list_ne:		expression {
 						} 
 						| expression COMMA expression_list_ne {
 							$<node>$ = new syntaxTree::node( N_ARGUMENT_LIST, $<node>1, $<node>3 );
+						}
+						| expression COMMA error {
+							$<node>$ = $<node>1;
+							lerr << error_line() << "Expected expression after comma" << std::endl;
 						};
 
 relational:				join_meet {
@@ -323,6 +350,16 @@ list:					lseq list_items rseq {
 						}
 						| lseq rseq {
 							$<node>$ = new syntaxTree::node( N_LIST );
+						}
+						| lseq list_items error {
+							lerr << error_line() << "Expected right square bracket at end of list" << std::endl;
+							syntax_errors--;
+							$<node>$ = new syntaxTree::node( N_LIST, $<node>2, nullptr, {.integer=$<node>2->data.integer+1} );
+						}
+						| error list_items rseq {
+							lerr << error_line() << "Expected left square bracket at beginning of list" << std::endl;
+							syntax_errors--;
+							$<node>$ = new syntaxTree::node( N_LIST, $<node>2, nullptr, {.integer=$<node>2->data.integer+1} );
 						};
 
 list_items:				expression {
@@ -385,7 +422,12 @@ function_call:			id lbra expression_list rbra {
 									$<node>$ = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
 								}
 							}
-						};
+						}
+						/*| id lbra expression_list error {
+							lerr << error_line() << "Missing right parenthesis in function call" << std::endl;
+							syntax_errors--;
+							$<node>$ = new syntaxTree::node( N_FUNCTION_CALL, $<node>3, new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = ERROR_VARIABLE } ) );
+						};*/
 
 function_definition:	FUNC id lbra parameter_list rbra sequential_block {
 							lerr << "function_definition" << std::endl;
@@ -519,7 +561,16 @@ int main( int argc, char** argv ) {
 	yyin = input_file;
 	lexer_out << "Tokens:" << std::endl;
 	int result = yyparse();
+	if( syntax_errors != 0 ) {
+		std::cout << error_line() << "Unresolved syntax errors" << std::endl;
+		return -1;
+	}
+	if( error_counter > 0 ) {
+		return -1;
+	}
 	syntree_out << "\nSyntax Tree:" << (*syntree) << std::endl << std::endl;
+	if( settings.output_format == command_line_data::output_format_t::PARSE )
+		return 0;
 	intermediateCode ic( scptab );
 	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
 	syntree_out << "Scope Table:" << std::endl << (*scptab) << std::endl;
@@ -527,9 +578,30 @@ int main( int argc, char** argv ) {
 	assemblyGenerator ag( ic );
 	if( asm_out.enabled )
 		ag.print( asm_out.stream, false );
-	std::ofstream ofile( "a.out" );
-	// std::cout << "Assembly:" << std::endl << ag << std::endl;
-	ofile << ag << std::endl;
+	std::string asmofn = current_directory + "tmp/out.asm";
+	if( settings.output_format == command_line_data::output_format_t::ASSEMBLY )
+		asmofn = settings.outfilename;
+	{
+		std::ofstream ofile( asmofn );
+		ofile << ag << std::endl;
+	}
+	if( settings.output_format == command_line_data::output_format_t::ASSEMBLY )
+		return 0;
+	std::string objofn = current_directory + "tmp/out.o";
+	if( settings.output_format == command_line_data::output_format_t::OBJECT )
+		objofn = settings.outfilename;
+	int asm_ret = system( ( "nasm -f elf64 " + asmofn + " -o " + objofn ).c_str() );
+	if( asm_ret != 0 ) {
+		std::cout << ERROR_FORMATTED_STRING << "Generated assembly won't compile (this is a bug in the compiler)" << std::endl;
+		return asm_ret;
+	}
+	if( settings.output_format == command_line_data::output_format_t::OBJECT )
+		return 0;
+	int lnk_ret = system( ( "ld -o " + settings.outfilename + " " + objofn ).c_str() );
+	if( lnk_ret != 0 ) {
+		std::cout << ERROR_FORMATTED_STRING << "Generated assembly won't link (this is a bug in the compiler)" << std::endl;
+		return lnk_ret;
+	}
 	return 0;
 }
 
@@ -537,14 +609,15 @@ static void yyerror_w(const char *s, int warning ) {
 	if( !warning ) {
 		error_counter += 1;
 		lerr << error_line() << s << std::endl;
-	} else if( warning_counter != -1 ) { // toggle warnings
+	} else if( warning_counter != -1 ) {
 		lerr << error_line(true) << s << std::endl;
 		warning_counter++;
 	}
 }
 
 static void yyerror(const char* s) {
-	yyerror_w(s,0);
+	// yyerror_w(s,0);
+	syntax_errors++;
 }
 
 int yywrap() {

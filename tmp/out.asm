@@ -1,4 +1,6 @@
 section .data
+	_def_1_data db 0x1f,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x56,0x61,0x72,0x69,0x61,0x62,0x6c,0x65,0x20,0x78,0x20,0x63,0x6f,0x6e,0x74,0x61,0x69,0x6e,0x73,0x20,0x74,0x68,0x65,0x20,0x6e,0x75,0x6d,0x62,0x65,0x72,0x20
+	_def_1 equ _def_1_data+8
 
 ; TAKEN FROM https://github.com/davidad/asm_concurrency/blob/master/os_dependent_stuff.asm
 ; syscalls
@@ -360,37 +362,16 @@ main:
 _6:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 56
-	mov rsi, 40
-	mov qword [-8+rbp], r8
-	mov rax, 9
-	xor rdi, rdi
-	mov rdx, 3
-	mov r10, 34
-	mov r8, -1
-	xor r9, r9
-	syscall
-	mov qword [0+rax], 32
-	lea r8, [8+rax]
-	mov qword [0+r8], 2
-	mov qword [8+r8], 4
-	mov qword [16+r8], 6
-	mov qword [24+r8], 8
-	mov r9, r8
+	sub rsp, 32
 	sub rsp, 8
-	mov r8, qword [16+r9]
+	lea r8, [0+_def_1]
 	push r8
-	mov qword [-16+rbp], r9
+	sub rsp, 8
+	push 1337
 	call _3
 	pop r8
 	push r8
-	call _1
-	mov r9, qword [-16+rbp]
-	mov qword [8+r9], 1
-	sub rsp, 8
-	mov r8, qword [8+r9]
-	push r8
-	call _3
+	call _4
 	pop r8
 	push r8
 	call _1

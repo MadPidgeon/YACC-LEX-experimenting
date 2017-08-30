@@ -6,6 +6,7 @@
 #include "intermediate_code.h"
 #include "flow_graph.h"
 #include "register_allocation.h"
+#include "interface.h"
 
 const std::vector<register_t> volatile_registers = { A_REG, DI_REG, SI_REG, D_REG };
 const std::vector<register_t> usable_registers = { 8, 9, 10, 11, 12, 13, 14, 15 };
@@ -629,7 +630,7 @@ void assemblyGenerator::print( std::ostream& os, bool h ) const {
 	os << std::setfill(' ') << std::left;
 	if( h ) {
 		os << definitions.str() << std::endl;
-		std::ifstream header_file("header.asm");
+		std::ifstream header_file( current_directory + "header.asm" );
 		os << header_file.rdbuf() << std::endl;
 		header_file.close();
 	}

@@ -1,9 +1,9 @@
 #include <iostream>
 #include "error_reporting.h"
 
-int err_line_number = 0;
-int err_character_number = 0;
-int err_line_character_number = 0;
+int err_line_number = 1;
+int err_character_number = 1;
+int err_line_character_number = 1;
 optional_output lexer_out( std::cout );
 optional_output syntree_out( std::cout );
 optional_output ic_out( std::cout );
@@ -23,7 +23,9 @@ error_line::error_line( int l, int p, bool w ) {
 }
 
 std::ostream& operator<<( std::ostream& os, error_line e ) {
-	os << e.line << ":" << e.position << ": ";
+	std::string s = std::to_string( e.line ) + ":" + std::to_string( e.position ) + ":";
+	s.resize( 8, ' ' );
+	os << s;
 	if( e.warning )
 		os << "\033[35mWarning:\033[0m ";
 	else

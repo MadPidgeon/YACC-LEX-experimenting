@@ -7,7 +7,7 @@ extern int err_character_number;
 extern int err_line_character_number;
 
 #define YY_USER_ACTION 		{ err_character_number+=yyleng; err_line_character_number+=yyleng; }
-#define YY_READ_NEWLINE		(++err_line_number,err_line_character_number=0)
+#define YY_READ_NEWLINE		(++err_line_number,err_line_character_number=1)
 #define lerr				std::cout
 #define ERROR_FORMATTED_STRING    "\033[1;31mError:\033[0m "
 #define WARNING_FORMATTED_STRING  "\033[35mWarning:\033[0m "

@@ -83,7 +83,7 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 73 "lang.y" /* glr.c:197  */
+#line 74 "lang.y" /* glr.c:197  */
 
 	char *str;
 	int64_t num;

@@ -76,6 +76,7 @@ public:
 	size_t rawSize() const;
 	type_t& operator=( const type_t& );
 	bool operator<( const type_t& ) const;
+	bool weaklyEqual( const type_t& ) const;
 	type_t( const type_t& );
 	type_t( type_t&& );
 	// type_t( structure_t, std::vector<const type_t*> );
