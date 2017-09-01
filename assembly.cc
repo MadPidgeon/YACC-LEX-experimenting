@@ -195,24 +195,11 @@ instruction::complex_address::operator bool() const {
 void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_t instruction_index ) {
 	asm_out << std::setw(3) << instruction_index << ": " << op << std::endl;
 	// instructions.emplace_back( instruction::id_t::NOP ); // separates ir instructions
-	// annoying special cases
-	if( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ) {
-		instruction::parameter target = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, true ), 8 } );
-		instructions.emplace_back( instruction::id_t::MOV, target, instruction::complex_address( RBP, ERROR_ASM_REG, sf.getVariableLocation( op.a ) - op.c_b.integer, 8 , ERROR_LABEL ) );
-		return;
-	} else if( op.id == iop_t::id_t::IOP_INT_TUP_STORE ) {
-		instruction::parameter source;
-		if( op.b == ERROR_VARIABLE )
-			source = instruction::parameter( op.c_b.integer );
-		else
-			source = instruction::parameter( instruction::asm_reg{ getRegister( op.b, instruction_index, false ), 8 } );
-		instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( RBP, ERROR_ASM_REG, sf.getVariableLocation( op.r ) - op.c_a.integer, 8, ERROR_LABEL ), source );
-		return;
-	}
 
 	// compute common parameters
+	// SHOULD SOMEHOW COMPENSATE FOR >32-bit immediates
 	instruction::parameter par[4];
-	if( op.usesReadParameterA() ) {
+	if( op.usesReadParameterA() and op.id != iop_t::id_t::IOP_INT_TUP_LOAD ) {
 		if( op.a == ERROR_VARIABLE )
 			par[1] = instruction::parameter( op.c_a.integer );
 		else
@@ -224,8 +211,8 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 		else
 			par[2] = instruction::parameter( instruction::asm_reg{ getRegister( op.b, instruction_index, not op.parameterIsRead( 2 ) ), 8 } );
 	}
-	if( op.usesResultParameter() and op.id != iop_t::id_t::IOP_FUNCTION )
-		par[0] = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, not op.parameterIsRead( 0 ) ), 8 } );
+	if( op.usesResultParameter() and op.id != iop_t::id_t::IOP_FUNCTION and op.id != iop_t::id_t::IOP_INT_TUP_STORE and op.id != iop_t::id_t::IOP_GARBAGE )
+		par[0] = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, ( not op.parameterIsRead( 0 ) ) and ( op.id != iop_t::id_t::IOP_INT_ARR_STORE ) ), 8 } );
 	
 	par[3] = instruction::parameter( op.label );
 
@@ -339,11 +326,25 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 			instructions.emplace_back( instruction::id_t( op.id - iop_t::id_t::IOP_INT_EQ + instruction::id_t::SETE ), instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, not op.parameterIsRead( 0 ) ), 1 } ) );
 			// add and for fixes
 			break;
+		case iop_t::id_t::IOP_INT_TUP_LOAD: 
+		case iop_t::id_t::IOP_FLT_TUP_LOAD: {
+			instruction::complex_address ca( RBP, par[2] );
+			ca.constant += sf.getVariableDirectedLocation( op.a );
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ? instruction::id_t::MOV : instruction::id_t::MOVSD, par[0], ca );
+		} 	break;
+		case iop_t::id_t::IOP_INT_TUP_STORE: 
+		case iop_t::id_t::IOP_FLT_TUP_STORE:{
+			instruction::complex_address ca( RBP, par[1] );
+			ca.constant += sf.getVariableDirectedLocation( op.r );
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_TUP_STORE ? instruction::id_t::MOV : instruction::id_t::MOVSD, ca, par[2] );
+		}	break;
 		case iop_t::id_t::IOP_INT_ARR_LOAD:
-			instructions.emplace_back( instruction::id_t::MOV, par[0], instruction::complex_address( par[1], par[2] ) );
+		case iop_t::id_t::IOP_FLT_ARR_LOAD:
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_ARR_LOAD ? instruction::id_t::MOV : instruction::id_t::MOVSD, par[0], instruction::complex_address( par[1], par[2] ) );
 			break;
 		case iop_t::id_t::IOP_INT_ARR_STORE:
-			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( par[0], par[1] ), par[2] );
+		case iop_t::id_t::IOP_FLT_ARR_STORE:
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_ARR_STORE ? instruction::id_t::MOV : instruction::id_t::MOVSD, instruction::complex_address( par[0], par[1] ), par[2] );
 			break;
 		case iop_t::id_t::IOP_LIST_ALLOCATE:
 			if( op.a != ERROR_VARIABLE )
@@ -365,19 +366,22 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( rax, ERROR_ASM_REG ), par[1] );
 			instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( rax.reg, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
 			register_variables.at( usable_registers.at( ra.getVariableRegister( op.r ) ) ) = op.r;
-			for( variable_t x : register_variables )
-				asm_out << x << " ";
-			asm_out << std::endl;
 			break;
+		case iop_t::id_t::IOP_LIST_SIZE: {
+			instruction::complex_address ca( par[1] );
+			ca.constant = -8;
+			instructions.emplace_back( instruction::id_t::MOV, par[0], ca );
+		} 	break;
 		default:
 			lerr << error_line() << "Unknown IR instruction " << op.id << std::endl;
 	}
 }
 
 
-void assemblyGenerator::generateProgram( const intermediateCode& ic ) {
+void assemblyGenerator::generateProgram( const intermediateCode& ic, int O ) {
 	definitions << "section .data\n";
 	size_t index = 0;
+	optimization_level = O;
 	for( const intermediateCode::function& f : ic.getFunctions() ) {
 		if( f.id < GLOBAL_FUNCTION ) {
 			index++;
@@ -393,7 +397,7 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 	asm_out << "Generating function " << prefix << std::endl;
 	// Optimize code
 	flowGraph graph( f );
-	graph.optimize();
+	graph.optimize( optimization_level );
 	asm_out << "Intermediate Code:" << std::endl << graph << std::endl;
 	// Compute register allocation
 	graph.computeLiveness();
@@ -452,7 +456,7 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 	instructions.emplace_back( instruction::id_t::PUSH, RBP );
 	// 	instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( instruction::complex_address( instruction::asm_reg( RSP_REG, 8 ), instruction::asm_reg(), -8, 8, ERROR_LABEL ) ), instruction::asm_reg( RBP_REG, 8 ) );
 	instructions.emplace_back( instruction::id_t::MOV, RBP, RSP );
-	instructions.emplace_back( instruction::id_t::SUB, RSP, sf.localVariableSize()+8 );
+	instructions.emplace_back( instruction::id_t::SUB, RSP, sf.localVariableSize() );
 	// Generate code
 	end_of_function = f.parent->newLabel();
 	size_t bi = 1;
@@ -505,6 +509,9 @@ void assemblyGenerator::restoreRegisters( size_t instruction_index ) {
 
 register_t assemblyGenerator::getRegister( variable_t x, size_t instruction_index, bool define ) {
 	asm_out << "getRegister(" << x << "," << instruction_index << "," << define << ");\n";
+	for( variable_t x : register_variables )
+		asm_out << x << " ";
+	asm_out << std::endl;
 	if( scptab->getVariableType( x ) == FLT_TYPE ) {
 		// check if variable in volatile memory
 		for( register_t r : volatile_floating_registers )
@@ -546,6 +553,8 @@ register_t assemblyGenerator::getRegister( variable_t x, size_t instruction_inde
 			register_variables.at( r ) = x;
 			return r;
 		}
+
+		std::cout << "Volatile register reached" << std::endl;
 		
 		throw; // temp
 		// variable is volatile and not in register, so find a register for it
@@ -643,8 +652,8 @@ std::ostream& operator<<( std::ostream& os, const assemblyGenerator& ag ) {
 	return os;
 }
 
-assemblyGenerator::assemblyGenerator( const intermediateCode& ic ) : assemblyGenerator() {
-	generateProgram( ic );
+assemblyGenerator::assemblyGenerator( const intermediateCode& ic, int O ) : assemblyGenerator() {
+	generateProgram( ic, O );
 }
 
 assemblyGenerator::assemblyGenerator() {
@@ -653,4 +662,5 @@ assemblyGenerator::assemblyGenerator() {
 	assert( instruction::id_t::COUNT == instruction::parameter_count.size() );
 	register_variables.resize( register_count, ERROR_VARIABLE );
 	volatile_register_cycle = 0;
+	optimization_level = 1;
 }

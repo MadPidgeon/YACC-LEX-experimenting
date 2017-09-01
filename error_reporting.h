@@ -5,6 +5,7 @@
 extern int err_line_number;
 extern int err_character_number;
 extern int err_line_character_number;
+extern int err_count;
 
 #define YY_USER_ACTION 		{ err_character_number+=yyleng; err_line_character_number+=yyleng; }
 #define YY_READ_NEWLINE		(++err_line_number,err_line_character_number=1)

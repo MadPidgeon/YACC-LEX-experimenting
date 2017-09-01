@@ -108,10 +108,11 @@ class assemblyGenerator {
 	variable_t return_variable;
 	label_t end_of_function;
 	stackFrame sf;
+	int optimization_level;
 public:
 	void generateInstruction( iop_t, std::string prefix, size_t instruction_index );
 	void generateFunction( const intermediateCode::function&, std::string prefix, bool main );
-	void generateProgram( const intermediateCode& );
+	void generateProgram( const intermediateCode&, int O );
 	void print( std::ostream& os, bool h = true ) const;
 	void storeRegister( register_t, size_t instruction_index );
 	void loadVariable( variable_t, register_t );
@@ -122,7 +123,7 @@ public:
 	label_t addFloatingDefinition( double );
 	label_t addFunctionPointerDefinition( label_t l );
 	register_t getRegister( variable_t x, size_t instruction_index, bool define = false );
-	assemblyGenerator( const intermediateCode& );
+	assemblyGenerator( const intermediateCode&, int O );
 	assemblyGenerator();
 };
 

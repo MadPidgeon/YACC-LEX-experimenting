@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <limits>
 
 #include "flow_graph.h"
 #include "intermediate_code.h"
@@ -446,6 +447,28 @@ void flowGraph::cyclicEquivalence() {
 // * Constant Propagation
 // ***********************************************
 
+bool offset_variable_t::operator<( offset_variable_t other ) const {
+	if( variable != other.variable )
+		return variable < other.variable;
+	return offset < other.offset;
+}
+
+bool offset_variable_t::operator==( offset_variable_t other ) const {
+	return variable == other.variable and offset == other.offset;
+}
+
+offset_variable_t::offset_variable_t( variable_t v, size_t o ) 
+		: variable( v ), offset( o ) {
+}
+
+offset_variable_t offset_variable_t::highest_lower_bound( variable_t v ) {
+	return offset_variable_t( v, std::numeric_limits<decltype( offset )>::min() );
+}
+
+offset_variable_t offset_variable_t::lowest_upper_bound( variable_t v ) {
+	return offset_variable_t( v, std::numeric_limits<decltype( offset )>::max() );
+}
+
 flowGraph::constant_data::constant_data() {
 	type = ERROR_TYPE;
 }
@@ -476,10 +499,26 @@ bool flowGraph::constant_data::operator!=( const flowGraph::constant_data& other
 
 bool flowGraph::node::constantPropagation() {
 	bool change = false;
-	std::unordered_map<variable_t,constant_data> constants = const_in;
+	std::map<offset_variable_t,constant_data> constants = const_in;
 	for( auto& op : operations ) {
 		// substitute in known constants
-		for( int i = 1; i < 3; ++i ) {
+		if( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ) {
+			if( op.parameterIsVariable( 2 ) ) {
+				auto itr = constants.find( op.getParameterVariable( 2 ) );
+				if( itr != constants.end() ) 
+					op.setParameterInteger( 2, itr->second.data.integer );
+			}
+			if( not op.parameterIsVariable( 2 ) ) {
+				offset_variable_t s( op.getParameterVariable( 1 ), op.getParameterInteger( 2 ) );
+				auto itr = constants.find( s );
+				if( itr != constants.end() ) {
+					op.id = iop_t::id_t::IOP_INT_MOV;
+					op.setParameterInteger( 1, itr->second.data.integer );
+				}
+			}
+		} else if( op.id == iop_t::id_t::IOP_FLT_TUP_LOAD ) {
+			// nop
+		} else for( int i = 1; i < 3; ++i ) {
 			if( op.isFloating() ) {
 				if( op.id == iop_t::id_t::IOP_FLT_MOV and op.parameterIsVariable( i ) ) {
 					auto itr = constants.find( op.getParameterVariable( i ) );
@@ -494,6 +533,7 @@ bool flowGraph::node::constantPropagation() {
 				}
 			}
 		}
+		
 		// reduce strength
 		op.reduceStrength();
 		if( op.usesResultParameter() and constants.count( op.r ) and constants.at( op.r ).type == INT_TYPE )
@@ -507,9 +547,23 @@ bool flowGraph::node::constantPropagation() {
 			auto itr = constants.find( op.getParameterVariable( 0 ) );
 			if( itr == constants.end() or itr->second.data.floating != op.getParameterFloating( 1 ) )
 				constants[ op.getParameterVariable(0) ] = constant_data( op.getParameterFloating( 1 ) );
+		} else if( op.id == iop_t::id_t::IOP_INT_TUP_STORE ) {
+			if( ( not op.parameterIsVariable( 1 ) ) and ( not op.parameterIsVariable( 2 ) ) ) {
+				// all is known, store constant
+				offset_variable_t s( op.getParameterVariable( 0 ), op.getParameterInteger( 1 ) );
+				auto itr = constants.find( s );
+				if( itr == constants.end() or itr->second.data.integer != op.getParameterInteger( 2 ) )
+					constants[ s ] = constant_data( op.getParameterInteger( 2 ) );
+			} else if( op.parameterIsVariable( 1 ) ) {
+				// don't know where is written, invalidate all
+				constants.erase( constants.lower_bound( offset_variable_t::highest_lower_bound( op.getParameterVariable( 1 ) ) ), constants.upper_bound( offset_variable_t::lowest_upper_bound( op.getParameterVariable( 1 ) ) ) );
+			} else {
+				// don't know what is written, invalidate single entry
+				constants.erase( offset_variable_t( op.getParameterVariable( 0 ), op.getParameterInteger( 1 ) ) );
+			}
 		}
 		// lose constants
-		if( op.id != iop_t::id_t::IOP_INT_MOV and op.id != iop_t::id_t::IOP_FLT_MOV )
+		if( op.id != iop_t::id_t::IOP_INT_MOV and op.id != iop_t::id_t::IOP_FLT_MOV and op.id != iop_t::id_t::IOP_INT_TUP_STORE and op.id != iop_t::id_t::IOP_INT_TUP_LOAD )
 			for( int i = 0; i < 3; ++i )
 				if( op.parameterIsWritten( i ) )
 					constants.erase( op.getParameterVariable( i ) );
@@ -531,7 +585,7 @@ void flowGraph::constantPropagation() {
 			auto& b = basic_blocks.at( i );
 			// compute ingoing constants
 			if( b.parents.size() > 0 ) {
-				std::unordered_map<variable_t,constant_data> header;
+				std::map<offset_variable_t,constant_data> header;
 				for( const auto& p : basic_blocks.at( b.parents.at( 0 ) ).const_out ) {
 					bool equal = true;
 					for( basic_block_t j : b.parents ) {
@@ -743,27 +797,33 @@ const flowGraph::node& flowGraph::getBlock( basic_block_t b ) const {
 }
 
 
-void flowGraph::optimize() {
+void flowGraph::optimize( int optimization_level ) {
 	// first optimization
 	expandBlocks();	
 	// second optimization
-	constantPropagation();
-	cyclicEquivalence();
+	if( optimization_level >= 1 )
+		constantPropagation();
+	if( optimization_level >= 1 )
+		cyclicEquivalence();
 	// third optimization
-	removeUselessBooleans();
-	removeMoveIdempotent();
+	if( optimization_level >= 1 )
+		removeUselessBooleans();
+	if( optimization_level >= 1 )
+		removeMoveIdempotent();
 	// fourth optimization
-	removeWriteOnlyMemory();
-	clearNOP();
-	removeDeadCode();
+	if( optimization_level >= 1 )
+		removeWriteOnlyMemory();
+	if( optimization_level >= 1 )
+		clearNOP();
+	if( optimization_level >= 1 )
+		removeDeadCode();
 	// final optimization
 	flipConstantCompares();
 	contractBlocks();
 	computeLiveness(); // temp
 	if( opt_out.enabled ) {
 		print( opt_out.stream, true );
-	}
-	
+	}	
 }
 
 // ***********************************************

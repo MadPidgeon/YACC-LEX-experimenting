@@ -89,7 +89,6 @@ extern int yyparse();
 extern FILE *yyin;
 
 
-int error_counter = 0;
 int warning_counter = 0;
 int syntax_errors = 0;
 
@@ -106,8 +105,9 @@ std::string input_str;
 scope_t previous_nested_scope = ERROR_SCOPE;
 std::stack<scope_t> scopes;
 std::stack<function_t> functions;
-std::stack<type_t> decllisttypes;
-
+std::stack<type_t> decllisttypes; // TODO: this might die due to error handling
+std::stack<variable_t> for_iterating_variable;
+bool is_func;
 
 syntaxTree::node* symbolToVariable( symbol_t id );
 syntaxTree::node* symbolToVariable( symbol_t id, type_t type );
@@ -250,16 +250,16 @@ static YYSTYPE yyval_default;
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  65
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   396
+#define YYLAST   457
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  33
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  49
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  97
+#define YYNRULES  102
 /* YYNRULES -- Number of states.  */
-#define YYNSTATES  175
+#define YYNSTATES  187
 /* YYMAXRHS -- Maximum number of symbols on right-hand side of rule.  */
 #define YYMAXRHS 9
 /* YYMAXLEFT -- Maximum number of symbols to the left of a handle
@@ -313,14 +313,15 @@ static const unsigned short int yyrline[] =
 {
        0,    92,    92,    97,   102,   105,   108,   111,   114,   117,
      120,   123,   126,   129,   132,   135,   136,   139,   145,   151,
-     156,   159,   164,   168,   174,   180,   191,   191,   204,   213,
-     217,   222,   226,   232,   232,   232,   233,   236,   241,   247,
-     249,   249,   251,   254,   257,   262,   265,   269,   269,   273,
-     274,   284,   287,   297,   300,   312,   314,   317,   320,   327,
-     330,   331,   333,   337,   340,   344,   348,   351,   354,   359,
-     365,   368,   375,   379,   384,   384,   386,   390,   432,   436,
-     436,   448,   453,   456,   460,   460,   475,   478,   485,   488,
-     492,   495,   499,   503,   507,   511,   516,   520
+     156,   159,   164,   168,   181,   187,   207,   207,   220,   229,
+     233,   238,   242,   248,   248,   248,   249,   252,   257,   263,
+     265,   265,   267,   270,   273,   278,   281,   285,   285,   289,
+     290,   302,   303,   313,   314,   326,   328,   331,   334,   341,
+     344,   345,   347,   351,   354,   358,   361,   365,   368,   371,
+     376,   382,   385,   392,   396,   401,   401,   403,   407,   473,
+     499,   509,   514,   525,   529,   529,   541,   546,   549,   553,
+     553,   567,   570,   577,   580,   584,   587,   591,   595,   599,
+     603,   608,   612
 };
 #endif
 
@@ -346,31 +347,32 @@ static const char *const yytname[] =
 };
 #endif
 
-#define YYPACT_NINF -95
-#define YYTABLE_NINF -76
+#define YYPACT_NINF -97
+#define YYTABLE_NINF -77
 
   /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
      STATE-NUM.  */
 static const short int yypact[] =
 {
-     292,    90,   -95,   -95,   -95,    38,   -95,   -95,    -7,    38,
-       3,     3,    29,    44,   -95,   366,    64,   -95,   -95,   230,
-     380,   -95,    54,    23,   -95,    57,   -95,    45,    46,    66,
-      70,   -95,   -95,   -95,    73,    76,    78,   -95,   -95,   -95,
-     -95,   -95,    84,    86,    88,   324,   261,   366,   -95,     3,
-      47,    92,   -95,   -95,   324,   329,   -95,   -95,     7,     3,
-     366,   366,    38,   -95,   -95,   -95,   -95,   112,    38,   -95,
-     -95,   -95,   -95,   366,   366,   366,   366,   366,   -95,   -95,
-     -95,   105,     5,    12,   105,   111,   105,   -95,    92,    25,
-      13,   -95,   344,   366,   -95,   -95,   -95,    38,   119,   -95,
-     -95,    35,   105,   105,    98,   105,   127,   129,   105,   -95,
-     133,   -95,   141,   -95,   118,   -95,   -95,   -95,   -95,   -95,
-      35,   -95,   -95,   366,   -95,   -95,    35,   121,   -95,   -95,
-     -95,   -95,     3,   105,    35,   292,   292,   366,   -95,   371,
-     -95,   366,    38,   366,   -95,   143,   -95,   -95,    35,    35,
-     142,   134,   135,   140,   349,   -95,   -95,   -95,   -95,   366,
-     148,   -95,   292,   292,   292,   -95,   -95,   -95,   -95,   -95,
-     292,   292,   -95,    92,   -95
+     361,   383,   -97,   -97,   -97,     1,   -97,   -97,   -11,     1,
+      35,    35,    35,    12,   -97,   425,    18,   -97,   -97,   287,
+      84,   -97,    10,    27,   -97,    30,   -97,    34,    36,    60,
+      52,   -97,    35,    35,    65,    68,    32,   -97,   -97,   -97,
+     -97,   -97,    74,    76,    80,   148,   330,   425,   -97,    35,
+      19,    90,   -97,    35,   148,   398,   -97,   -97,    53,    35,
+     425,   425,     1,   -97,   -97,   -97,   -97,   262,     1,   -97,
+     -97,   -97,   -97,   425,   425,   425,   425,   403,   403,   425,
+     403,   -97,   -97,   -97,   -97,    64,    47,    40,    64,    87,
+      64,   -97,   -97,    90,    91,     3,   -97,   403,   425,   -97,
+     -97,     1,    95,   -97,   -97,    16,    64,    64,    82,    64,
+      97,    98,    64,   -97,   105,   -97,   103,   -97,    92,   -97,
+     -97,   -97,    64,    64,   -97,    64,   -97,    16,   -97,   -97,
+     425,    35,   -97,    16,    89,   -97,   -97,   -97,   -97,    35,
+      64,    16,   361,   361,   425,   -97,   440,   -97,   425,     1,
+     425,   -97,   -97,   -97,   -97,   111,   -97,   115,   -97,    16,
+      16,   110,   101,   102,    64,   420,   -97,   -97,   -97,   -97,
+     425,   -97,   113,   -97,   361,   361,   361,   -97,   -97,   -97,
+     -97,   -97,   361,   361,   -97,    90,   -97
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -378,44 +380,45 @@ static const short int yypact[] =
      means the default is an error.  */
 static const unsigned char yydefact[] =
 {
-       0,     0,    56,    57,    19,     0,    96,    94,     0,     0,
-       0,     0,     0,    90,    92,     0,     0,     9,     2,     0,
-      76,    26,     0,     0,    55,     0,    39,    45,    49,    51,
+       0,     0,    56,    57,    19,     0,   101,    99,     0,     0,
+       0,     0,     0,    95,    97,     0,     0,     9,     2,     0,
+      77,    26,     0,     0,    55,     0,    39,    45,    49,    51,
       53,    33,    60,    59,     0,    34,    35,    15,    61,    11,
-      12,    10,     0,     0,     0,     0,     0,     0,    17,    76,
-      70,     0,    34,    35,     0,     0,    22,    72,     0,     0,
-       0,     0,     0,    91,    93,     1,     5,     0,     0,     6,
-      18,     7,     8,     0,     0,     0,     0,     0,    13,    14,
-      16,     0,    20,     0,     0,    82,     0,    97,     0,    70,
-       0,    67,     0,     0,    95,    38,    69,     0,    70,    58,
-      73,     0,     0,     0,     0,     0,    20,    42,     0,    41,
-      31,    27,    29,    46,    47,    50,    52,    54,    32,    25,
-       0,    81,    37,     0,    36,    65,     0,     0,     3,    68,
-      66,    71,    24,     0,     0,     0,     0,     0,    23,     0,
-      77,     0,     0,     0,    21,    63,    62,    83,     0,     0,
-       0,    88,    86,     0,     0,    43,    30,    28,    48,     0,
-       0,    78,     0,     0,     0,    84,    64,    79,    89,    87,
-       0,     0,    85,     0,    80
+      12,    10,     0,     0,     0,     0,     0,     0,    17,    77,
+      71,     0,    34,    35,     0,     0,    22,    73,     0,     0,
+       0,     0,     0,    96,    98,     1,     5,     0,     0,     6,
+      18,     7,     8,     0,     0,     0,     0,     0,     0,     0,
+       0,    13,    14,    16,   100,     0,    20,     0,     0,    87,
+       0,    66,   102,     0,    71,     0,    68,     0,     0,    38,
+      70,     0,    71,    58,    74,     0,     0,     0,     0,     0,
+      20,    42,     0,    41,    31,    27,    29,    46,    47,    50,
+      52,    54,     0,     0,    32,     0,    25,     0,    86,    37,
+       0,    36,    65,     0,     0,     3,    69,    67,    72,    24,
+       0,     0,     0,     0,     0,    23,     0,    78,     0,     0,
+       0,    80,    81,    79,    21,    63,    62,     0,    88,     0,
+       0,     0,    93,    91,     0,     0,    43,    30,    28,    48,
+       0,    82,     0,    83,     0,     0,     0,    89,    64,    84,
+      94,    92,     0,     0,    90,     0,    85
 };
 
   /* YYPGOTO[NTERM-NUM].  */
 static const short int yypgoto[] =
 {
-     -95,   -95,    17,     1,   -87,     0,   -61,   -16,   -95,   -95,
-      34,   -95,   -95,   -95,   165,   -95,    48,   -95,    40,   -70,
-     109,   114,   -95,   -95,   -95,    32,   -95,   -95,   -38,   -95,
-     -95,    33,    53,   -95,   -95,   -95,   -95,   -94,   -95,   -95,
-     -95,   -95,   -95,   -95,   -95,    11,     6,    15,   -49
+     -97,   -97,   -33,     7,   -65,    29,   -66,   -40,   -97,   -97,
+     -20,   -97,   -97,   -97,   176,     4,   -14,   -97,   -15,   -71,
+      61,    62,   -97,   -97,   -97,   -26,   -97,   -97,   -30,   -97,
+     -97,    44,    66,   -97,   -97,   -97,   -97,   -96,   -97,   -97,
+     -97,   -97,   -97,   -97,   -97,     0,   174,    24,   -38
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const short int yydefgoto[] =
 {
-      -1,    16,    17,    88,    19,    49,    81,    21,    22,    68,
-     111,   112,    23,    24,    25,   108,   109,    26,   113,    27,
-      28,    29,    30,    31,    84,   146,    32,    33,    51,    58,
-      34,    52,    53,    37,    38,   171,    85,    86,    39,   170,
-      40,    41,    42,    43,    44,    54,    95,    55,    91
+      -1,    16,    17,    93,    19,    49,    85,    21,    22,    68,
+     115,   116,    23,    24,    25,   112,   113,    26,   117,    27,
+      28,    29,    30,    31,    88,   156,    32,    33,    51,    58,
+      34,    52,    53,    37,    38,   183,    89,    90,    39,   182,
+      40,    41,    42,    43,    44,    54,    91,    55,    96
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -423,90 +426,102 @@ static const short int yydefgoto[] =
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const short int yytable[] =
 {
-      20,    18,    96,   114,   115,    56,   105,   133,    90,    59,
-       4,    45,    57,   122,   129,    46,   120,    90,     7,    20,
-      66,    60,    61,   123,    70,    99,   100,    87,    94,    82,
-      45,    67,   147,    35,    46,    71,    93,    72,    97,   128,
-       4,   130,     5,     4,    62,    20,    20,    63,   151,   152,
-       7,   106,    35,    36,    20,   131,    45,    45,    93,   144,
-      92,    46,   104,    94,    65,    45,    69,    20,   110,    72,
-     101,    73,    36,   114,    74,    75,   168,   169,    45,    35,
-      76,    77,   121,   172,   -74,    97,   -75,   119,   105,   124,
-     125,    47,   127,     2,     3,     4,    78,   121,    79,    36,
-      80,   132,    48,     6,   106,     7,    87,     8,   135,   136,
-      97,   138,   134,    47,   140,     2,     3,     4,   106,     5,
-     132,    94,   126,   137,   174,     6,   132,     7,   -40,     8,
-      93,   134,   160,   106,   132,    20,    20,   134,   120,   150,
-     139,   141,   110,   149,   143,   134,    45,    45,   132,   132,
-      46,    46,   142,   148,   159,     6,   165,   163,   164,   134,
-     134,   167,    20,    20,    20,   162,    50,   161,    35,    35,
-      20,    20,   173,    45,    45,    45,   157,    46,    46,    46,
-      64,    45,    45,   158,   116,    46,    46,   155,    36,    36,
-     117,   166,     0,     0,     0,    35,    35,    35,     0,     0,
-       0,     0,     0,    35,    35,     0,     0,     0,     0,     0,
-      83,    89,    50,     0,     0,    36,    36,    36,     0,    83,
-      98,     0,     0,    36,    36,   102,   103,     0,     0,     0,
-      -4,     1,   107,     2,     3,     4,     0,     5,     0,     0,
-       0,     0,   118,     6,    -4,     7,     0,     8,     0,     0,
-       9,    10,    11,     0,    12,     0,     0,   107,    98,    13,
+      45,   109,   118,   119,   136,    86,     4,    18,    57,   140,
+      60,    61,    62,   100,   101,    63,    95,    92,    65,    45,
+      67,     4,    69,     5,    46,    95,    66,   110,    70,    20,
+      98,     7,    77,    78,    56,    84,    80,   158,    59,    71,
+     -76,   129,    72,    46,    35,    45,    45,     7,    20,    97,
+       7,   130,     4,    80,    45,   135,    84,   137,   127,   105,
+      73,   154,    76,    35,    74,   101,    36,    45,   138,    75,
+      46,   103,   104,    79,    20,    20,   -75,   162,   163,   118,
+      84,   122,   123,    20,   125,    36,    81,   110,    82,   -24,
+      35,   108,    83,   101,   109,   -24,    20,   114,   133,     7,
+     -24,   110,    98,    72,    92,   141,    98,   144,   127,   146,
+     180,   181,    36,   148,   149,   128,   171,   184,   150,   172,
+     110,   159,   170,     6,   175,   176,   179,   141,   173,   168,
+     128,   157,   166,   141,   139,   169,   120,     0,   121,   160,
+       0,   141,    45,    45,   178,     0,     0,   186,     0,    47,
+       0,     2,     3,     4,     0,     5,   139,     0,     0,   141,
+     141,     6,   139,     7,    84,     8,    46,    46,     0,     0,
+     139,    20,    20,     0,    45,    45,    45,    50,   114,     0,
+       0,     0,    45,    45,     0,   174,    35,    35,   139,   139,
+     185,    64,     0,     0,     0,     0,     0,     0,    46,    46,
+      46,     0,     0,    20,    20,    20,    46,    46,    36,    36,
+       0,    20,    20,     0,     0,     0,     0,     0,    35,    35,
+      35,    87,    94,    50,    99,     0,    35,    35,     0,     0,
+      87,   102,     0,     0,     0,     0,   106,   107,     0,     0,
+      36,    36,    36,   111,     0,     0,     0,     0,    36,    36,
+       0,     0,     0,   111,   111,   124,   111,     0,     0,   126,
+       0,   131,   132,    47,   134,     2,     3,     4,     0,     5,
+       0,     0,     0,   111,   102,     6,     0,     7,   -40,     8,
+     142,   143,     0,   145,     0,     0,   147,    -4,     1,     0,
+       2,     3,     4,     0,     5,     0,   151,   152,     0,   153,
+       6,    -4,     7,     0,     8,     0,   155,     9,    10,    11,
+       0,    12,     0,     0,   161,     0,    13,    14,    15,     0,
+     164,     0,   111,     0,   167,     0,     0,     0,     0,     0,
+       0,     1,     0,     2,     3,     4,     0,     5,   177,     0,
+       0,    50,     0,     6,    92,     7,   155,     8,     0,     0,
+       9,    10,    11,     0,    12,     0,     0,     0,     0,    13,
       14,    15,     1,     0,     2,     3,     4,     0,     5,     0,
-       0,     0,     0,     0,     6,    87,     7,     0,     8,     0,
-       0,     9,    10,    11,     0,    12,     0,     0,   145,     0,
-      13,    14,    15,     1,     0,     2,     3,     4,     0,     5,
-       0,     0,   153,     0,   107,     6,   156,     7,     0,     8,
-       0,     0,     9,    10,    11,     0,    12,     0,     0,    50,
-       0,    13,    14,    15,   145,    47,     0,     2,     3,     4,
-      47,     5,     2,     3,     4,     0,     0,     6,     0,     7,
-       0,     8,     6,    87,     7,    47,     8,     2,     3,     4,
-      47,     0,     2,     3,     4,     0,     0,     6,     0,     7,
-     -40,     8,     6,     0,     7,   -44,     8,    47,     0,     2,
-       3,     4,   154,     0,     2,     3,     4,     0,     0,     6,
-       0,     7,     0,     8,     6,   -24,     7,     0,     8,     0,
-       0,   -24,     0,     0,     0,     7,   -24
+       0,     0,     0,     0,     6,     0,     7,     0,     8,     0,
+       0,     9,    10,    11,    47,    12,     2,     3,     4,     0,
+      13,    14,    15,     0,     0,    48,     6,     0,     7,    47,
+       8,     2,     3,     4,    47,     0,     2,     3,     4,     0,
+       0,     6,    92,     7,     0,     8,     6,     0,     7,   -40,
+       8,    47,     0,     2,     3,     4,    47,     0,     2,     3,
+       4,     0,     0,     6,     0,     7,   -44,     8,     6,     0,
+       7,   165,     8,     2,     3,     4,     0,     0,     0,     0,
+       0,     0,     0,     6,     0,     7,     0,     8
 };
 
 static const short int yycheck[] =
 {
-       0,     0,    51,    73,    74,     5,    67,   101,    46,     9,
-       5,     0,    19,     1,     1,     0,    11,    55,    15,    19,
-      19,    10,    11,    11,     1,    18,    19,    14,    16,    45,
-      19,    20,   126,     0,    19,    12,    11,    12,    54,    88,
-       5,    90,     7,     5,    15,    45,    46,     3,   135,   136,
-      15,    67,    19,     0,    54,    93,    45,    46,    11,   120,
-      49,    46,    62,    16,     0,    54,    12,    67,    68,    12,
-      59,    26,    19,   143,    28,     9,   163,   164,    67,    46,
-      10,     8,    82,   170,     8,   101,     8,    81,   149,    83,
-      84,     1,    86,     3,     4,     5,    12,    97,    12,    46,
-      12,   101,    12,    13,   120,    15,    14,    17,   102,   103,
-     126,   105,   101,     1,   108,     3,     4,     5,   134,     7,
-     120,    16,    11,    25,   173,    13,   126,    15,    16,    17,
-      11,   120,   148,   149,   134,   135,   136,   126,    11,   133,
-      11,     8,   142,   132,    26,   134,   135,   136,   148,   149,
-     135,   136,    11,    32,    11,    13,    16,    23,    23,   148,
-     149,    13,   162,   163,   164,   150,     1,   150,   135,   136,
-     170,   171,   171,   162,   163,   164,   142,   162,   163,   164,
-      15,   170,   171,   143,    75,   170,   171,   139,   135,   136,
-      76,   159,    -1,    -1,    -1,   162,   163,   164,    -1,    -1,
-      -1,    -1,    -1,   170,   171,    -1,    -1,    -1,    -1,    -1,
-      45,    46,    47,    -1,    -1,   162,   163,   164,    -1,    54,
-      55,    -1,    -1,   170,   171,    60,    61,    -1,    -1,    -1,
-       0,     1,    67,     3,     4,     5,    -1,     7,    -1,    -1,
-      -1,    -1,    77,    13,    14,    15,    -1,    17,    -1,    -1,
-      20,    21,    22,    -1,    24,    -1,    -1,    92,    93,    29,
+       0,    67,    73,    74,     1,    45,     5,     0,    19,   105,
+      10,    11,    12,    51,    54,     3,    46,    14,     0,    19,
+      20,     5,    12,     7,     0,    55,    19,    67,     1,     0,
+      11,    15,    32,    33,     5,    16,    36,   133,     9,    12,
+       8,     1,    12,    19,     0,    45,    46,    15,    19,    49,
+      15,    11,     5,    53,    54,    93,    16,    95,    11,    59,
+      26,   127,    10,    19,    28,   105,     0,    67,    98,     9,
+      46,    18,    19,     8,    45,    46,     8,   142,   143,   150,
+      16,    77,    78,    54,    80,    19,    12,   127,    12,     5,
+      46,    62,    12,   133,   160,    11,    67,    68,    11,    15,
+      16,   141,    11,    12,    14,   105,    11,    25,    11,    11,
+     175,   176,    46,     8,    11,    86,     1,   182,    26,   159,
+     160,    32,    11,    13,    23,    23,    13,   127,   161,   149,
+     101,   131,   146,   133,   105,   150,    75,    -1,    76,   139,
+      -1,   141,   142,   143,   170,    -1,    -1,   185,    -1,     1,
+      -1,     3,     4,     5,    -1,     7,   127,    -1,    -1,   159,
+     160,    13,   133,    15,    16,    17,   142,   143,    -1,    -1,
+     141,   142,   143,    -1,   174,   175,   176,     1,   149,    -1,
+      -1,    -1,   182,   183,    -1,   161,   142,   143,   159,   160,
+     183,    15,    -1,    -1,    -1,    -1,    -1,    -1,   174,   175,
+     176,    -1,    -1,   174,   175,   176,   182,   183,   142,   143,
+      -1,   182,   183,    -1,    -1,    -1,    -1,    -1,   174,   175,
+     176,    45,    46,    47,    50,    -1,   182,   183,    -1,    -1,
+      54,    55,    -1,    -1,    -1,    -1,    60,    61,    -1,    -1,
+     174,   175,   176,    67,    -1,    -1,    -1,    -1,   182,   183,
+      -1,    -1,    -1,    77,    78,    79,    80,    -1,    -1,    85,
+      -1,    87,    88,     1,    90,     3,     4,     5,    -1,     7,
+      -1,    -1,    -1,    97,    98,    13,    -1,    15,    16,    17,
+     106,   107,    -1,   109,    -1,    -1,   112,     0,     1,    -1,
+       3,     4,     5,    -1,     7,    -1,   122,   123,    -1,   125,
+      13,    14,    15,    -1,    17,    -1,   130,    20,    21,    22,
+      -1,    24,    -1,    -1,   140,    -1,    29,    30,    31,    -1,
+     144,    -1,   146,    -1,   148,    -1,    -1,    -1,    -1,    -1,
+      -1,     1,    -1,     3,     4,     5,    -1,     7,   164,    -1,
+      -1,   165,    -1,    13,    14,    15,   170,    17,    -1,    -1,
+      20,    21,    22,    -1,    24,    -1,    -1,    -1,    -1,    29,
       30,    31,     1,    -1,     3,     4,     5,    -1,     7,    -1,
-      -1,    -1,    -1,    -1,    13,    14,    15,    -1,    17,    -1,
-      -1,    20,    21,    22,    -1,    24,    -1,    -1,   123,    -1,
-      29,    30,    31,     1,    -1,     3,     4,     5,    -1,     7,
-      -1,    -1,   137,    -1,   139,    13,   141,    15,    -1,    17,
-      -1,    -1,    20,    21,    22,    -1,    24,    -1,    -1,   154,
-      -1,    29,    30,    31,   159,     1,    -1,     3,     4,     5,
-       1,     7,     3,     4,     5,    -1,    -1,    13,    -1,    15,
-      -1,    17,    13,    14,    15,     1,    17,     3,     4,     5,
-       1,    -1,     3,     4,     5,    -1,    -1,    13,    -1,    15,
-      16,    17,    13,    -1,    15,    16,    17,     1,    -1,     3,
-       4,     5,     1,    -1,     3,     4,     5,    -1,    -1,    13,
-      -1,    15,    -1,    17,    13,     5,    15,    -1,    17,    -1,
-      -1,    11,    -1,    -1,    -1,    15,    16
+      -1,    -1,    -1,    -1,    13,    -1,    15,    -1,    17,    -1,
+      -1,    20,    21,    22,     1,    24,     3,     4,     5,    -1,
+      29,    30,    31,    -1,    -1,    12,    13,    -1,    15,     1,
+      17,     3,     4,     5,     1,    -1,     3,     4,     5,    -1,
+      -1,    13,    14,    15,    -1,    17,    13,    -1,    15,    16,
+      17,     1,    -1,     3,     4,     5,     1,    -1,     3,     4,
+       5,    -1,    -1,    13,    -1,    15,    16,    17,    13,    -1,
+      15,     1,    17,     3,     4,     5,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    13,    -1,    15,    -1,    17
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
@@ -519,18 +534,19 @@ static const unsigned char yystos[] =
       55,    56,    59,    60,    63,    64,    65,    66,    67,    71,
       73,    74,    75,    76,    77,    78,    80,     1,    12,    38,
       47,    61,    64,    65,    78,    80,    38,    19,    62,    38,
-      78,    78,    15,     3,    47,     0,    36,    78,    42,    12,
-       1,    12,    12,    26,    28,     9,    10,     8,    12,    12,
-      12,    39,    40,    47,    57,    69,    70,    14,    36,    47,
-      61,    81,    78,    11,    16,    79,    81,    40,    47,    18,
-      19,    78,    47,    47,    38,    39,    40,    47,    48,    49,
-      38,    43,    44,    51,    52,    52,    53,    54,    47,    79,
-      11,    38,     1,    11,    79,    79,    11,    79,    81,     1,
-      81,    61,    38,    70,    78,    79,    79,    25,    79,    11,
-      79,     8,    11,    26,    39,    47,    58,    70,    32,    78,
-      79,    37,    37,    47,     1,    49,    47,    43,    51,    11,
-      40,    35,    80,    23,    23,    16,    58,    13,    37,    37,
-      72,    68,    37,    36,    81
+      78,    78,    78,     3,    47,     0,    36,    78,    42,    12,
+       1,    12,    12,    26,    28,     9,    10,    78,    78,     8,
+      78,    12,    12,    12,    16,    39,    40,    47,    57,    69,
+      70,    79,    14,    36,    47,    61,    81,    78,    11,    79,
+      81,    40,    47,    18,    19,    78,    47,    47,    38,    39,
+      40,    47,    48,    49,    38,    43,    44,    51,    52,    52,
+      53,    54,    48,    48,    47,    48,    79,    11,    38,     1,
+      11,    79,    79,    11,    79,    81,     1,    81,    61,    38,
+      70,    78,    79,    79,    25,    79,    11,    79,     8,    11,
+      26,    79,    79,    79,    39,    47,    58,    78,    70,    32,
+      78,    79,    37,    37,    47,     1,    49,    47,    43,    51,
+      11,     1,    40,    35,    80,    23,    23,    79,    58,    13,
+      37,    37,    72,    68,    37,    36,    81
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
@@ -542,10 +558,11 @@ static const unsigned char yyr1[] =
       44,    44,    45,    46,    46,    46,    46,    46,    46,    47,
       48,    48,    49,    49,    49,    50,    50,    51,    51,    52,
       52,    53,    53,    54,    54,    55,    56,    56,    56,    56,
-      56,    56,    57,    58,    58,    59,    60,    60,    60,    60,
-      61,    61,    62,    62,    63,    63,    64,    65,    66,    68,
-      67,    69,    70,    70,    72,    71,    73,    73,    74,    74,
-      75,    75,    76,    77,    78,    79,    80,    81
+      56,    56,    57,    58,    58,    59,    59,    60,    60,    60,
+      60,    61,    61,    62,    62,    63,    63,    64,    65,    65,
+      65,    65,    65,    66,    68,    67,    69,    70,    70,    72,
+      71,    73,    73,    74,    74,    75,    75,    76,    77,    78,
+      79,    80,    81
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
@@ -557,10 +574,11 @@ static const unsigned char yyr2[] =
        3,     1,     3,     1,     1,     1,     3,     3,     3,     1,
        0,     1,     1,     3,     3,     1,     3,     1,     3,     1,
        3,     1,     3,     1,     3,     1,     1,     1,     3,     1,
-       1,     1,     3,     1,     3,     3,     3,     2,     3,     3,
-       1,     3,     1,     2,     1,     1,     1,     4,     6,     0,
-       9,     2,     1,     3,     0,     8,     5,     7,     5,     7,
-       1,     2,     1,     2,     1,     1,     1,     1
+       1,     1,     3,     1,     3,     3,     2,     3,     2,     3,
+       3,     1,     3,     1,     2,     1,     1,     1,     4,     4,
+       4,     4,     5,     6,     0,     9,     2,     1,     3,     0,
+       8,     5,     7,     5,     7,     1,     2,     1,     2,     1,
+       1,     1,     1
 };
 
 
@@ -576,7 +594,8 @@ static const unsigned char yydprec[] =
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0
 };
 
 /* YYMERGER[RULE-NUM] -- Index of merging function for rule #RULE-NUM.  */
@@ -591,7 +610,8 @@ static const unsigned char yymerger[] =
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0
 };
 
 /* YYIMMEDIATE[RULE-NUM] -- True iff rule #RULE-NUM is not to be deferred, as
@@ -607,7 +627,8 @@ static const yybool yyimmediate[] =
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0
 };
 
 /* YYCONFLP[YYPACT[STATE-NUM]] -- Pointer into YYCONFL of start of
@@ -625,17 +646,10 @@ static const unsigned char yyconflp[] =
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     1,     0,     0,     0,     0,
+       3,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     5,     7,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     5,     7,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
@@ -655,14 +669,27 @@ static const unsigned char yyconflp[] =
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     1,     0,     0,     0,     0,     3
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0
 };
 
 /* YYCONFL[I] -- lists of conflicting rule numbers, each terminated by
    0, pointed into by YYCONFLP.  */
 static const short int yyconfl[] =
 {
-       0,    76,     0,    76,     0,    88,     0,    86,     0
+       0,    77,     0,    77,     0,    93,     0,    91,     0
 };
 
 /* Error token number */
@@ -1078,7 +1105,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->type = N_SEQUENTIAL_BLOCK;
 							syntree->setRoot( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1082 "y.tab.c" /* glr.c:816  */
+#line 1109 "y.tab.c" /* glr.c:816  */
     break;
 
   case 3:
@@ -1088,7 +1115,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							n->setType( N_SEQUENTIAL_BLOCK );
 							((*yyvalp).node) = n;
 						}
-#line 1092 "y.tab.c" /* glr.c:816  */
+#line 1119 "y.tab.c" /* glr.c:816  */
     break;
 
   case 4:
@@ -1096,7 +1123,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = new syntaxTree::node( N_BLOCK_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1100 "y.tab.c" /* glr.c:816  */
+#line 1127 "y.tab.c" /* glr.c:816  */
     break;
 
   case 5:
@@ -1104,7 +1131,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = new syntaxTree::node( N_BLOCK_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1108 "y.tab.c" /* glr.c:816  */
+#line 1135 "y.tab.c" /* glr.c:816  */
     break;
 
   case 6:
@@ -1112,7 +1139,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1116 "y.tab.c" /* glr.c:816  */
+#line 1143 "y.tab.c" /* glr.c:816  */
     break;
 
   case 7:
@@ -1120,7 +1147,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1124 "y.tab.c" /* glr.c:816  */
+#line 1151 "y.tab.c" /* glr.c:816  */
     break;
 
   case 8:
@@ -1128,7 +1155,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1132 "y.tab.c" /* glr.c:816  */
+#line 1159 "y.tab.c" /* glr.c:816  */
     break;
 
   case 9:
@@ -1136,7 +1163,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1140 "y.tab.c" /* glr.c:816  */
+#line 1167 "y.tab.c" /* glr.c:816  */
     break;
 
   case 10:
@@ -1144,7 +1171,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1148 "y.tab.c" /* glr.c:816  */
+#line 1175 "y.tab.c" /* glr.c:816  */
     break;
 
   case 11:
@@ -1152,7 +1179,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1156 "y.tab.c" /* glr.c:816  */
+#line 1183 "y.tab.c" /* glr.c:816  */
     break;
 
   case 12:
@@ -1160,7 +1187,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1164 "y.tab.c" /* glr.c:816  */
+#line 1191 "y.tab.c" /* glr.c:816  */
     break;
 
   case 13:
@@ -1168,7 +1195,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1172 "y.tab.c" /* glr.c:816  */
+#line 1199 "y.tab.c" /* glr.c:816  */
     break;
 
   case 14:
@@ -1176,7 +1203,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1180 "y.tab.c" /* glr.c:816  */
+#line 1207 "y.tab.c" /* glr.c:816  */
     break;
 
   case 16:
@@ -1184,7 +1211,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1188 "y.tab.c" /* glr.c:816  */
+#line 1215 "y.tab.c" /* glr.c:816  */
     break;
 
   case 17:
@@ -1195,7 +1222,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							syntax_errors--;
 							lerr << error_line() << "Unexpected semicolon" << std::endl;
 						}
-#line 1199 "y.tab.c" /* glr.c:816  */
+#line 1226 "y.tab.c" /* glr.c:816  */
     break;
 
   case 18:
@@ -1205,7 +1232,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							syntax_errors--;
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1209 "y.tab.c" /* glr.c:816  */
+#line 1236 "y.tab.c" /* glr.c:816  */
     break;
 
   case 19:
@@ -1214,7 +1241,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							((*yyvalp).num) = symtab->addSymbol( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 							free( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 						}
-#line 1218 "y.tab.c" /* glr.c:816  */
+#line 1245 "y.tab.c" /* glr.c:816  */
     break;
 
   case 20:
@@ -1222,7 +1249,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
     {
 							((*yyvalp).typlst) = new std::vector<type_t>{ *(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typ) };
 						}
-#line 1226 "y.tab.c" /* glr.c:816  */
+#line 1253 "y.tab.c" /* glr.c:816  */
     break;
 
   case 21:
@@ -1231,67 +1258,76 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							((*yyvalp).typlst) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typlst);
 							((*yyvalp).typlst)->insert( ((*yyvalp).typlst)->begin(), *(((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.typ) );
 						}
-#line 1235 "y.tab.c" /* glr.c:816  */
+#line 1262 "y.tab.c" /* glr.c:816  */
     break;
 
   case 22:
 #line 164 "lang.y" /* glr.c:816  */
     {
-							pmesg( 90, "ERROR: variadic types not yet implemented\n" );
-							((*yyvalp).typ) = &ERROR_TYPE;
+							lerr << error_line() << "Variadic types not yet implemented" << std::endl;
+							((*yyvalp).typ) = new type_t( ERROR_TYPE );
 						}
-#line 1244 "y.tab.c" /* glr.c:816  */
+#line 1271 "y.tab.c" /* glr.c:816  */
     break;
 
   case 23:
 #line 168 "lang.y" /* glr.c:816  */
     {
 							lexer_out << "TYPENAME " << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) ) << std::endl;
-							((*yyvalp).typ) = new type_t( scptab->getTypeDefinition( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), *(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst) ) );
-							if( *((*yyvalp).typ) == ERROR_TYPE )
-								lerr << error_line() << "Unknown type '" << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) ).c_str() << "'" << std::endl;
+							if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) == TUP_SYMBOL ) {
+								type_t t = TUP_TYPE;
+								for( auto itr = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst)->rbegin(); itr != (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst)->rend(); ++itr )
+									t = t.rightFlattenTypeProduct( *itr );
+								((*yyvalp).typ) = new type_t( t );
+							} else {
+								((*yyvalp).typ) = new type_t( scptab->getTypeDefinition( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), *(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst) ) );
+								if( *((*yyvalp).typ) == ERROR_TYPE )
+									lerr << error_line() << "Unknown type '" << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) ).c_str() << "'" << std::endl;
+							}
 						}
-#line 1255 "y.tab.c" /* glr.c:816  */
+#line 1289 "y.tab.c" /* glr.c:816  */
     break;
 
   case 24:
-#line 174 "lang.y" /* glr.c:816  */
+#line 181 "lang.y" /* glr.c:816  */
     {
 							lexer_out << "TYPENAME " << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) ) << std::endl;
 							((*yyvalp).typ) = new type_t( scptab->getTypeDefinition( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) ) );
 							if( *((*yyvalp).typ) == ERROR_TYPE )
 								lerr << error_line() << "Unknown type '" << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) ).c_str() << "'" << std::endl;
 						}
-#line 1266 "y.tab.c" /* glr.c:816  */
+#line 1300 "y.tab.c" /* glr.c:816  */
     break;
 
   case 25:
-#line 180 "lang.y" /* glr.c:816  */
-    {
-							if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst)->size() == 1 )
+#line 187 "lang.y" /* glr.c:816  */
+    { 
+							lexer_out << "TUPLE" << std::endl;
+							if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst)->size() == 1 ) {
+								lerr << error_line(true) << "Cannot construct a tuple of a single type using '(x)', use 'tup(x)' instead" << std::endl;
 								((*yyvalp).typ) = new type_t( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst)->back() );
-							else {
+							} else {
 								type_t t = TUP_TYPE;
 								for( auto itr = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst)->rbegin(); itr != (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typlst)->rend(); ++itr )
 									t = t.rightFlattenTypeProduct( *itr );
 								((*yyvalp).typ) = new type_t( t );
 							}
 						}
-#line 1281 "y.tab.c" /* glr.c:816  */
+#line 1317 "y.tab.c" /* glr.c:816  */
     break;
 
   case 26:
-#line 191 "lang.y" /* glr.c:816  */
+#line 207 "lang.y" /* glr.c:816  */
     {
 							lexer_out << "Declaring variables of type " << (*(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typ)) << std::endl;
 							decllisttypes.push( *(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typ)  );
 							delete (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.typ);
 						}
-#line 1291 "y.tab.c" /* glr.c:816  */
+#line 1327 "y.tab.c" /* glr.c:816  */
     break;
 
   case 27:
-#line 195 "lang.y" /* glr.c:816  */
+#line 211 "lang.y" /* glr.c:816  */
     {
 							syntaxTree::node* n = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node); // <- 3
 							if( n == nullptr )
@@ -1300,11 +1336,11 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								((*yyvalp).node) = n;
 							decllisttypes.pop();
 						}
-#line 1304 "y.tab.c" /* glr.c:816  */
+#line 1340 "y.tab.c" /* glr.c:816  */
     break;
 
   case 28:
-#line 204 "lang.y" /* glr.c:816  */
+#line 220 "lang.y" /* glr.c:816  */
     {
 							if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node) == nullptr ) {
 								((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
@@ -1314,130 +1350,130 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								((*yyvalp).node) = new syntaxTree::node( N_BLOCK_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 							}
 						}
-#line 1318 "y.tab.c" /* glr.c:816  */
+#line 1354 "y.tab.c" /* glr.c:816  */
     break;
 
   case 29:
-#line 213 "lang.y" /* glr.c:816  */
+#line 229 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1326 "y.tab.c" /* glr.c:816  */
+#line 1362 "y.tab.c" /* glr.c:816  */
     break;
 
   case 30:
-#line 217 "lang.y" /* glr.c:816  */
+#line 233 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ASSIGN, symbolToVariable( (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.num), decllisttypes.top() ), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 							if( not decllisttypes.top().weaklyEqual( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data_type ) )
 								lerr << error_line() << "Mismatched types in assignment (" << decllisttypes.top() << " and " << (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data_type << ")" << std::endl;	
 						}
-#line 1336 "y.tab.c" /* glr.c:816  */
+#line 1372 "y.tab.c" /* glr.c:816  */
     break;
 
   case 31:
-#line 222 "lang.y" /* glr.c:816  */
+#line 238 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_GARBAGE, nullptr, nullptr, {.integer=scptab->addVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num), decllisttypes.top() ) } );
 						}
-#line 1344 "y.tab.c" /* glr.c:816  */
+#line 1380 "y.tab.c" /* glr.c:816  */
     break;
 
   case 32:
-#line 226 "lang.y" /* glr.c:816  */
+#line 242 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ASSIGN, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 							if( not (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node)->data_type.weaklyEqual( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data_type ) )
 								lerr << error_line() << "Mismatched types in assignment (" << (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node)->data_type << " and " << (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data_type << ")" << std::endl;	
 						}
-#line 1354 "y.tab.c" /* glr.c:816  */
+#line 1390 "y.tab.c" /* glr.c:816  */
     break;
 
   case 36:
-#line 233 "lang.y" /* glr.c:816  */
+#line 249 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1362 "y.tab.c" /* glr.c:816  */
+#line 1398 "y.tab.c" /* glr.c:816  */
     break;
 
   case 37:
-#line 236 "lang.y" /* glr.c:816  */
+#line 252 "lang.y" /* glr.c:816  */
     {
 							lerr << error_line() << "Missing right parenthesis" << std::endl;
 							syntax_errors--;
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1372 "y.tab.c" /* glr.c:816  */
+#line 1408 "y.tab.c" /* glr.c:816  */
     break;
 
   case 38:
-#line 241 "lang.y" /* glr.c:816  */
+#line 257 "lang.y" /* glr.c:816  */
     {
 							lerr << error_line() << "Missing left parenthesis" << std::endl;
 							syntax_errors--;
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1382 "y.tab.c" /* glr.c:816  */
+#line 1418 "y.tab.c" /* glr.c:816  */
     break;
 
   case 40:
-#line 249 "lang.y" /* glr.c:816  */
+#line 265 "lang.y" /* glr.c:816  */
     { ((*yyvalp).node) = nullptr; }
-#line 1388 "y.tab.c" /* glr.c:816  */
+#line 1424 "y.tab.c" /* glr.c:816  */
     break;
 
   case 42:
-#line 251 "lang.y" /* glr.c:816  */
+#line 267 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1396 "y.tab.c" /* glr.c:816  */
+#line 1432 "y.tab.c" /* glr.c:816  */
     break;
 
   case 43:
-#line 254 "lang.y" /* glr.c:816  */
+#line 270 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1404 "y.tab.c" /* glr.c:816  */
+#line 1440 "y.tab.c" /* glr.c:816  */
     break;
 
   case 44:
-#line 257 "lang.y" /* glr.c:816  */
+#line 273 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node);
 							lerr << error_line() << "Expected expression after comma" << std::endl;
 						}
-#line 1413 "y.tab.c" /* glr.c:816  */
+#line 1449 "y.tab.c" /* glr.c:816  */
     break;
 
   case 45:
-#line 262 "lang.y" /* glr.c:816  */
+#line 278 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1421 "y.tab.c" /* glr.c:816  */
+#line 1457 "y.tab.c" /* glr.c:816  */
     break;
 
   case 46:
-#line 265 "lang.y" /* glr.c:816  */
+#line 281 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_COMPARISON_CHAIN, handleRelop( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num), (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) ) );
 						}
-#line 1429 "y.tab.c" /* glr.c:816  */
+#line 1465 "y.tab.c" /* glr.c:816  */
     break;
 
   case 48:
-#line 269 "lang.y" /* glr.c:816  */
+#line 285 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = handleRelop( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num), (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1437 "y.tab.c" /* glr.c:816  */
+#line 1473 "y.tab.c" /* glr.c:816  */
     break;
 
   case 50:
-#line 274 "lang.y" /* glr.c:816  */
+#line 290 "lang.y" /* glr.c:816  */
     { // associativity needs to be fixed in the syntax tree or intermediate code
 							node_t type;
 							int c = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num);
@@ -1446,20 +1482,14 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							else
 								type = N_MEET;
 							((*yyvalp).node) = new syntaxTree::node( type, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
+							if( not (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node)->data_type.weaklyEqual( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data_type ) )
+								lerr << error_line() << "Cannot join/meet types " << (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node)->data_type << " and " << (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data_type << std::endl;
 						}
-#line 1451 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 51:
-#line 284 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);	
-						}
-#line 1459 "y.tab.c" /* glr.c:816  */
+#line 1489 "y.tab.c" /* glr.c:816  */
     break;
 
   case 52:
-#line 287 "lang.y" /* glr.c:816  */
+#line 303 "lang.y" /* glr.c:816  */
     {
 							node_t type;
 							int c = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num);
@@ -1469,19 +1499,11 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								type = N_SUBTRACT;
 							((*yyvalp).node) = new syntaxTree::node( type, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1473 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 53:
-#line 297 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
-						}
-#line 1481 "y.tab.c" /* glr.c:816  */
+#line 1503 "y.tab.c" /* glr.c:816  */
     break;
 
   case 54:
-#line 300 "lang.y" /* glr.c:816  */
+#line 314 "lang.y" /* glr.c:816  */
     {
 							node_t type;
 							int c = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.num);
@@ -1493,27 +1515,27 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								type = N_REMAINDER;
 							((*yyvalp).node) = new syntaxTree::node( type, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1497 "y.tab.c" /* glr.c:816  */
+#line 1519 "y.tab.c" /* glr.c:816  */
     break;
 
   case 56:
-#line 314 "lang.y" /* glr.c:816  */
+#line 328 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_INTEGER, nullptr, nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num)} );
 						}
-#line 1505 "y.tab.c" /* glr.c:816  */
+#line 1527 "y.tab.c" /* glr.c:816  */
     break;
 
   case 57:
-#line 317 "lang.y" /* glr.c:816  */
+#line 331 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_FLOAT, nullptr, nullptr, {.floating=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.flt)} );
 						}
-#line 1513 "y.tab.c" /* glr.c:816  */
+#line 1535 "y.tab.c" /* glr.c:816  */
     break;
 
   case 58:
-#line 320 "lang.y" /* glr.c:816  */
+#line 334 "lang.y" /* glr.c:816  */
     {
 							lexer_out << "STR: \"" << input_str << "\"" << std::endl;
 							syntaxTree::node::extra_data_t d;
@@ -1521,145 +1543,183 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							((*yyvalp).node) = new syntaxTree::node( N_STRING, nullptr, nullptr, d );
 							input_str.clear();
 						}
-#line 1525 "y.tab.c" /* glr.c:816  */
+#line 1547 "y.tab.c" /* glr.c:816  */
     break;
 
   case 59:
-#line 327 "lang.y" /* glr.c:816  */
+#line 341 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node);
 						}
-#line 1533 "y.tab.c" /* glr.c:816  */
+#line 1555 "y.tab.c" /* glr.c:816  */
     break;
 
   case 62:
-#line 333 "lang.y" /* glr.c:816  */
+#line 347 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_TUPLE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1541 "y.tab.c" /* glr.c:816  */
+#line 1563 "y.tab.c" /* glr.c:816  */
     break;
 
   case 63:
-#line 337 "lang.y" /* glr.c:816  */
+#line 351 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_TUPLE_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1549 "y.tab.c" /* glr.c:816  */
+#line 1571 "y.tab.c" /* glr.c:816  */
     break;
 
   case 64:
-#line 340 "lang.y" /* glr.c:816  */
+#line 354 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_TUPLE_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1557 "y.tab.c" /* glr.c:816  */
+#line 1579 "y.tab.c" /* glr.c:816  */
     break;
 
   case 65:
-#line 344 "lang.y" /* glr.c:816  */
+#line 358 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 						}
-#line 1565 "y.tab.c" /* glr.c:816  */
+#line 1587 "y.tab.c" /* glr.c:816  */
     break;
 
   case 66:
-#line 348 "lang.y" /* glr.c:816  */
+#line 361 "lang.y" /* glr.c:816  */
     {
-							((*yyvalp).node) = new syntaxTree::node( N_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data.integer+1} );
+							((*yyvalp).node) = new syntaxTree::node( N_TUPLE ); // this might die
 						}
-#line 1573 "y.tab.c" /* glr.c:816  */
+#line 1595 "y.tab.c" /* glr.c:816  */
     break;
 
   case 67:
-#line 351 "lang.y" /* glr.c:816  */
+#line 365 "lang.y" /* glr.c:816  */
     {
-							((*yyvalp).node) = new syntaxTree::node( N_LIST );
+							((*yyvalp).node) = new syntaxTree::node( N_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data.integer+1} );
 						}
-#line 1581 "y.tab.c" /* glr.c:816  */
+#line 1603 "y.tab.c" /* glr.c:816  */
     break;
 
   case 68:
-#line 354 "lang.y" /* glr.c:816  */
+#line 368 "lang.y" /* glr.c:816  */
+    {
+							((*yyvalp).node) = new syntaxTree::node( N_LIST );
+						}
+#line 1611 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 69:
+#line 371 "lang.y" /* glr.c:816  */
     {
 							lerr << error_line() << "Expected right square bracket at end of list" << std::endl;
 							syntax_errors--;
 							((*yyvalp).node) = new syntaxTree::node( N_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data.integer+1} );
 						}
-#line 1591 "y.tab.c" /* glr.c:816  */
+#line 1621 "y.tab.c" /* glr.c:816  */
     break;
 
-  case 69:
-#line 359 "lang.y" /* glr.c:816  */
+  case 70:
+#line 376 "lang.y" /* glr.c:816  */
     {
 							lerr << error_line() << "Expected left square bracket at beginning of list" << std::endl;
 							syntax_errors--;
 							((*yyvalp).node) = new syntaxTree::node( N_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data.integer+1} );
 						}
-#line 1601 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 70:
-#line 365 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node), nullptr, {.integer=0} );
-						}
-#line 1609 "y.tab.c" /* glr.c:816  */
+#line 1631 "y.tab.c" /* glr.c:816  */
     break;
 
   case 71:
-#line 368 "lang.y" /* glr.c:816  */
+#line 382 "lang.y" /* glr.c:816  */
+    {
+							((*yyvalp).node) = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node), nullptr, {.integer=0} );
+						}
+#line 1639 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 72:
+#line 385 "lang.y" /* glr.c:816  */
     {
 							type_t a = (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node)->data_type, b = (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data_type;
 							if( a != b and a != ERROR_TYPE and b != ERROR_TYPE )
 								lerr << error_line() << "Lists and sets can only contain elements of a single type" << std::endl;
 							((*yyvalp).node) = new syntaxTree::node( N_SINGLE_TYPE_EXPRESSION_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node), {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node)->data.integer+1} );
 						}
-#line 1620 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 72:
-#line 375 "lang.y" /* glr.c:816  */
-    {
-							input_str.append( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
-							free( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
-						}
-#line 1629 "y.tab.c" /* glr.c:816  */
+#line 1650 "y.tab.c" /* glr.c:816  */
     break;
 
   case 73:
-#line 379 "lang.y" /* glr.c:816  */
+#line 392 "lang.y" /* glr.c:816  */
     {
 							input_str.append( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 							free( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 						}
-#line 1638 "y.tab.c" /* glr.c:816  */
+#line 1659 "y.tab.c" /* glr.c:816  */
     break;
 
-  case 76:
-#line 386 "lang.y" /* glr.c:816  */
+  case 74:
+#line 396 "lang.y" /* glr.c:816  */
     {
-							((*yyvalp).node) = symbolToVariable( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) );
+							input_str.append( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
+							free( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.str) );
 						}
-#line 1646 "y.tab.c" /* glr.c:816  */
+#line 1668 "y.tab.c" /* glr.c:816  */
     break;
 
   case 77:
-#line 390 "lang.y" /* glr.c:816  */
+#line 403 "lang.y" /* glr.c:816  */
     {
+							((*yyvalp).node) = symbolToVariable( (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num) );
+						}
+#line 1676 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 78:
+#line 407 "lang.y" /* glr.c:816  */
+    {
+							lexer_out << "CALL " << symtab->getName((((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num)) << std::endl;
 							/*std::cout << "function_call: " << ($<num>1) << " ";
 							$<node>3->print(std::cout);
 							std::cout << std::endl;*/
-							function_t f = scptab->getFunction( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type );
+							syntaxTree::node* n = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
+							type_t t = n ? n->data_type : VOID_TYPE;
+							function_t f = scptab->getFunction( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), t );
 							variable_t v = scptab->getVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) );
-							if( f == ERROR_FUNCTION and v == ERROR_VARIABLE )
-								lerr << error_line() << "Undeclared function " << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) ) << std::endl;
-							if( v == ERROR_VARIABLE or scptab->getVariableScope( v ) <= scptab->getFunctionScope( f ) ) { // function
+							if( f == ERROR_FUNCTION and v == ERROR_VARIABLE ) {
+								if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) == TUP_SYMBOL ) {
+									syntaxTree::node* traverser = n;
+									while( traverser != nullptr ) {
+										traverser->type = N_TUPLE_LIST;
+										traverser = traverser->children[1];
+									}
+									if( n == nullptr ) {	// empty tuple
+										((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=ERROR_VARIABLE} );
+										lerr << error_line() << "Empty tuple not yet supported" << std::endl;
+										delete n;
+									} else {
+										(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->type = N_TUPLE;
+										((*yyvalp).node) = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
+									}
+								} else {
+									((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=ERROR_VARIABLE} );
+									lerr << error_line() << "Undeclared function " << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) ) << "(";
+									bool comma = false;
+									syntaxTree::node* traverser = n;
+									while( traverser != nullptr ) {
+										if( comma )
+											lerr << ",";
+										comma = true;
+										lerr << traverser->children[0]->data_type;
+										traverser = traverser->children[1];
+									}
+									lerr << ")" << std::endl;
+									delete n;
+								}
+							} else if( v == ERROR_VARIABLE or scptab->getVariableScope( v ) <= scptab->getFunctionScope( f ) ) { // function
 								((*yyvalp).node) = new syntaxTree::node( N_FUNCTION_CALL, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), nullptr, {.integer = f } );
 							} else { // variable
 								type_t t = scptab->getVariableType( v );
-								syntaxTree::node* n = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
 								if( t.isList() ) {
 									if( n->children[1] )
 										lerr << error_line(true) << "Expected 1 list index, others are ignored" << std::endl;
@@ -1669,7 +1729,6 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								} else if( t.isFunction() ) {
 									((*yyvalp).node) = new syntaxTree::node( N_FUNCTION_CALL, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = v} ) );
 								} else if( t.isTuple() ) {
-									std::cout << "TUPLES!" << std::endl;
 									if( n->children[1] == nullptr /*single argument*/
 											and n->children[0]->type == N_INTEGER /*constant argument*/ ) {
 										((*yyvalp).node) = new syntaxTree::node( N_TUPLE_INDEXING, new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer = v } ), nullptr, {.integer = n->children[0]->data.integer } );
@@ -1680,32 +1739,99 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								} else {
 									lerr << error_line() << "Variable " << symtab->getName( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num) ) << " is neither list nor function (but " << t << ")" << std::endl;
 									((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
+									delete n;
 								}
 							}
 						}
-#line 1687 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 78:
-#line 432 "lang.y" /* glr.c:816  */
-    {
-							lerr << "function_definition" << std::endl;
-						}
-#line 1695 "y.tab.c" /* glr.c:816  */
+#line 1747 "y.tab.c" /* glr.c:816  */
     break;
 
   case 79:
-#line 436 "lang.y" /* glr.c:816  */
+#line 473 "lang.y" /* glr.c:816  */
+    {
+							type_t t = (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node)->data_type;
+							if( t.isFunction() ) {
+								// check args plz
+								((*yyvalp).node) = new syntaxTree::node( N_FUNCTION_CALL, (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node) );
+							} else if( t.isList() ) {
+								if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[1] )
+									lerr << error_line(true) << "Expected 1 list index, others are ignored" << std::endl;
+								((*yyvalp).node) = new syntaxTree::node( N_LIST_INDEXING, (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[0] );
+							} else if( t.isTuple() ) {
+								if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[1] == nullptr /*single argument*/
+										and (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[0]->type == N_INTEGER /*constant argument*/ ) {
+									((*yyvalp).node) = new syntaxTree::node( N_TUPLE_INDEXING, (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node), nullptr, {.integer = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[0]->data.integer } );
+									delete (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
+								} else {
+									lerr << error_line() << "Tuples can only be indexed by constants" << std::endl;
+									((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
+								}
+							} else if( t == ERROR_TYPE ) {
+								delete (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
+								((*yyvalp).node)=(((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node);
+							} else {
+								lerr << error_line() << "Variable is neither list nor function (but " << t << ")" << std::endl;
+								((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
+							}
+						}
+#line 1778 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 80:
+#line 499 "lang.y" /* glr.c:816  */
+    {
+							if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[1] == nullptr /*single argument*/
+									and (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[0]->type == N_INTEGER /*constant argument*/ ) {
+								((*yyvalp).node) = new syntaxTree::node( N_TUPLE_INDEXING, (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node), nullptr, {.integer = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[0]->data.integer } );
+								delete (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node);
+							} else {
+								lerr << error_line() << "Tuples can only be indexed by constants" << std::endl;
+								((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
+							}
+						}
+#line 1793 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 81:
+#line 509 "lang.y" /* glr.c:816  */
+    {
+							if( (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[1] )
+								lerr << error_line(true) << "Expected 1 list index, others are ignored" << std::endl;
+							((*yyvalp).node) = new syntaxTree::node( N_LIST_INDEXING, (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->children[0] );
+						}
+#line 1803 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 82:
+#line 514 "lang.y" /* glr.c:816  */
+    {
+							lerr << error_line() << "Cannot construct 1-element tuples with '(x)', use 'tup(x)' instead" << std::endl;
+							syntax_errors--;
+							((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, { .integer = ERROR_VARIABLE } );
+						}
+#line 1813 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 83:
+#line 525 "lang.y" /* glr.c:816  */
+    {
+							lerr << "function_definition" << std::endl;
+						}
+#line 1821 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 84:
+#line 529 "lang.y" /* glr.c:816  */
     {
 							scopes.push( previous_nested_scope );
 							function_t f = scptab->addFunctionDeclaration( scopes.top(), NONE_SYMBOL, *(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typ), scptab->getAllVariables( scopes.top() ) );
 							functions.push( f );
 						}
-#line 1705 "y.tab.c" /* glr.c:816  */
+#line 1831 "y.tab.c" /* glr.c:816  */
     break;
 
-  case 80:
-#line 440 "lang.y" /* glr.c:816  */
+  case 85:
+#line 533 "lang.y" /* glr.c:816  */
     {
 							type_t t( FNC_STRUCTURE, { (((yyGLRStackItem const *)yyvsp)[YYFILL (-7)].yystate.yysemantics.yysval.node)->data_type, *(((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.typ) } );
 							(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->type = N_SEQUENTIAL_BLOCK;
@@ -1713,162 +1839,161 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 							functions.pop();
 							((*yyvalp).node)->data_type = t;
 						}
-#line 1717 "y.tab.c" /* glr.c:816  */
+#line 1843 "y.tab.c" /* glr.c:816  */
     break;
 
-  case 81:
-#line 448 "lang.y" /* glr.c:816  */
+  case 86:
+#line 541 "lang.y" /* glr.c:816  */
     {
 							variable_t v = scptab->addVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num), *(((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.typ) ); // scoping issues
 							((*yyvalp).node) = new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=v} );
 						}
-#line 1726 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 82:
-#line 453 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
-						}
-#line 1734 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 83:
-#line 456 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
-						}
-#line 1742 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 84:
-#line 460 "lang.y" /* glr.c:816  */
-    {
-							structure_t base = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type.getBase();
-							if( base != LST_STRUCTURE and base != SET_STRUCTURE )
-								lerr << error_line() << "Cannot iterate over variables of type " << (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type << std::endl;
-							type_t t = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type.getChildType();
-							symbolToVariable( (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), t );
-						}
-#line 1754 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 85:
-#line 466 "lang.y" /* glr.c:816  */
-    {
-							symbol_t s = symtab->addTemporarySymbol();
-							((*yyvalp).node) = new syntaxTree::node( N_SEQUENTIAL_BLOCK, 
-								new syntaxTree::node( N_ASSIGN, 
-									symbolToVariable( s, (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node)->data_type ),
-									(((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node) ),
-								new syntaxTree::node( N_WHILE, new syntaxTree::node( N_EMPTY ) /*rip*/, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) ) );
-						}
-#line 1767 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 86:
-#line 475 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_WHILE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
-						}
-#line 1775 "y.tab.c" /* glr.c:816  */
+#line 1852 "y.tab.c" /* glr.c:816  */
     break;
 
   case 87:
-#line 478 "lang.y" /* glr.c:816  */
+#line 546 "lang.y" /* glr.c:816  */
+    {
+							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
+						}
+#line 1860 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 88:
+#line 549 "lang.y" /* glr.c:816  */
+    {
+							((*yyvalp).node) = new syntaxTree::node( N_ARGUMENT_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
+						}
+#line 1868 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 89:
+#line 553 "lang.y" /* glr.c:816  */
+    {
+							type_t t = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type;
+							if( not( t.isList() or t.isSet() ) )
+								lerr << error_line() << "Cannot iterate over instance of type " << (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type << std::endl;
+							for_iterating_variable.push( scptab->addVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), t.getChildType() ) );
+						}
+#line 1879 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 90:
+#line 558 "lang.y" /* glr.c:816  */
+    {
+							((*yyvalp).node) = new syntaxTree::node( N_FOR, 
+								new syntaxTree::node( N_IN, 
+									new syntaxTree::node( N_VARIABLE, nullptr, nullptr, {.integer=for_iterating_variable.top() } ),
+									(((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.node) ),
+								(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
+							for_iterating_variable.pop();
+						}
+#line 1892 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 91:
+#line 567 "lang.y" /* glr.c:816  */
+    {
+							((*yyvalp).node) = new syntaxTree::node( N_WHILE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
+						}
+#line 1900 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 92:
+#line 570 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_WHILE, 
 								(((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.node), 
 								new syntaxTree::node( N_ELSE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) )
 							);
 						}
-#line 1786 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 88:
-#line 485 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_IF, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
-						}
-#line 1794 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 89:
-#line 488 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_IF, (((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.node), new syntaxTree::node( N_ELSE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) ) );
-						}
-#line 1802 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 90:
-#line 492 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=1} );
-						}
-#line 1810 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 91:
-#line 495 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num)} );
-						}
-#line 1818 "y.tab.c" /* glr.c:816  */
-    break;
-
-  case 92:
-#line 499 "lang.y" /* glr.c:816  */
-    {
-							((*yyvalp).node) = new syntaxTree::node( N_CONTINUE );
-						}
-#line 1826 "y.tab.c" /* glr.c:816  */
+#line 1911 "y.tab.c" /* glr.c:816  */
     break;
 
   case 93:
-#line 503 "lang.y" /* glr.c:816  */
+#line 577 "lang.y" /* glr.c:816  */
     {
-							((*yyvalp).node) = new syntaxTree::node( N_RETURN, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
+							((*yyvalp).node) = new syntaxTree::node( N_IF, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1834 "y.tab.c" /* glr.c:816  */
+#line 1919 "y.tab.c" /* glr.c:816  */
     break;
 
   case 94:
-#line 507 "lang.y" /* glr.c:816  */
+#line 580 "lang.y" /* glr.c:816  */
     {
-							scopes.push( scptab->addScope( scopes.top() ) );
+							((*yyvalp).node) = new syntaxTree::node( N_IF, (((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.node), new syntaxTree::node( N_ELSE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) ) );
 						}
-#line 1842 "y.tab.c" /* glr.c:816  */
+#line 1927 "y.tab.c" /* glr.c:816  */
     break;
 
   case 95:
-#line 511 "lang.y" /* glr.c:816  */
+#line 584 "lang.y" /* glr.c:816  */
     {
-							previous_nested_scope = scopes.top();
-							scopes.pop();
+							((*yyvalp).node) = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=1} );
 						}
-#line 1851 "y.tab.c" /* glr.c:816  */
+#line 1935 "y.tab.c" /* glr.c:816  */
     break;
 
   case 96:
-#line 516 "lang.y" /* glr.c:816  */
+#line 587 "lang.y" /* glr.c:816  */
     {
-							scopes.push( scptab->addScope( scopes.top() ) );
+							((*yyvalp).node) = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num)} );
 						}
-#line 1859 "y.tab.c" /* glr.c:816  */
+#line 1943 "y.tab.c" /* glr.c:816  */
     break;
 
   case 97:
-#line 520 "lang.y" /* glr.c:816  */
+#line 591 "lang.y" /* glr.c:816  */
+    {
+							((*yyvalp).node) = new syntaxTree::node( N_CONTINUE );
+						}
+#line 1951 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 98:
+#line 595 "lang.y" /* glr.c:816  */
+    {
+							((*yyvalp).node) = new syntaxTree::node( N_RETURN, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
+						}
+#line 1959 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 99:
+#line 599 "lang.y" /* glr.c:816  */
+    {
+							scopes.push( scptab->addScope( scopes.top() ) ); // do such brackets realy need to be a scope?
+						}
+#line 1967 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 100:
+#line 603 "lang.y" /* glr.c:816  */
     {
 							previous_nested_scope = scopes.top();
 							scopes.pop();
 						}
-#line 1868 "y.tab.c" /* glr.c:816  */
+#line 1976 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 101:
+#line 608 "lang.y" /* glr.c:816  */
+    {
+							scopes.push( scptab->addScope( scopes.top() ) );
+						}
+#line 1984 "y.tab.c" /* glr.c:816  */
+    break;
+
+  case 102:
+#line 612 "lang.y" /* glr.c:816  */
+    {
+							previous_nested_scope = scopes.top();
+							scopes.pop();
+						}
+#line 1993 "y.tab.c" /* glr.c:816  */
     break;
 
 
-#line 1872 "y.tab.c" /* glr.c:816  */
+#line 1997 "y.tab.c" /* glr.c:816  */
       default: break;
     }
 
@@ -1962,7 +2087,7 @@ yylhsNonterm (yyRuleNum yyrule)
 }
 
 #define yypact_value_is_default(Yystate) \
-  (!!((Yystate) == (-95)))
+  (!!((Yystate) == (-97)))
 
 /** True iff LR state YYSTATE has only a default reduction (regardless
  *  of token).  */
@@ -3550,7 +3675,7 @@ yypdumpstack (yyGLRStack* yystackp)
 
 
 
-#line 525 "lang.y" /* glr.c:2584  */
+#line 617 "lang.y" /* glr.c:2584  */
 
 
 /* C-CODE */
@@ -3594,17 +3719,18 @@ int main( int argc, char** argv ) {
 		std::cout << error_line() << "Unresolved syntax errors" << std::endl;
 		return -1;
 	}
-	if( error_counter > 0 ) {
+	if( err_count > 0 ) {
 		return -1;
 	}
-	syntree_out << "\nSyntax Tree:" << (*syntree) << std::endl << std::endl;
+	syntree_out << "\nSyntax Tree:" << std::flush;
+	syntree_out << (*syntree) << std::endl << std::endl;
 	if( settings.output_format == command_line_data::output_format_t::PARSE )
 		return 0;
 	intermediateCode ic( scptab );
 	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
 	syntree_out << "Scope Table:" << std::endl << (*scptab) << std::endl;
 	ic_out << "Intermediate Code:" << std::endl << ic << std::endl;
-	assemblyGenerator ag( ic );
+	assemblyGenerator ag( ic, settings.optimization_level );
 	if( asm_out.enabled )
 		ag.print( asm_out.stream, false );
 	std::string asmofn = current_directory + "tmp/out.asm";
@@ -3635,13 +3761,13 @@ int main( int argc, char** argv ) {
 }
 
 static void yyerror_w(const char *s, int warning ) {
-	if( !warning ) {
+	/*if( !warning ) {
 		error_counter += 1;
 		lerr << error_line() << s << std::endl;
 	} else if( warning_counter != -1 ) {
 		lerr << error_line(true) << s << std::endl;
 		warning_counter++;
-	}
+	}*/
 }
 
 static void yyerror(const char* s) {

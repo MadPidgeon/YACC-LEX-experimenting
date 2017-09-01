@@ -14,7 +14,7 @@ const std::vector<std::string> node_t_to_str = {
 
 	"ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "REMAINDER", "UMIN",
 
-	"JOIN", "MEET",
+	"JOIN", "MEET", "IN",
 
 	"ARGUMENT_LIST",
 
@@ -60,6 +60,7 @@ type_t syntaxTree::node::computeDatatype() {
 			break;
 		// both optional
 		case N_FUNCTION_CALL:
+		case N_TUPLE:
 			break;
 		// 1 child (left)
 		case N_COMPARISON_CHAIN:
@@ -76,7 +77,7 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_BLOCK_LIST:
 		case N_SEQUENTIAL_BLOCK:
 		case N_PARALLEL_BLOCK:
-		case N_TUPLE: case N_TUPLE_LIST:
+		case N_TUPLE_LIST:
 		case N_ARGUMENT_LIST:
 			if( children[0] == nullptr )
 				return ERROR_TYPE;
@@ -141,7 +142,11 @@ type_t syntaxTree::node::computeDatatype() {
 				return children[1]->data_type.getParameter(1);
 			} else
 				return syntaxTree::scopes->getFunctionReturnType( data.integer );
-		case N_TUPLE: case N_TUPLE_LIST: case N_ARGUMENT_LIST:
+		case N_TUPLE: 
+			if( not children[0] )
+				return TUP_TYPE;
+			// intentional lack of break
+		case N_TUPLE_LIST: case N_ARGUMENT_LIST:
 			return (children[1] ? children[1]->data_type : TUP_TYPE).rightFlattenTypeProduct( children[0]->data_type );
 		case N_LIST_INDEXING:
 			if( children[0]->data_type.isList() and children[1]->data_type == INT_TYPE )
@@ -154,6 +159,10 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_JOIN: case N_MEET:
 			if( ( children[0]->data_type == STR_TYPE or children[0]->data_type.isList() or children[0]->data_type.isSet() ) and children[0]->data_type == children[1]->data_type )
 				return children[0]->data_type;
+			return ERROR_TYPE;
+		case N_IN:
+			if( ( children[1]->data_type.isList() or children[1]->data_type.isSet() ) and children[0]->data_type == children[1]->data_type.getChildType() )
+				return BOOL_TYPE;
 			return ERROR_TYPE;
 		case N_FUNCTION_DEFINITION:
 			return ERROR_TYPE; // entered by other code

@@ -5,6 +5,7 @@
 struct command_line_data {
 	std::vector<std::string> infilenames;
 	std::string outfilename;
+	int optimization_level;
 	enum output_format_t {
 		PARSE, ASSEMBLY, OBJECT, EXECUTABLE
 	} output_format;

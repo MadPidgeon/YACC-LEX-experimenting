@@ -33,7 +33,7 @@ class stackFrame {
 public:
 	struct variable_storage {
 		variable_t variable;
-		size_t size; // = 0, 1, 2, 4, 8 (ints), 16 (flts) bytes
+		size_t size; // in bytes
 		stack_offset_t offset;
 		variable_storage( variable_t v = ERROR_VARIABLE, size_t s = 0, stack_offset_t o = 0 );
 	};
@@ -51,6 +51,7 @@ public:
 	size_t popCountOnReturn() const;
 	stack_offset_t addVariable( variable_t v, size_t s );
 	stack_offset_t getVariableLocation( variable_t v ) const;
+	stack_offset_t getVariableDirectedLocation( variable_t v ) const;
 	bool isLocalVariable( variable_t v ) const;
 	void print( std::ostream& os ) const;
 	void reset( std::vector<variable_storage> returns, std::vector<variable_storage> arguments );

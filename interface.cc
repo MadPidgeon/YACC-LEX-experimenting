@@ -15,6 +15,7 @@ bool command_line_data::parse( int argc, char** argv ) {
 		return false;
 	}
 	for( int i = 1; i < argc; ++i ) {
+		bool bad = false;
 		if( argv[i][0] == '-' ) {
 			if( strcmp( argv[i]+1, "p" ) == 0 ) {
 				output_format = PARSE;
@@ -33,6 +34,8 @@ bool command_line_data::parse( int argc, char** argv ) {
 				std::cout << "  -p          Produce no output file, but do parse the input" << std::endl;
 				std::cout << "  -S          Output assembly in Intel syntax" << std::endl;
 				std::cout << "  -c          Output object file" << std::endl;
+				std::cout << "  -O0         No optimization" << std::endl;
+				std::cout << "  -O1         Basic optimization (default)" << std::endl;
 				std::cout << "  --version   Display version information" << std::endl;
 				std::cout << "  --help      Display this help text" << std::endl;
 				std::cout << "  -v[lsioa]   Display verbose (debug) information about compilation steps:" << std::endl;
@@ -62,7 +65,14 @@ bool command_line_data::parse( int argc, char** argv ) {
 				}
 			} else if( strcmp( argv[i]+1, "-verbose" ) == 0 ) {
 				lexer_out.enabled = syntree_out.enabled = ic_out.enabled = opt_out.enabled = asm_out.enabled = true;
-			} else {
+			} else if( argv[i][1] == 'O' ) {
+				if( argv[i][2] >= '0' and argv[i][2] <= '3' and argv[i][3] == '\0' )
+					optimization_level = argv[i][2] - '0';
+				else 
+					bad = true;
+			} else 
+				bad = true;
+			if( bad ) {
 				std::cout << ERROR_FORMATTED_STRING << "Unrecognised option \"" << argv[i] << "\"" << std::endl;
 				return false;
 			}
@@ -82,4 +92,6 @@ bool command_line_data::parse( int argc, char** argv ) {
 
 command_line_data::command_line_data() {
 	outfilename = "a.out";
+	optimization_level = 1;
+	output_format = EXECUTABLE;
 }

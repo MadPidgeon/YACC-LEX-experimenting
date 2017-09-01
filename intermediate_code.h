@@ -15,7 +15,7 @@ typedef uint64_t label_t;
 #define IOFB			(1 << 2)
 #define IOFL			(1 << 3)
 #define IOFF			(1 << 5) // is floating point operation
-#define IOFS			(1 << 6) // sets r without reading
+#define IOFS			(1 << 6) // sets r without reading (take care with ARR_STORE )
 #define IOFJ			(1 << 7) // is jumping operation
 
 struct iop_t {
@@ -59,12 +59,17 @@ struct iop_t {
 						// [rab-] (variable, base, offset) r = *( a + offset )
 		IOP_INT_ARR_STORE,
 						// [rab-] ((R) base, offset, variable)
+		IOP_FLT_ARR_LOAD,
+		IOP_FLT_ARR_STORE,
 		IOP_INT_TUP_LOAD,
 						// [rab-] (variable, base, offset)  r = *( (&a) + offset )
 		IOP_INT_TUP_STORE,
-						// [rab-] ((R) base, offset, variable)		
+						// [rab-] ((R) base, offset, variable)
+		IOP_FLT_TUP_LOAD,
+		IOP_FLT_TUP_STORE,
 		IOP_LIST_ALLOCATE,	
 						// [ra--] (memory adress,size in bytes)
+		IOP_LIST_SIZE,  // [ra--]
 
 		COUNT
 	};
@@ -135,13 +140,22 @@ public:
 		variable_t translateExpression( const syntaxTree::node* n );
 		variable_t translateFunctionCall( const syntaxTree::node* n );
 		variable_t translateFunctionOperation( const syntaxTree::node* n );
-		void translateListElements( const syntaxTree::node* n, variable_t, size_t );
+		void translateListElements( const syntaxTree::node* n, variable_t, variable_t );
 		size_t translateTupleAssignment( variable_t target, variable_t source, size_t offset, type_t t );
 		void translateLValue( const syntaxTree::node* n, variable_t value );
 		variable_t translateVariable( const syntaxTree::node* n );
 		variable_t translateReadIndexing( const syntaxTree::node* n );
 		void translateSequentialBlock( const syntaxTree::node* n, loop_stack_t& );
 		void translateTupleElements( const syntaxTree::node* n, variable_t, size_t );
+
+		void translateAssignToListElementWeak( variable_t, variable_t, variable_t );
+		void translateAssignFromListElementWeak( variable_t, variable_t, variable_t );
+		void translateListToListAssignmentWeak( variable_t, variable_t, variable_t, variable_t );
+		void translateAssignToTupleElementWeak( variable_t, variable_t, variable_t );
+		void translateAssignFromTupleElementWeak( variable_t, variable_t, variable_t );
+		void translateTupleToTupleAssignmentWeak( variable_t, variable_t, variable_t, variable_t );
+		void translateGeneralAssignment( variable_t, variable_t );
+
 		size_t addOperation( iop_t::id_t type, variable_t r = ERROR_VARIABLE, variable_t a = ERROR_VARIABLE, variable_t b = ERROR_VARIABLE, label_t l = ERROR_LABEL, iop_t::constant_t = {.integer=0}, iop_t::constant_t = {.integer=0} );
 	};
 private:

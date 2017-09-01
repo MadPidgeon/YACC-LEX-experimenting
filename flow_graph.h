@@ -19,6 +19,16 @@ struct live_interval_t {
 	register_t assigned_register;
 };
 
+struct offset_variable_t {
+	variable_t variable;
+	size_t offset; // in qwords
+	offset_variable_t( variable_t, size_t = 0 );
+	bool operator<( offset_variable_t ) const;
+	bool operator==( offset_variable_t ) const;
+	static offset_variable_t highest_lower_bound( variable_t );
+	static offset_variable_t lowest_upper_bound( variable_t );
+};
+
 class flowGraph {
 	friend std::ostream& operator<<( std::ostream&, const flowGraph& );
 public:	
@@ -50,8 +60,8 @@ public:
 		std::set<variable_t> out;
 		std::map<variable_t,std::set<variable_t>> equal_in;
 		std::map<variable_t,std::set<variable_t>> equal_out;
-		std::unordered_map<variable_t,constant_data> const_in;
-		std::unordered_map<variable_t,constant_data> const_out;
+		std::map<offset_variable_t,constant_data> const_in;
+		std::map<offset_variable_t,constant_data> const_out;
 		std::vector<live_interval_t> computeLiveness() const;
 		bool constantPropagation();
 		int cyclicEquivalence( flowGraph* );
@@ -80,7 +90,7 @@ public:
 	const node& getBlock( basic_block_t ) const;
 	void splitBranch( basic_block_t block, basic_block_t parent );
 	std::vector<std::vector<iop_t>> generateCodeByBlock() const;
-	void optimize();
+	void optimize( int );
 	intermediateCode::function generateFunction() const;
 	std::vector<live_interval_t> naiveLiveIntervals() const;
 	flowGraph( const intermediateCode::function& f );

@@ -26,7 +26,7 @@ obj/%.o: %.cc %.h
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
 asm/%.asm: code/%.code lexer
-	./lexer $< -o $@ -S -vs
+	./lexer $< -o $@ -S -vsioa
 
 lexer: $(addprefix obj/, $(OBJ))
 	$(CXX) $^ -o lexer $(CXXFLAGS)

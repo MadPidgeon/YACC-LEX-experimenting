@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <deque>
 #include <utility>
 #include <iostream>
 #include <string>
@@ -14,14 +13,13 @@
 // all non-POD types are considered tuples
 #define ERROR_STRUCTURE		0	// ERR
 #define FREE_STRUCTURE		1	// FTD
-#define VOID_STRUCTURE		2	// POD ()
-#define INT_STRUCTURE		3	// POD int
-#define FLT_STRUCTURE		4	// POD flt
-#define STR_STRUCTURE		5	// POD str
-#define LST_STRUCTURE		6	// POD lst(type)
-#define SET_STRUCTURE		7	// POD set(type)
-#define TUP_STRUCTURE		8	// POD tup(type,...)
-#define FNC_STRUCTURE		9	// POD fnc(tup,tup)
+#define INT_STRUCTURE		2	// POD int
+#define FLT_STRUCTURE		3	// POD flt
+#define STR_STRUCTURE		4	// POD str
+#define LST_STRUCTURE		5	// POD lst(type)
+#define SET_STRUCTURE		6	// POD set(type)
+#define TUP_STRUCTURE		7	// POD tup(type,...)
+#define FNC_STRUCTURE		8	// POD fnc(tup,tup)
 #define LAST_POD_TYPEDEF	FNC_TYPEDEF
 
 // temporary

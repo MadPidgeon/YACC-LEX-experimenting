@@ -53,12 +53,26 @@ COMMA		","
 LBRA		"("
 RBRA		")"
 ELLIPSIS	"..."
+LINE_COMMENT "//"
 
 %x STRING_STATE
 %x STRING_ESCAPE_STATE
+%x COMMENT_STATE
 
 /* Patterns */
 %%
+
+{LINE_COMMENT} 	{
+				BEGIN(COMMENT_STATE);
+			}
+
+<COMMENT_STATE>\n {
+				YY_READ_NEWLINE;
+				BEGIN(INITIAL);
+			}
+
+<COMMENT_STATE>. {
+			}
 
 "\""		{
 				lexer_out << "entering string" << std::endl;

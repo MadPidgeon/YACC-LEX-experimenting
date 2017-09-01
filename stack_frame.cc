@@ -61,6 +61,18 @@ stack_offset_t stackFrame::getVariableLocation( variable_t v ) const {
 	throw;
 }
 
+stack_offset_t stackFrame::getVariableDirectedLocation( variable_t v ) const {
+	auto p = variable_location.at( v );
+	if( p.first == 0 )
+		return saved_variables.at( p.second ).offset - saved_variables.at( p.second ).size + 8;
+	else if( p.first == 1 )
+		return function_arguments.at( p.second ).offset;
+	else if( p.first == 2 )
+		return return_values.at( p.second ).offset;
+	throw;
+}
+
+
 bool stackFrame::isLocalVariable( variable_t v ) const {
 	return variable_location.at( v ).first == 0;
 }

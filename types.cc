@@ -173,7 +173,7 @@ type_t type_t::rightFlattenTypeProduct( type_t left ) const{
 	if( getBase() != TUP_STRUCTURE )
 		return ERROR_TYPE;
 	type_t r( *this );
-	r.getBaseParameters().push_back( left.peel() );
+	r.getBaseParameters().insert( r.getBaseParameters().begin(), left.peel() );
 	return r;
 }
 
@@ -319,7 +319,6 @@ structure_t structureTable::addStructure( symbol_t s, std::vector<type_t> param 
 structureTable::structureTable() {
 	assert( addStructure( ERROR_SYMBOL ) == ERROR_STRUCTURE );
 	assert( addStructure( ERROR_SYMBOL ) == FREE_STRUCTURE );
-	assert( addStructure( VOID_SYMBOL ) == VOID_STRUCTURE );
 	assert( addStructure( INT_SYMBOL ) == INT_STRUCTURE );
 	assert( addStructure( FLT_SYMBOL ) == FLT_STRUCTURE );
 	assert( addStructure( STR_SYMBOL ) == STR_STRUCTURE );
@@ -332,7 +331,7 @@ structureTable::structureTable() {
 }
 
 const type_t ERROR_TYPE( ERROR_STRUCTURE, {} );
-const type_t VOID_TYPE( VOID_STRUCTURE, {} );
+const type_t VOID_TYPE( TUP_STRUCTURE, {} );
 const type_t INT_TYPE( INT_STRUCTURE, {} );
 const type_t FLT_TYPE( FLT_STRUCTURE, {} );
 const type_t STR_TYPE( STR_STRUCTURE, {} );

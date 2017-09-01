@@ -3,6 +3,8 @@
 #include <deque>
 #include <string>
 
+#define SYMBOL_TABLE_DEBUG
+
 #define ERROR_SYMBOL	0
 #define NONE_SYMBOL		1
 #define INT_SYMBOL		2

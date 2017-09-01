@@ -3,8 +3,13 @@
 #include <deque>
 #include <string>
 #include <cassert>
+#include "error_reporting.h"
 
 std::string symbolTable::getName( symbol_t num ) const {
+	#ifdef SYMBOL_TABLE_DEBUG
+	if( num > int_to_str.size() )
+		lerr << "symbolTable::getName: Symbol index out of bounds" << std::endl;
+	#endif
 	return int_to_str.at(num);
 }
 

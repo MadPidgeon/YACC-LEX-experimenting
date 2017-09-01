@@ -23,8 +23,10 @@ const std::vector<std::string> iop_id_to_str = {
 	"STR_CONEQ",
 	"INT_EQ", "INT_NEQ", "INT_L", "INT_G", "INT_LE", "INT_GE",
 	"INT_ARR_LOAD", "INT_ARR_STORE",
+	"FLT_ARR_LOAD", "FLT_ARR_STORE",
 	"INT_TUP_LOAD", "INT_TUP_STORE",
-	"LIST_ALLOCATE"
+	"FLT_TUP_LOAD", "FLT_TUP_STORE",
+	"LIST_ALLOCATE", "LIST_SIZE"
 };
 
 const std::vector<uint8_t> iop_t::iop_fields = {
@@ -47,9 +49,11 @@ const std::vector<uint8_t> iop_t::iop_fields = {
 	IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF,
 	IOFR|IOFA,
 	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
-	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB,
-	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB,
-	IOFR|IOFA|IOFS
+	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
+	IOFR|IOFA|IOFB|IOFS|IOFF, IOFR|IOFA|IOFB|IOFS|IOFF,
+	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
+	IOFR|IOFA|IOFB|IOFS|IOFF, IOFR|IOFA|IOFB|IOFS|IOFF, // should this be floating
+	IOFR|IOFA|IOFS, IOFR|IOFA|IOFS
 };
 
 
@@ -348,14 +352,15 @@ void iop_t::legalizeCompare() {
 
 size_t intermediateCode::function::addOperation( iop_t::id_t type, variable_t r, variable_t a, variable_t b, label_t l, iop_t::constant_t c, iop_t::constant_t c2 ) {
 	operations.push_back( iop_t{ type, r, a, b, l, c, c2 } );
+	#ifdef SYNTAX_TREE_DEBUG
+	std::cout << operations.back() << std::endl;
+	#endif
 	return operations.size()-1;
 }
 
 void intermediateCode::function::translateNode( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
 	#ifdef SYNTAX_TREE_DEBUG
-	ic_out << "translateNode(" << n->type << "):";
-	n->print( ic_out, 0, 1 );
-	ic_out << std::endl;
+	ic_out << "translateNode(" << n->type << ")" << std::endl;
 	#endif
 	switch( n->type ) {
 		case N_EMPTY:
@@ -421,45 +426,174 @@ void intermediateCode::function::translateAssign( const syntaxTree::node* n ) {
 
 void intermediateCode::function::translateLValue( const syntaxTree::node* n, variable_t value ) {
 	assert( n->type == N_VARIABLE or n->type == N_LIST_INDEXING );
-	if( n->type == N_VARIABLE ) {
-		if( n->data_type == INT_TYPE or n->data_type.isFunction() or n->data_type.isList() or n->data_type.isSet() )
-			addOperation( iop_t::id_t::IOP_INT_MOV, translateVariable( n ), value );
-		else if( n->data_type == FLT_TYPE )
-			addOperation( iop_t::id_t::IOP_FLT_MOV, translateVariable( n ), value );
-		else if( n->data_type.isTuple() )
-			translateTupleAssignment( translateVariable( n ), value, 0, n->data_type );
-		else
-			lerr << error_line() << "Assignment to type " << n->data_type << " not yet implemented" << std::endl;
-	} else if( n->type == N_LIST_INDEXING ) {
+	if( n->type == N_VARIABLE ) 
+		translateGeneralAssignment( n->data.integer, value );
+	else if( n->type == N_LIST_INDEXING ) {
 		variable_t index = translateExpression( n->children[1] );
 		variable_t list = translateVariable( n->children[0] );
-		addOperation( iop_t::id_t::IOP_INT_ARR_STORE, list, index, value );
+		variable_t offset = parent->newTemporaryVariable( INT_TYPE );
+		addOperation( iop_t::id_t::IOP_INT_MOV, offset, index );
+		addOperation( iop_t::id_t::IOP_INT_MULEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=n->data_type.rawSize()/8} );
+		translateAssignToListElementWeak( list, offset, value );
 	} else if( n->type == N_TUPLE_INDEXING ) {
 		variable_t tup = translateVariable( n->children[0] );
 		size_t offset = 0;
 		for( int i = 0; i < n->data.integer; ++i )
 			offset += n->data_type.getParameter( i ).rawSize();
-		addOperation( iop_t::id_t::IOP_INT_TUP_STORE, tup, ERROR_VARIABLE, value, ERROR_LABEL, {.integer = offset} );
+		variable_t index = parent->newTemporaryVariable( INT_TYPE );
+		addOperation( iop_t::id_t::IOP_INT_MOV, index, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=offset/8} );
+		translateAssignToTupleElementWeak( tup, index, value );
 	} else {
 		lerr << error_line() << "Cannot assign to anything other than a variable" << std::endl;
 	}
 }
 
-size_t intermediateCode::function::translateTupleAssignment( variable_t target, variable_t source, size_t offset, type_t t ) {
-	assert( t.isTuple() );
-	for( type_t st : t.unpackProduct() ) {
-		if( st.isTuple() )
-			offset = translateTupleAssignment( target, source, offset, st );
-		else if( st == INT_TYPE ) {
-			variable_t t = parent->newTemporaryVariable( INT_TYPE );
-			addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, t, source, ERROR_VARIABLE, ERROR_LABEL, {.integer=0}, {.integer = offset} );
-			addOperation( iop_t::id_t::IOP_INT_TUP_STORE, target, ERROR_VARIABLE, t, ERROR_LABEL, {.integer = offset } );
-			offset += st.rawSize();
-		} else
-			lerr << error_line() << "Tuple assignment of type " << t << " not yet implemented" << std::endl; 		
+// ---------------------------------------------------------------------------------------------
+
+void intermediateCode::function::translateAssignToListElementWeak( variable_t target, variable_t offset, variable_t source ) {
+	// offset in bytes is $offset * 8
+	type_t st = parent->scptab->getVariableType( source );
+	if( st == INT_TYPE or st.isFunction() ) {
+		addOperation( iop_t::id_t::IOP_INT_ARR_STORE, target, offset, source );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( st.isList() or st.isSet() ) { // weak list copy
+		addOperation( iop_t::id_t::IOP_INT_ARR_STORE, target, offset, source );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( st == FLT_TYPE ) {
+		addOperation( iop_t::id_t::IOP_FLT_ARR_STORE, target, offset, source );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( st == STR_TYPE ) {
+		addOperation( iop_t::id_t::IOP_INT_ARR_STORE, target, offset, source ); // temp
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( st.isTuple() ) { // fix
+		size_t c = st.rawSize();
+		assert( c % 8 == 0 );
+		c >>= 3;
+		variable_t inter = parent->newTemporaryVariable( INT_TYPE );
+		for( size_t i = 0; i < c; ++i ) {
+			addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, inter, source, ERROR_VARIABLE, ERROR_LABEL, {.integer=0}, {.integer=i} );
+			addOperation( iop_t::id_t::IOP_INT_ARR_STORE, target, offset, inter );
+			addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+		}		
 	}
-	return offset;
 }
+
+void intermediateCode::function::translateAssignFromListElementWeak( variable_t target, variable_t source, variable_t offset ) {
+	type_t tt = parent->scptab->getVariableType( target );
+	if( tt == INT_TYPE or tt.isFunction() )  {
+		addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, target, source, offset );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( tt.isList() or tt.isSet() ) {
+		addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, target, source, offset );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( tt == FLT_TYPE ) {
+		addOperation( iop_t::id_t::IOP_FLT_ARR_LOAD, target, source, offset );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( tt == STR_TYPE ) {
+		addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, target, source, offset ); // temp
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( tt.isTuple() ) { // fix
+		size_t c = tt.rawSize();
+		assert( c % 8 == 0 );
+		c >>= 3;
+		variable_t inter = parent->newTemporaryVariable( INT_TYPE );
+		for( size_t i = 0; i < c; ++i ) {
+			addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, inter, source, offset );
+			addOperation( iop_t::id_t::IOP_INT_TUP_STORE, target, ERROR_VARIABLE, inter, ERROR_LABEL, {.integer=i} );
+			addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+		}
+	}
+}
+
+void intermediateCode::function::translateListToListAssignmentWeak( variable_t target, variable_t ot, variable_t source, variable_t os ) {
+	// not fit for use yet
+	type_t t = parent->scptab->getVariableType( target ).getChildType();
+	variable_t inter = parent->newTemporaryVariable( t );
+	translateAssignFromListElementWeak( inter, source, os );
+	translateAssignToListElementWeak( target, ot, inter );
+}
+
+void intermediateCode::function::translateAssignToTupleElementWeak( variable_t target, variable_t offset, variable_t source ) {
+	// offset in bytes is $offset * 8
+	type_t st = parent->scptab->getVariableType( source );
+	if( st == INT_TYPE or st.isFunction() or st.isList() or st.isSet() ) {
+		addOperation( iop_t::id_t::IOP_INT_TUP_STORE, target, offset, source );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( st == FLT_TYPE ) {
+		addOperation( iop_t::id_t::IOP_FLT_TUP_STORE, target, offset, source );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( st == STR_TYPE ) {
+		addOperation( iop_t::id_t::IOP_INT_TUP_STORE, target, offset, source ); // temp
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( st.isTuple() ) { // fix
+		size_t c = st.rawSize();
+		assert( c % 8 == 0 );
+		c >>= 3;
+		variable_t inter = parent->newTemporaryVariable( INT_TYPE );
+		for( size_t i = 0; i < c; ++i ) {
+			addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, inter, source, ERROR_VARIABLE, ERROR_LABEL, {.integer=0}, {.integer=i} );
+			addOperation( iop_t::id_t::IOP_INT_TUP_STORE, target, offset, inter );
+			addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+		}		
+	}
+}
+
+void intermediateCode::function::translateAssignFromTupleElementWeak( variable_t target, variable_t source, variable_t offset ) {
+	type_t tt = parent->scptab->getVariableType( source );
+	if( tt == INT_TYPE or tt.isFunction() or tt.isList() or tt.isSet() ) {
+		addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, target, source, offset );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( tt == FLT_TYPE ) {
+		addOperation( iop_t::id_t::IOP_FLT_TUP_LOAD, target, source, offset );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( tt == STR_TYPE ) {
+		addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, target, source, offset ); // temp
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+	} else if( tt.isTuple() ) { // fix
+		size_t c = tt.rawSize();
+		assert( c % 8 == 0 );
+		c >>= 3;
+		variable_t inter = parent->newTemporaryVariable( INT_TYPE );
+		for( size_t i = 0; i < c; ++i ) {
+			addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, inter, source, offset );
+			addOperation( iop_t::id_t::IOP_INT_TUP_STORE, target, ERROR_VARIABLE, inter, ERROR_LABEL, {.integer=i} );
+			addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
+		}
+	}
+}
+
+void intermediateCode::function::translateTupleToTupleAssignmentWeak( variable_t target, variable_t ot, variable_t source, variable_t os ) {
+	type_t t = parent->scptab->getVariableType( target );
+	variable_t inter = parent->newTemporaryVariable( t );
+	translateAssignFromTupleElementWeak( inter, source, os );
+	translateAssignToTupleElementWeak( target, ot, inter );
+}
+
+
+void intermediateCode::function::translateGeneralAssignment( variable_t target, variable_t source ) {
+	type_t tt = parent->scptab->getVariableType( target );
+	type_t st = parent->scptab->getVariableType( source );
+	assert( tt == st );
+	if( tt.isList() ) {
+		addOperation( iop_t::id_t::IOP_INT_MOV, target, source );
+	} else if( tt.isSet() ) {
+		addOperation( iop_t::id_t::IOP_INT_MOV, target, source );
+	} else if( tt == INT_TYPE or tt.isFunction() ) {
+		addOperation( iop_t::id_t::IOP_INT_MOV, target, source );
+	} else if( tt == FLT_TYPE ) {
+		addOperation( iop_t::id_t::IOP_FLT_MOV, target, source );
+	} else if( tt == STR_TYPE ) {
+		addOperation( iop_t::id_t::IOP_STR_MOV, target, source );
+	} else if( tt.isTuple() ) {
+		variable_t ot = parent->newTemporaryVariable( INT_TYPE );
+		variable_t os = parent->newTemporaryVariable( INT_TYPE );
+		addOperation( iop_t::id_t::IOP_INT_MOV, ot, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
+		addOperation( iop_t::id_t::IOP_INT_MOV, os, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
+		translateTupleToTupleAssignmentWeak( target, ot, source, os );
+	}
+}
+
+// ---------------------------------------------------------------------------------------------
 
 void intermediateCode::function::translateGarbage( const syntaxTree::node* n ) {
 	assert( n->type == N_GARBAGE );
@@ -570,7 +704,36 @@ void intermediateCode::function::translateBranching( const syntaxTree::node* n, 
 			translateNode( n->children[1]->children[1], loop_stack );
 		}
 		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
-	} else 
+	} else if( n->type == N_FOR ) {
+		assert( n->children[0]->type == N_IN );
+		std::cout << "FOR" << std::endl;
+		bool has_else = n->children[1]->type == N_ELSE;
+		variable_t v = translateVariable( n->children[0]->children[0] );
+		variable_t l = translateContainer( n->children[0]->children[1] );
+		variable_t s = parent->newTemporaryVariable( INT_TYPE );
+		variable_t i = parent->newTemporaryVariable( INT_TYPE );
+		label_t condition_check = parent->newLabel();
+		label_t natural_exit = parent->newLabel();
+		label_t abrupt_exit = has_else ? parent->newLabel() : natural_exit;
+		loop_stack.push_back( std::make_pair( abrupt_exit, condition_check ) );
+		addOperation( iop_t::id_t::IOP_INT_MOV, i, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
+		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
+		addOperation( iop_t::id_t::IOP_LIST_SIZE, s, l );
+		addOperation( iop_t::id_t::IOP_JGE, ERROR_VARIABLE, i, s, natural_exit );
+		addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, v, l, i );
+		if( has_else )
+			translateNode( n->children[1]->children[0], loop_stack );
+		else
+			translateNode( n->children[1], loop_stack );
+		loop_stack.pop_back();
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, i, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1 /*should be raw size*/} );
+		addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
+		if( has_else ) {
+			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, natural_exit );
+			translateNode( n->children[1]->children[1], loop_stack );
+		}
+		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
+	} else
 		lerr << error_line() << "Branching operation " << n->type << " not yet implemented" << std::endl;
 }
 
@@ -678,8 +841,10 @@ variable_t intermediateCode::function::translateContainer( const syntaxTree::nod
 	if( n->type == N_LIST ) {
 		size_t s = n->data_type.getChildType().rawSize();
 		variable_t r = parent->newTemporaryVariable( n->data_type );
+		variable_t o = parent->newTemporaryVariable( INT_TYPE );
 		addOperation( iop_t::id_t::IOP_LIST_ALLOCATE, r, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, { .integer = s*n->data.integer } ); 
-		translateListElements( n->children[0], r, n->data.integer );
+		addOperation( iop_t::id_t::IOP_INT_MOV, o, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
+		translateListElements( n->children[0], r, o );
 		return r;
 	} else if( n->type == N_TUPLE ) {
 		variable_t r = parent->newTemporaryVariable( n->data_type );
@@ -689,12 +854,12 @@ variable_t intermediateCode::function::translateContainer( const syntaxTree::nod
 	lerr << error_line() << "Sets not yet implemented" << std::endl;
 }
 
-void intermediateCode::function::translateListElements( const syntaxTree::node* n, variable_t r, size_t abstract_size ) {
+void intermediateCode::function::translateListElements( const syntaxTree::node* n, variable_t r, variable_t o ) {
 	assert( n->type == N_SINGLE_TYPE_EXPRESSION_LIST );
 	variable_t x = translateExpression( n->children[0] );
-	addOperation( iop_t::id_t::IOP_INT_ARR_STORE, r, ERROR_VARIABLE, x, ERROR_LABEL, {.integer=abstract_size-1-n->data.integer /*1337*/} );
+	translateAssignToListElementWeak( r, o, x );
 	if( n->children[1] )
-		translateListElements( n->children[1], r, abstract_size );
+		translateListElements( n->children[1], r, o );
 }
 
 void intermediateCode::function::translateTupleElements( const syntaxTree::node* n, variable_t r, size_t current_offset ) {
@@ -702,24 +867,32 @@ void intermediateCode::function::translateTupleElements( const syntaxTree::node*
 	variable_t x = translateExpression( n->children[0] );
 	addOperation( iop_t::id_t::IOP_INT_TUP_STORE, r, ERROR_VARIABLE, x, ERROR_LABEL, {.integer = current_offset} );
 	if( n->children[1] )
-		translateTupleElements( n->children[1], r, current_offset + n->children[0]->data_type.rawSize() );
+		translateTupleElements( n->children[1], r, current_offset + n->children[0]->data_type.rawSize()/8 );
 }
 
 variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::node* n ) {
-	assert( n->type ==  N_LIST_INDEXING or n->type == N_TUPLE_INDEXING );
+	#ifdef SYNTAX_TREE_DEBUG
+	std::cout << "translateReadIndexing" << std::endl;
+	#endif
+	assert( n->type == N_LIST_INDEXING or n->type == N_TUPLE_INDEXING );
 	variable_t r = parent->newTemporaryVariable( n->data_type );
 	if( n->type == N_LIST_INDEXING ) {
-		assert( n->data_type == INT_TYPE );
 		variable_t list = translateExpression( n->children[0] );
-		variable_t offset = translateExpression( n->children[1] );
-		addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, r, list, offset );
+		variable_t index = translateExpression( n->children[1] );
+		variable_t offset = parent->newTemporaryVariable( INT_TYPE );
+		addOperation( iop_t::id_t::IOP_INT_MOV, offset, index );
+		addOperation( iop_t::id_t::IOP_INT_MULEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=n->data_type.rawSize()/8} );
+		translateAssignFromListElementWeak( r, list, offset );
+		return r;
 	} else {
-		assert( n->data_type == INT_TYPE );
 		variable_t tuple = translateExpression( n->children[0] );
-		size_t offset = 0;
-		for( int i = 0; i < n->data.integer; ++i )
-			offset += n->children[0]->data_type.getParameter( i ).rawSize();
-		addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, r, tuple, ERROR_VARIABLE, ERROR_LABEL, {.integer=0}, {.integer=offset} );
+		size_t index = n->data.integer;
+		size_t base_offset = 0;
+		for( int i = 0; i < index; ++i )
+			base_offset += n->children[0]->data_type.getParameter( i ).rawSize();
+		variable_t offset = parent->newTemporaryVariable( INT_TYPE );
+		addOperation( iop_t::id_t::IOP_INT_MOV, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=base_offset/8} );
+		translateAssignFromTupleElementWeak( r, tuple, offset );
 	}	
 	return r;
 }
@@ -889,6 +1062,15 @@ bool iop_t::reduceStrengthEq( int64_t i ) {
 		case id_t::IOP_INT_ANDNEQ:
 			c_a.integer &= ~i;
 			break;
+		case id_t::IOP_INT_ADDEQ:
+			c_a.integer += i;
+			break;
+		case id_t::IOP_INT_SUBEQ:
+			c_a.integer = i - c_a.integer;
+			break;
+		case id_t::IOP_INT_MULEQ: // moddiv is weird
+			c_a.integer *= i;
+			break;
 		default:
 			return false;
 	}
@@ -921,7 +1103,7 @@ std::string shorthand( std::string in ) {
 
 std::ostream& operator<<( std::ostream& os, iop_t o ) {
 	const int w = 18;
-	os << std::setw(w) << iop_id_to_str[o.id];
+	os << std::setw(w) << std::left << iop_id_to_str[o.id];
 	std::string x;
 	if( o.usesResultParameter() and (o.id != iop_t::id_t::IOP_FUNCTION or o.r != 0) ) {
 		x = symtab->getName( scptab->getVariableSymbol( o.r ) );

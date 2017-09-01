@@ -360,7 +360,7 @@ main:
 _6:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 56
+	sub rsp, 144
 	mov rsi, 40
 	mov qword [-8+rbp], r8
 	mov rax, 9
@@ -372,23 +372,42 @@ _6:
 	syscall
 	mov qword [0+rax], 32
 	lea r8, [8+rax]
-	mov qword [0+r8], 2
-	mov qword [8+r8], 4
-	mov qword [16+r8], 6
-	mov qword [24+r8], 8
+	mov r9, 0
+	mov r10, 2
+	mov qword [0+r8+8*r9], r10
+	add r9, 1
+	mov r10, 4
+	mov qword [0+r8+8*r9], r10
+	add r9, 1
+	mov r10, 6
+	mov qword [0+r8+8*r9], r10
+	add r9, 1
+	mov r10, 8
+	mov qword [0+r8+8*r9], r10
+	add r9, 1
 	mov r9, r8
 	sub rsp, 8
-	mov r8, qword [16+r9]
+	mov r8, 2
+	mov r10, r8
+	imul r10, 1
+	mov r8, qword [0+r9+8*r10]
+	add r10, 1
 	push r8
-	mov qword [-16+rbp], r9
+	mov qword [-56+rbp], r9
 	call _3
 	pop r8
 	push r8
 	call _1
-	mov r9, qword [-16+rbp]
-	mov qword [8+r9], 1
+	mov r8, 1
+	mov r10, r8
+	mov qword [0+r9+8*r10], r10
+	add r10, 1
 	sub rsp, 8
-	mov r8, qword [8+r9]
+	mov r8, 1
+	mov r10, r8
+	imul r10, 1
+	mov r8, qword [0+r9+8*r10]
+	add r10, 1
 	push r8
 	call _3
 	pop r8

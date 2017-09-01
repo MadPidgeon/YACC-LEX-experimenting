@@ -4,6 +4,7 @@
 int err_line_number = 1;
 int err_character_number = 1;
 int err_line_character_number = 1;
+int err_count = 0;
 optional_output lexer_out( std::cout );
 optional_output syntree_out( std::cout );
 optional_output ic_out( std::cout );
@@ -28,8 +29,10 @@ std::ostream& operator<<( std::ostream& os, error_line e ) {
 	os << s;
 	if( e.warning )
 		os << "\033[35mWarning:\033[0m ";
-	else
+	else {
+		err_count++;
 		os << "\033[1;31mError:\033[0m ";
+	}
 	return os;
 }
 

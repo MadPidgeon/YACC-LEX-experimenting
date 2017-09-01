@@ -286,7 +286,7 @@ _5:
   mov qword [r9+_5_buffer], '*2^!'
   add r9, 3
   cmp rax, 0
-  mov rcx, 5
+  mov rcx, 4
   jge .non_negative_exp
 
   ; negative exp
@@ -301,11 +301,11 @@ _5:
   mov rdx, 0               ; clear most significant part of dividend
   div rdi                  ; divide by 10
   add rdx, '0'             ; add '0' character
-  mov [r9+_5_buffer], dl   ; write digit to string
   dec r9
+  mov [r9+_5_buffer], dl   ; write digit to string
   loop .exp_loop
 
-  add r9, 5
+  add r9, 4
   jmp .to_string
 
 .sub_normal:
