@@ -178,6 +178,11 @@ LINE_COMMENT "//"
 				return INT;
 			}
 
+#			{
+				lexer_out << "SIZE_OF" << std::endl;
+				return SIZE_OF;
+			}
+
 "->"		{
 				lexer_out << "MAPSTO" << std::endl;
 				return MAPSTO;

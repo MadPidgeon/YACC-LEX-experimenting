@@ -114,7 +114,7 @@ public:
 	void generateFunction( const intermediateCode::function&, std::string prefix, bool main );
 	void generateProgram( const intermediateCode&, int O );
 	void print( std::ostream& os, bool h = true ) const;
-	void storeRegister( register_t, size_t instruction_index );
+	void storeRegister( register_t, size_t instruction_index, bool force = false );
 	void loadVariable( variable_t, register_t );
 	void evacuateRegisters( size_t instruction_index );
 	void restoreRegisters( size_t instruction_index );

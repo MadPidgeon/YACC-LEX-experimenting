@@ -69,7 +69,7 @@ syntaxTree::node* handleRelop( int id, syntaxTree::node* a, syntaxTree::node* b 
 
 /* Tokens */
 
-%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE FUNC IF WHILE ELSE FOR IN RELOP ELLIPSIS JOIN_MEET BREAK CONTINUE RETURN MAPSTO
+%token INT FLT ID TYPENAME VTYPE ASSIGNMENT ADDOP MULOP COMMA SEMICOLON LSEQ RSEQ LBRA RBRA STRING_BEGIN STRING_END STRING_PARTICLE FUNC IF WHILE ELSE FOR IN RELOP ELLIPSIS JOIN_MEET BREAK CONTINUE RETURN MAPSTO SIZE_OF
 
 %union {
 	char *str;
@@ -245,7 +245,7 @@ assignment:				lvalue ASSIGNMENT expression {
 								lerr << error_line() << "Mismatched types in assignment (" << $<node>1->data_type << " and " << $<node>3->data_type << ")" << std::endl;	
 						};
 
-leaf_expression:		constant | variable | function_call 
+leaf_expression:		constant | variable | function_call | size_of 
 						| lbra expression rbra {
 							$<node>$ = $<node>2;
 						}
@@ -343,6 +343,13 @@ constant:				INT {
 						}
 						| tuple
 						| inline_function;
+
+size_of:				SIZE_OF lbra expression rbra {
+							$<node>$ = new syntaxTree::node( N_SIZE_OF, $<node>3 );
+						}
+						| SIZE_OF list {
+							$<node>$ = new syntaxTree::node( N_SIZE_OF, $<node>2 );
+						}
 
 tuple_list:				expression COMMA tuple_list_ne {
 							$<node>$ = new syntaxTree::node( N_TUPLE, $<node>1, $<node>3 );

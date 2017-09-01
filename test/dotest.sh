@@ -12,15 +12,15 @@ for d in */; do
 			./$name &> $name.out
 			if (($? == 0)); then
 				if cmp -s "./$name.out" "./$name.correct"; then
-					echo "$name: Correct"
+					echo -e "$name: \033[1;32mCorrect\033[0m"
 				else
-					echo "$name: Incorrect"
+					echo "$name: \033[1;31Incorrect\033[0m"
 				fi
 			else
-				echo "$name: Crash"
+				echo "$name: \033[1;31Crash\033[0m"
 			fi			
 		else
-			echo "$name: Does not compile"
+			echo "$name: \033[1;31Does not compile\033[0m"
 		fi
 	done
     cd ..

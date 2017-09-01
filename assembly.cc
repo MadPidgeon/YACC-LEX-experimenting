@@ -346,11 +346,15 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 		case iop_t::id_t::IOP_FLT_ARR_STORE:
 			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_ARR_STORE ? instruction::id_t::MOV : instruction::id_t::MOVSD, instruction::complex_address( par[0], par[1] ), par[2] );
 			break;
-		case iop_t::id_t::IOP_LIST_ALLOCATE:
-			if( op.a != ERROR_VARIABLE )
-				instructions.emplace_back( instruction::id_t::LEA, rsi, par[1] );
-			else
-				instructions.emplace_back( instruction::id_t::MOV, rsi, instruction::parameter( 8 + op.c_a.integer ) );
+		case iop_t::id_t::IOP_LIST_ALLOCATE: {
+			size_t s = scptab->getVariableType( op.r ).rawSize();
+			if( op.a != ERROR_VARIABLE ) {
+				instructions.emplace_back( instruction::id_t::MOV, rsi, par[1] );
+				instructions.emplace_back( instruction::id_t::IMUL, rsi, instruction::parameter( s ) );
+				instructions.emplace_back( instruction::id_t::ADD, rsi, instruction::parameter( 8 ) );
+				storeRegister( usable_registers.at( ra.getVariableRegister( op.a ) ), instruction_index, true );
+			} else 
+				instructions.emplace_back( instruction::id_t::MOV, rsi, instruction::parameter( 8 + s*op.c_a.integer ) );
 			evacuateRegisters( instruction_index );
 			instructions.emplace_back( instruction::id_t::MOV, rax, instruction::parameter( 9 ) /*SYSCALL_MMAP*/ );
 			instructions.emplace_back( instruction::id_t::XOR, rdi, rdi );
@@ -366,7 +370,7 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( rax, ERROR_ASM_REG ), par[1] );
 			instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( rax.reg, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
 			register_variables.at( usable_registers.at( ra.getVariableRegister( op.r ) ) ) = op.r;
-			break;
+		}	break;
 		case iop_t::id_t::IOP_LIST_SIZE: {
 			instruction::complex_address ca( par[1] );
 			ca.constant = -8;
@@ -403,11 +407,13 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 	graph.computeLiveness();
 	std::vector<live_interval_t> integer_intervals, floating_intervals;
 	for( live_interval_t li : graph.naiveLiveIntervals() ) {
+		asm_out << li.variable << ",";
 		if( scptab->getVariableType( li.variable ) == FLT_TYPE )
 			floating_intervals.push_back( li );
 		else if( not scptab->getVariableType( li.variable ).isTuple() )
 			integer_intervals.push_back( li );
 	}
+	asm_out << std::endl;
 	ra.reset( usable_register_count, integer_intervals );
 	ra.linearScan();
 	ra_flt.reset( usable_floating_registers.size(), floating_intervals );
@@ -469,6 +475,8 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 				register_variables.at( usable_registers.at( ra.getVariableRegister( v ) ) ) = v;
 		for( auto& o : b ) 
 			generateInstruction( o, prefix, ioff++ );
+		// restore registers if not already done
+		restoreRegisters( ioff-1 );
 	}
 	// Generate postamble
 	instructions.emplace_back( instruction::id_t::LABEL, instruction::parameter( end_of_function ) );
@@ -527,7 +535,7 @@ register_t assemblyGenerator::getRegister( variable_t x, size_t instruction_inde
 			register_variables.at( r ) = x;
 			return r;
 		}
-		throw; // temp
+
 		// variable is volatile and not in register, so find a register for it
 		register_t ri = ( volatile_floating_register_cycle++ ) % volatile_floating_registers.size();
 		register_t r = volatile_floating_registers.at( ri );
@@ -556,7 +564,6 @@ register_t assemblyGenerator::getRegister( variable_t x, size_t instruction_inde
 
 		std::cout << "Volatile register reached" << std::endl;
 		
-		throw; // temp
 		// variable is volatile and not in register, so find a register for it
 		register_t ri = ( volatile_register_cycle++ ) % volatile_registers.size();
 		register_t r = volatile_registers.at( ri );
@@ -569,17 +576,23 @@ register_t assemblyGenerator::getRegister( variable_t x, size_t instruction_inde
 	}
 }
 
-void assemblyGenerator::storeRegister( register_t r, size_t instruction_index ) {
+void assemblyGenerator::storeRegister( register_t r, size_t instruction_index, bool force ) {
+	if( force ) {
+		asm_out << "FORCED STORE " << r << std::endl;
+		for( variable_t x : register_variables )
+			asm_out << x << " ";
+		asm_out << std::endl;
+	}
 	variable_t v = register_variables.at( r );
 	if( v == ERROR_VARIABLE )
 		return;
 	if( scptab->getVariableType( v ) == FLT_TYPE ) {
-		if( ra_flt.isActive( v, instruction_index ) ) {
+		if( ra_flt.isActive( v, instruction_index ) or force ) {
 			auto offset = sf.getVariableLocation( v );
 			instructions.emplace_back( instruction::id_t::MOVSD, instruction::complex_address( RBP, ERROR_ASM_REG, offset, 8, ERROR_LABEL ), instruction::asm_reg( r, 8 ) );
 		}
 	} else {
-		if( ra.isActive( v, instruction_index ) ) {
+		if( ra.isActive( v, instruction_index ) or force ) {
 			auto offset = sf.getVariableLocation( v );
 			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( RBP, ERROR_ASM_REG, offset, 8, ERROR_LABEL ), instruction::asm_reg( r, 8 ) );
 		}

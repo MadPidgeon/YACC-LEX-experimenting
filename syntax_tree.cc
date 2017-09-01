@@ -22,7 +22,7 @@ const std::vector<std::string> node_t_to_str = {
 
 	"SEQUENTIAL_BLOCK", "PARALLEL_BLOCK", "BLOCK_LIST",
 
-	"LIST", "SET", "SINGLE_TYPE_EXPRESSION_LIST",
+	"LIST", "SET", "SINGLE_TYPE_EXPRESSION_LIST", "SIZE_OF",
 
 	"TUPLE", "TUPLE_LIST",
 
@@ -69,6 +69,7 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_SET:
 		case N_RETURN:
 		case N_TUPLE_INDEXING:
+		case N_SIZE_OF:
 			if( c != 1 or children[1] != nullptr )
 				return ERROR_TYPE;
 			break;
@@ -163,6 +164,10 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_IN:
 			if( ( children[1]->data_type.isList() or children[1]->data_type.isSet() ) and children[0]->data_type == children[1]->data_type.getChildType() )
 				return BOOL_TYPE;
+			return ERROR_TYPE;
+		case N_SIZE_OF:
+			if( children[0]->data_type.isList() or children[1]->data_type.isSet() )
+				return INT_TYPE;
 			return ERROR_TYPE;
 		case N_FUNCTION_DEFINITION:
 			return ERROR_TYPE; // entered by other code

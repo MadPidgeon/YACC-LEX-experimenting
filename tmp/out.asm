@@ -373,7 +373,7 @@ _6:
 	mov r8, -1
 	xor r9, r9
 	syscall
-	mov qword [0+rax], 24
+	mov qword [0+rax], 3
 	lea r8, [8+rax]
 	mov r9, 0
 	mov r10, 1
@@ -394,7 +394,7 @@ _6:
 	mov r8, -1
 	xor r9, r9
 	syscall
-	mov qword [0+rax], 24
+	mov qword [0+rax], 3
 	lea r9, [8+rax]
 	mov r8, 0
 	movsd xmm4, qword [0+_def_1]

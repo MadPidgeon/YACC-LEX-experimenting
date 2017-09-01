@@ -74,7 +74,8 @@ extern int yydebug;
     BREAK = 284,
     CONTINUE = 285,
     RETURN = 286,
-    MAPSTO = 287
+    MAPSTO = 287,
+    SIZE_OF = 288
   };
 #endif
 
@@ -92,7 +93,7 @@ union YYSTYPE
 	std::vector<type_t>* typlst;
 	struct syntaxTree::node *node;
 
-#line 96 "y.tab.h" /* glr.c:197  */
+#line 97 "y.tab.h" /* glr.c:197  */
 };
 
 typedef union YYSTYPE YYSTYPE;

@@ -410,7 +410,7 @@ variable_t intermediateCode::function::translateExpression( const syntaxTree::no
 		return translateFunctionCall( n );
 	if( n->type == N_JOIN or n->type == N_MEET )
 		return translateFunctionOperation( n );
-	if( n->type == N_LIST_INDEXING or n->type == N_TUPLE_INDEXING )
+	if( n->type == N_LIST_INDEXING or n->type == N_TUPLE_INDEXING or n->type == N_SIZE_OF )
 		return translateReadIndexing( n );
 	if( n->type == N_COMPARISON_CHAIN )
 		return translateComparisonChain( n );
@@ -805,14 +805,55 @@ variable_t intermediateCode::function::translateFunctionCall( const syntaxTree::
 
 variable_t intermediateCode::function::translateFunctionOperation( const syntaxTree::node* n ) {
 	assert( n->type == N_JOIN or n->type == N_MEET );
-	function_t f = JOIN_STR_FUNCTION; // others to be implemented
-	addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=8} );
-	variable_t a = translateExpression( n->children[0] );
-	addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, a );
-	variable_t b = translateExpression( n->children[1] );
-	addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, b );
 	variable_t r = parent->newTemporaryVariable( n->data_type );
-	addOperation( iop_t::id_t::IOP_FUNCTION, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = /*f*/ 0 } );
+	if( n->data_type == STR_TYPE ) {
+		function_t f = JOIN_STR_FUNCTION; // others to be implemented
+		addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=8} );
+		variable_t a = translateExpression( n->children[0] );
+		addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, a );
+		variable_t b = translateExpression( n->children[1] );
+		addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, b );
+		addOperation( iop_t::id_t::IOP_FUNCTION, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = /*f*/ 0 } );
+	} else if( n->data_type.isList() ) {
+		label_t first_check = parent->newLabel();
+		label_t second_check = parent->newLabel();
+		label_t first_end = parent->newLabel();
+		label_t second_end = parent->newLabel();
+		variable_t sa = parent->newTemporaryVariable( INT_TYPE );
+		variable_t sb = parent->newTemporaryVariable( INT_TYPE );
+		variable_t sr = parent->newTemporaryVariable( INT_TYPE );
+		variable_t i1 = parent->newTemporaryVariable( INT_TYPE );
+		variable_t i2 = parent->newTemporaryVariable( INT_TYPE );
+		variable_t temp = parent->newTemporaryVariable( n->data_type.getChildType() );
+		variable_t a = translateExpression( n->children[0] );
+		size_t qwords = n->data_type.getChildType().rawSize()/8;
+		addOperation( iop_t::id_t::IOP_LIST_SIZE, sa, a );
+		variable_t b = translateExpression( n->children[1] );
+		addOperation( iop_t::id_t::IOP_LIST_SIZE, sb, b );
+		addOperation( iop_t::id_t::IOP_INT_MOV, sr, sa );
+		addOperation( iop_t::id_t::IOP_INT_ADDEQ, sr, sb );		
+		addOperation( iop_t::id_t::IOP_INT_MULEQ, sa, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=qwords} );
+		addOperation( iop_t::id_t::IOP_INT_MULEQ, sb, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=qwords} );
+		addOperation( iop_t::id_t::IOP_LIST_ALLOCATE, r, sr );
+		addOperation( iop_t::id_t::IOP_INT_MOV, i1, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
+		addOperation( iop_t::id_t::IOP_INT_MOV, i2, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );		
+		
+		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, first_check );
+		addOperation( iop_t::id_t::IOP_JGE, ERROR_VARIABLE, i1, sa, first_end );
+		translateAssignFromListElementWeak( temp, a, i1 );
+		translateAssignToListElementWeak( r, i2, temp );
+		addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, first_check );
+		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, first_end );
+
+		addOperation( iop_t::id_t::IOP_INT_MOV, i1, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0});
+		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, second_check );
+		addOperation( iop_t::id_t::IOP_JGE, ERROR_VARIABLE, i1, sb, second_end );
+		translateAssignFromListElementWeak( temp, b, i1 );
+		translateAssignToListElementWeak( r, i2, temp );
+		addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, second_check );
+		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, second_end );
+	} else
+		lerr << error_line() << "Operators join and meet are not implemented for type " << n->children[0]->data_type << std::endl;
 	return r;
 }
 
@@ -839,10 +880,10 @@ variable_t intermediateCode::function::translateConstant( const syntaxTree::node
 
 variable_t intermediateCode::function::translateContainer( const syntaxTree::node* n ) {
 	if( n->type == N_LIST ) {
-		size_t s = n->data_type.getChildType().rawSize();
+		// size_t s = n->data_type.getChildType().rawSize();
 		variable_t r = parent->newTemporaryVariable( n->data_type );
 		variable_t o = parent->newTemporaryVariable( INT_TYPE );
-		addOperation( iop_t::id_t::IOP_LIST_ALLOCATE, r, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, { .integer = s*n->data.integer } ); 
+		addOperation( iop_t::id_t::IOP_LIST_ALLOCATE, r, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, { .integer = /*s**/ n->data.integer } ); 
 		addOperation( iop_t::id_t::IOP_INT_MOV, o, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
 		translateListElements( n->children[0], r, o );
 		return r;
@@ -874,7 +915,7 @@ variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::
 	#ifdef SYNTAX_TREE_DEBUG
 	std::cout << "translateReadIndexing" << std::endl;
 	#endif
-	assert( n->type == N_LIST_INDEXING or n->type == N_TUPLE_INDEXING );
+	assert( n->type == N_LIST_INDEXING or n->type == N_TUPLE_INDEXING or n->type == N_SIZE_OF );
 	variable_t r = parent->newTemporaryVariable( n->data_type );
 	if( n->type == N_LIST_INDEXING ) {
 		variable_t list = translateExpression( n->children[0] );
@@ -884,7 +925,7 @@ variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::
 		addOperation( iop_t::id_t::IOP_INT_MULEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=n->data_type.rawSize()/8} );
 		translateAssignFromListElementWeak( r, list, offset );
 		return r;
-	} else {
+	} else if( n->type == N_TUPLE_INDEXING ) {
 		variable_t tuple = translateExpression( n->children[0] );
 		size_t index = n->data.integer;
 		size_t base_offset = 0;
@@ -893,7 +934,10 @@ variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::
 		variable_t offset = parent->newTemporaryVariable( INT_TYPE );
 		addOperation( iop_t::id_t::IOP_INT_MOV, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=base_offset/8} );
 		translateAssignFromTupleElementWeak( r, tuple, offset );
-	}	
+	} else {
+		variable_t list = translateExpression( n->children[0] );
+		addOperation( iop_t::id_t::IOP_LIST_SIZE, r, list );
+	}
 	return r;
 }
 
