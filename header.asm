@@ -367,7 +367,7 @@ _6: ; advance string iterator
 .b4:
   add rax, 4
   mov rsi, rdx
-  mov [rsp+32], rax
+  mov [rsp+24], rax
   mov rax, rdx
   and rdx, 0b00000111
   and rax, 0b0011111100000000
@@ -381,13 +381,13 @@ _6: ; advance string iterator
   and rax, 0b0000111111000000
   or rdx, rsi
   or rdx, rax
-  mov [rsp+24], rdx
+  mov [rsp+32], rdx
   ret 16
 
 .b3:
   add rax, 3
   mov rsi, rdx
-  mov [rsp+32], rax
+  mov [rsp+24], rax
   and rsi, 0b0011111100000000
   mov rax, rdx
   and rdx, 0b00001111
@@ -397,7 +397,7 @@ _6: ; advance string iterator
   and rax, 0b00111111
   or rdx, rsi
   or rdx, rax
-  mov [rsp+24], rdx
+  mov [rsp+32], rdx
   ret 16
 
 .b2:
@@ -408,15 +408,15 @@ _6: ; advance string iterator
   and rdx, 0b00111111
   or rdx, rsi
   add rax, 2
-  mov [rsp+24], rdx
-  mov [rsp+32], rax
+  mov [rsp+32], rdx
+  mov [rsp+24], rax
   ret 16
 
 .b1:
   inc rax
   and rdx, 0b01111111
-  mov [rsp+32], rax
-  mov [rsp+24], rdx
+  mov [rsp+24], rax
+  mov [rsp+32], rdx
   ret 16
 
 .malformed:

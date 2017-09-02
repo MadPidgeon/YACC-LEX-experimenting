@@ -274,10 +274,10 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 			instructions.emplace_back( instruction::id_t::SUB, rsp, par[1] );
 			break;
 		case iop_t::id_t::IOP_INT_POP_RETURN:
-			instructions.emplace_back( instruction::id_t::POP, par[1] );
+			instructions.emplace_back( instruction::id_t::POP, par[0] );
 			break;
 		case iop_t::id_t::IOP_FLT_POP_RETURN:
-			instructions.emplace_back( instruction::id_t::MOVSD, par[1], instruction::complex_address( rsp ) );
+			instructions.emplace_back( instruction::id_t::MOVSD, par[0], instruction::complex_address( rsp ) );
 			instructions.emplace_back( instruction::id_t::ADD, rsp, instruction::parameter( 8 ) );
 			break;
 		case iop_t::id_t::IOP_FUNCTION:

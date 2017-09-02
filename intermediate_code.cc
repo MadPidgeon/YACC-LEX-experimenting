@@ -39,7 +39,7 @@ const std::vector<uint8_t> iop_t::iop_fields = {
 	IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ,
 	IOFR|IOFL|IOFJ,
 	IOFA, IOFA|IOFF, IOFR|IOFS, IOFR|IOFF|IOFS, IOFA,
-	IOFR|IOFA|IOFL|IOFS, // FUNCTION is not a jump!
+	IOFA|IOFL, // FUNCTION is not a jump!
 	IOFR|IOFL|IOFS,
 	IOFA,
 	IOFR|IOFA, IOFR|IOFA, IOFR|IOFA, IOFR|IOFA,
@@ -757,7 +757,7 @@ void intermediateCode::function::translateBranching( const syntaxTree::node* n, 
 			}
 			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
 		} else if( ct == STR_TYPE ) {
-			type_t ret = parent->scptab->getFunctionReturnType( CTOSTR_FUNCTION );
+			type_t ret = parent->scptab->getFunctionReturnType( STRITR_FUNCTION );
 			variable_t r = parent->newTemporaryVariable( ret );
 			addOperation( iop_t::id_t::IOP_INT_MOV, i, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
 			addOperation( iop_t::id_t::IOP_LIST_SIZE, s, l );
@@ -774,6 +774,7 @@ void intermediateCode::function::translateBranching( const syntaxTree::node* n, 
 				translateNode( n->children[1]->children[0], loop_stack );
 			else
 				translateNode( n->children[1], loop_stack );
+			loop_stack.pop_back();
 			addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
 			if( has_else ) {
 				addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, natural_exit );
