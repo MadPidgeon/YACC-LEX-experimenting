@@ -159,6 +159,7 @@ _2:
   rep movsb
   ret
 
+_7: ; temp
 _3:
   mov rax, [rsp+8]    ; load integer
   lea rcx, [_3_buffer+20] ; load buffer adress
@@ -354,13 +355,91 @@ _5:
 
   ret 8
 
+_6: ; advance string iterator
+  mov rdx, [rsp+16]
+  mov rax, [rsp+8]
+  mov rdx, [rdx+rax]
+
+  test rdx, 128
+  je .b1
+  test rdx, 64
+  je .malformed
+  test rdx, 32
+  je .b2
+  test rdx, 16
+  je .b3
+  
+.b4:
+  add rax, 4
+  mov rsi, rdx
+  mov [rsp+32], rax
+  mov rax, rdx
+  and rdx, 0b00000111
+  and rax, 0b0011111100000000
+  shl rdx, 18
+  shl rax, 4
+  or rdx, rax
+  mov rax, rsi
+  shr rsi, 24
+  shr rax, 10
+  and rsi, 0b00111111
+  and rax, 0b0000111111000000
+  or rdx, rsi
+  or rdx, rax
+  mov [rsp+24], rdx
+  ret 16
+
+.b3:
+  add rax, 3
+  mov rsi, rdx
+  mov [rsp+32], rax
+  and rsi, 0b0011111100000000
+  mov rax, rdx
+  and rdx, 0b00001111
+  shr rsi, 2
+  shr rax, 16
+  shl rdx, 12
+  and rax, 0b00111111
+  or rdx, rsi
+  or rdx, rax
+  mov [rsp+24], rdx
+  ret 16
+
+.b2:
+  mov rsi, rdx
+  and rsi, 0b00011111
+  shr rdx, 8
+  shl rsi, 6
+  and rdx, 0b00111111
+  or rdx, rsi
+  add rax, 2
+  mov [rsp+24], rdx
+  mov [rsp+32], rax
+  ret 16
+
+.b1:
+  inc rax
+  and rdx, 0b01111111
+  mov [rsp+32], rax
+  mov [rsp+24], rdx
+  ret 16
+
+.malformed:
+  mov qword [rsp+24], -1
+  ret 16
+
+;_7: ; not yet defined
+;  mov rax, 60
+;  mov rsi, -1
+;  syscall
+
 global _start
 _start:
 global start
 start:
 global main
 main:
-_6:
+_8:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 272
@@ -437,7 +516,7 @@ _6:
 	add r9, 1
 	push r8
 	call _3
-	pop r8
+	pop 0
 	push r8
 	call _1
 	sub rsp, 8
@@ -457,10 +536,10 @@ _6:
 	sub rsp, 8
 	movsd qword [0+rsp], xmm4
 	call _5
-	pop r8
+	pop 0
 	push r8
 	call _1
-_8:
+_10:
 	mov rax, 60
 	mov rdi, 0
 	syscall

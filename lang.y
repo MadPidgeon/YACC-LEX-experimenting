@@ -559,9 +559,12 @@ parameter_list: 		declaration {
 
 for:					FOR lbra id IN expression rbra {
 							type_t t = $<node>5->data_type;
-							if( not( t.isList() or t.isSet() ) )
+							if( not( t.isList() or t.isSet() or t == STR_TYPE ) )
 								lerr << error_line() << "Cannot iterate over instance of type " << $<node>5->data_type << std::endl;
-							for_iterating_variable.push( scptab->addVariable( scopes.top(), $<num>3, t.getChildType() ) );
+							if( t == STR_TYPE )
+								for_iterating_variable.push( scptab->addVariable( scopes.top(), $<num>3, UTF8CHAR_TYPE ) );
+							else
+								for_iterating_variable.push( scptab->addVariable( scopes.top(), $<num>3, t.getChildType() ) );
 						} statement {
 							$<node>$ = new syntaxTree::node( N_FOR, 
 								new syntaxTree::node( N_IN, 
@@ -664,15 +667,17 @@ int main( int argc, char** argv ) {
 		std::cout << error_line() << "Unresolved syntax errors" << std::endl;
 		return -1;
 	}
+	syntree_out << "\nSyntax Tree:" << std::flush;
+	syntree_out << (*syntree) << std::endl << std::endl;
 	if( err_count > 0 ) {
 		return -1;
 	}
-	syntree_out << "\nSyntax Tree:" << std::flush;
-	syntree_out << (*syntree) << std::endl << std::endl;
 	if( settings.output_format == command_line_data::output_format_t::PARSE )
 		return 0;
 	intermediateCode ic( scptab );
 	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
+	if( err_count > 0 )
+		return -1;
 	syntree_out << "Scope Table:" << std::endl << (*scptab) << std::endl;
 	ic_out << "Intermediate Code:" << std::endl << ic << std::endl;
 	assemblyGenerator ag( ic, settings.optimization_level );

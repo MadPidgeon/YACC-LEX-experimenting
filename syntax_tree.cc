@@ -164,6 +164,8 @@ type_t syntaxTree::node::computeDatatype() {
 		case N_IN:
 			if( ( children[1]->data_type.isList() or children[1]->data_type.isSet() ) and children[0]->data_type == children[1]->data_type.getChildType() )
 				return BOOL_TYPE;
+			if( children[0]->data_type == UTF8CHAR_TYPE and children[1]->data_type == STR_TYPE )
+				return BOOL_TYPE;
 			return ERROR_TYPE;
 		case N_SIZE_OF:
 			if( children[0]->data_type.isList() or children[1]->data_type.isSet() )

@@ -320,8 +320,8 @@ static const unsigned short int yyrline[] =
      341,   344,   345,   347,   350,   354,   358,   361,   365,   368,
      372,   375,   378,   383,   389,   392,   399,   403,   408,   408,
      410,   414,   480,   506,   516,   521,   532,   536,   536,   548,
-     553,   556,   560,   560,   574,   577,   584,   587,   591,   594,
-     598,   602,   606,   610,   615,   619
+     553,   556,   560,   560,   577,   580,   587,   590,   594,   597,
+     601,   605,   609,   613,   618,   622
 };
 #endif
 
@@ -1903,15 +1903,18 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 #line 560 "lang.y" /* glr.c:816  */
     {
 							type_t t = (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type;
-							if( not( t.isList() or t.isSet() ) )
+							if( not( t.isList() or t.isSet() or t == STR_TYPE ) )
 								lerr << error_line() << "Cannot iterate over instance of type " << (((yyGLRStackItem const *)yyvsp)[YYFILL (-1)].yystate.yysemantics.yysval.node)->data_type << std::endl;
-							for_iterating_variable.push( scptab->addVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), t.getChildType() ) );
+							if( t == STR_TYPE )
+								for_iterating_variable.push( scptab->addVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), UTF8CHAR_TYPE ) );
+							else
+								for_iterating_variable.push( scptab->addVariable( scopes.top(), (((yyGLRStackItem const *)yyvsp)[YYFILL (-3)].yystate.yysemantics.yysval.num), t.getChildType() ) );
 						}
-#line 1911 "y.tab.c" /* glr.c:816  */
+#line 1914 "y.tab.c" /* glr.c:816  */
     break;
 
   case 93:
-#line 565 "lang.y" /* glr.c:816  */
+#line 568 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_FOR, 
 								new syntaxTree::node( N_IN, 
@@ -1920,112 +1923,112 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
 								(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 							for_iterating_variable.pop();
 						}
-#line 1924 "y.tab.c" /* glr.c:816  */
+#line 1927 "y.tab.c" /* glr.c:816  */
     break;
 
   case 94:
-#line 574 "lang.y" /* glr.c:816  */
+#line 577 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_WHILE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1932 "y.tab.c" /* glr.c:816  */
+#line 1935 "y.tab.c" /* glr.c:816  */
     break;
 
   case 95:
-#line 577 "lang.y" /* glr.c:816  */
+#line 580 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_WHILE, 
 								(((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.node), 
 								new syntaxTree::node( N_ELSE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) )
 							);
 						}
-#line 1943 "y.tab.c" /* glr.c:816  */
+#line 1946 "y.tab.c" /* glr.c:816  */
     break;
 
   case 96:
-#line 584 "lang.y" /* glr.c:816  */
+#line 587 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_IF, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1951 "y.tab.c" /* glr.c:816  */
+#line 1954 "y.tab.c" /* glr.c:816  */
     break;
 
   case 97:
-#line 587 "lang.y" /* glr.c:816  */
+#line 590 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_IF, (((yyGLRStackItem const *)yyvsp)[YYFILL (-4)].yystate.yysemantics.yysval.node), new syntaxTree::node( N_ELSE, (((yyGLRStackItem const *)yyvsp)[YYFILL (-2)].yystate.yysemantics.yysval.node), (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) ) );
 						}
-#line 1959 "y.tab.c" /* glr.c:816  */
+#line 1962 "y.tab.c" /* glr.c:816  */
     break;
 
   case 98:
-#line 591 "lang.y" /* glr.c:816  */
+#line 594 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=1} );
 						}
-#line 1967 "y.tab.c" /* glr.c:816  */
+#line 1970 "y.tab.c" /* glr.c:816  */
     break;
 
   case 99:
-#line 594 "lang.y" /* glr.c:816  */
+#line 597 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_BREAK, nullptr, nullptr, {.integer=(((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.num)} );
 						}
-#line 1975 "y.tab.c" /* glr.c:816  */
+#line 1978 "y.tab.c" /* glr.c:816  */
     break;
 
   case 100:
-#line 598 "lang.y" /* glr.c:816  */
+#line 601 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_CONTINUE );
 						}
-#line 1983 "y.tab.c" /* glr.c:816  */
+#line 1986 "y.tab.c" /* glr.c:816  */
     break;
 
   case 101:
-#line 602 "lang.y" /* glr.c:816  */
+#line 605 "lang.y" /* glr.c:816  */
     {
 							((*yyvalp).node) = new syntaxTree::node( N_RETURN, (((yyGLRStackItem const *)yyvsp)[YYFILL (0)].yystate.yysemantics.yysval.node) );
 						}
-#line 1991 "y.tab.c" /* glr.c:816  */
+#line 1994 "y.tab.c" /* glr.c:816  */
     break;
 
   case 102:
-#line 606 "lang.y" /* glr.c:816  */
+#line 609 "lang.y" /* glr.c:816  */
     {
 							scopes.push( scptab->addScope( scopes.top() ) ); // do such brackets realy need to be a scope?
 						}
-#line 1999 "y.tab.c" /* glr.c:816  */
+#line 2002 "y.tab.c" /* glr.c:816  */
     break;
 
   case 103:
-#line 610 "lang.y" /* glr.c:816  */
+#line 613 "lang.y" /* glr.c:816  */
     {
 							previous_nested_scope = scopes.top();
 							scopes.pop();
 						}
-#line 2008 "y.tab.c" /* glr.c:816  */
+#line 2011 "y.tab.c" /* glr.c:816  */
     break;
 
   case 104:
-#line 615 "lang.y" /* glr.c:816  */
+#line 618 "lang.y" /* glr.c:816  */
     {
 							scopes.push( scptab->addScope( scopes.top() ) );
 						}
-#line 2016 "y.tab.c" /* glr.c:816  */
+#line 2019 "y.tab.c" /* glr.c:816  */
     break;
 
   case 105:
-#line 619 "lang.y" /* glr.c:816  */
+#line 622 "lang.y" /* glr.c:816  */
     {
 							previous_nested_scope = scopes.top();
 							scopes.pop();
 						}
-#line 2025 "y.tab.c" /* glr.c:816  */
+#line 2028 "y.tab.c" /* glr.c:816  */
     break;
 
 
-#line 2029 "y.tab.c" /* glr.c:816  */
+#line 2032 "y.tab.c" /* glr.c:816  */
       default: break;
     }
 
@@ -3707,7 +3710,7 @@ yypdumpstack (yyGLRStack* yystackp)
 
 
 
-#line 624 "lang.y" /* glr.c:2584  */
+#line 627 "lang.y" /* glr.c:2584  */
 
 
 /* C-CODE */
@@ -3751,15 +3754,17 @@ int main( int argc, char** argv ) {
 		std::cout << error_line() << "Unresolved syntax errors" << std::endl;
 		return -1;
 	}
+	syntree_out << "\nSyntax Tree:" << std::flush;
+	syntree_out << (*syntree) << std::endl << std::endl;
 	if( err_count > 0 ) {
 		return -1;
 	}
-	syntree_out << "\nSyntax Tree:" << std::flush;
-	syntree_out << (*syntree) << std::endl << std::endl;
 	if( settings.output_format == command_line_data::output_format_t::PARSE )
 		return 0;
 	intermediateCode ic( scptab );
 	ic.defineFunction( GLOBAL_FUNCTION, syntree->getRoot() );
+	if( err_count > 0 )
+		return -1;
 	syntree_out << "Scope Table:" << std::endl << (*scptab) << std::endl;
 	ic_out << "Intermediate Code:" << std::endl << ic << std::endl;
 	assemblyGenerator ag( ic, settings.optimization_level );

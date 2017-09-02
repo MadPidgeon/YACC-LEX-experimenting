@@ -130,6 +130,8 @@ scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
 	addTypeDefinition( GLOBAL_SCOPE, LST_SYMBOL, LST_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 	addTypeDefinition( GLOBAL_SCOPE, SET_SYMBOL, SET_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 	addTypeDefinition( GLOBAL_SCOPE, FNC_SYMBOL, FNC_STRUCTURE, { type_t(int64_t(0)), type_t(int64_t(1)) }, { type_t(int64_t(0)), type_t(int64_t(1)) } );
+	addTypeDefinition( GLOBAL_SCOPE, UTF8CHAR_SYMBOL, UTF8CHAR_STRUCTURE );
+	addTypeDefinition( GLOBAL_SCOPE, ITR_SYMBOL, ITR_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 
 	assert( addFunctionDeclaration( ERROR_SCOPE, ERROR_SYMBOL, ERROR_TYPE ) == ERROR_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, PRINT_SYMBOL, VOID_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ) } ) == PRINT_FUNCTION );
@@ -137,6 +139,10 @@ scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, INT_TYPE ) } ) == ITOA_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, NONE_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ), addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ) } ) == JOIN_STR_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, FLT_TYPE ) } ) == FTOA_FUNCTION );
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, NONE_SYMBOL, type_t::makeTuple({INT_TYPE, UTF8CHAR_TYPE}), { addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ), addVariable( ERROR_SCOPE, NONE_SYMBOL, INT_TYPE ) } ) == STRITR_FUNCTION );
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, UTF8CHAR_TYPE ) } ) == CTOSTR_FUNCTION );
+
+
 	assert( addFunctionDeclaration( ERROR_SCOPE, NONE_SYMBOL, VOID_TYPE ) == GLOBAL_FUNCTION );
 }
 

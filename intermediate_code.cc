@@ -11,7 +11,7 @@ const std::vector<std::string> iop_id_to_str = {
 	"JT", "JF",
 	"JE", "JN", "JL", "JG", "JLE", "JGE",
 	"FJ",
-	"INT_ADD_PARAM", "FLT_ADD_PARAM", "RESERVE_RETURN",
+	"INT_ADD_PARAM", "FLT_ADD_PARAM", "INT_POP_RETURN", "FLT_POP_RETURN", "RESERVE_RETURN",
 	"FUNCTION", 
 	"LABEL_TO_PTR",
 	"RETURN",
@@ -38,11 +38,11 @@ const std::vector<uint8_t> iop_t::iop_fields = {
 	IOFA|IOFL|IOFJ, IOFA|IOFL|IOFJ,
 	IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ,
 	IOFR|IOFL|IOFJ,
-	IOFA, IOFA|IOFF, IOFA,
+	IOFA, IOFA|IOFF, IOFR|IOFS, IOFR|IOFF|IOFS, IOFA,
 	IOFR|IOFA|IOFL|IOFS, // FUNCTION is not a jump!
 	IOFR|IOFL|IOFS,
 	IOFA,
-	IOFR|IOFA, IOFR|IOFA, IOFR|IOFA ,IOFR|IOFA,
+	IOFR|IOFA, IOFR|IOFA, IOFR|IOFA, IOFR|IOFA,
 	IOFR|IOFA, IOFR|IOFA, IOFR|IOFA,
 	IOFR|IOFA|IOFB,
 	IOFR|IOFA|IOFF, IOFR|IOFA|IOFF, IOFR|IOFA|IOFF, IOFR|IOFA|IOFF,
@@ -595,6 +595,27 @@ void intermediateCode::function::translateGeneralAssignment( variable_t target, 
 
 // ---------------------------------------------------------------------------------------------
 
+void intermediateCode::function::translatePopReturn( variable_t r ) {
+	if( r == ERROR_VARIABLE )
+		return;
+	type_t t = parent->scptab->getVariableType( r );
+	if( t == INT_TYPE or t == STR_TYPE or t.isSet() or t.isList() )
+		addOperation( iop_t::id_t::IOP_INT_POP_RETURN, r );
+	else if( t == FLT_TYPE )
+		addOperation( iop_t::id_t::IOP_FLT_POP_RETURN, r );
+	else if( t.isTuple() ) { // ugly as fuck
+		variable_t temp = parent->newTemporaryVariable( INT_TYPE );
+		size_t c = t.rawSize()/8;
+		for( size_t j = 0; j < c; ++j ) {
+			addOperation( iop_t::id_t::IOP_INT_POP_RETURN, temp );
+			addOperation( iop_t::id_t::IOP_INT_TUP_STORE, r, ERROR_VARIABLE, temp, ERROR_LABEL, {.integer=j} );
+		}
+	} else {
+		lerr << error_line() << "Cannot return type " << t << std::endl;
+		return;
+	}
+}
+
 void intermediateCode::function::translateGarbage( const syntaxTree::node* n ) {
 	assert( n->type == N_GARBAGE );
 	addOperation( iop_t::id_t::IOP_GARBAGE, variable_t( n->data.integer ) );
@@ -706,33 +727,62 @@ void intermediateCode::function::translateBranching( const syntaxTree::node* n, 
 		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
 	} else if( n->type == N_FOR ) {
 		assert( n->children[0]->type == N_IN );
-		std::cout << "FOR" << std::endl;
+		type_t ct = n->children[0]->children[1]->data_type;
 		bool has_else = n->children[1]->type == N_ELSE;
-		variable_t v = translateVariable( n->children[0]->children[0] );
-		variable_t l = translateContainer( n->children[0]->children[1] );
-		variable_t s = parent->newTemporaryVariable( INT_TYPE );
-		variable_t i = parent->newTemporaryVariable( INT_TYPE );
 		label_t condition_check = parent->newLabel();
 		label_t natural_exit = parent->newLabel();
 		label_t abrupt_exit = has_else ? parent->newLabel() : natural_exit;
 		loop_stack.push_back( std::make_pair( abrupt_exit, condition_check ) );
-		addOperation( iop_t::id_t::IOP_INT_MOV, i, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
-		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
-		addOperation( iop_t::id_t::IOP_LIST_SIZE, s, l );
-		addOperation( iop_t::id_t::IOP_JGE, ERROR_VARIABLE, i, s, natural_exit );
-		addOperation( iop_t::id_t::IOP_INT_ARR_LOAD, v, l, i );
-		if( has_else )
-			translateNode( n->children[1]->children[0], loop_stack );
-		else
-			translateNode( n->children[1], loop_stack );
-		loop_stack.pop_back();
-		addOperation( iop_t::id_t::IOP_INT_ADDEQ, i, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1 /*should be raw size*/} );
-		addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
-		if( has_else ) {
-			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, natural_exit );
-			translateNode( n->children[1]->children[1], loop_stack );
-		}
-		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
+		variable_t v = translateVariable( n->children[0]->children[0] );
+		variable_t l = translateExpression( n->children[0]->children[1] );
+		variable_t i = parent->newTemporaryVariable( INT_TYPE );
+		variable_t s = parent->newTemporaryVariable( INT_TYPE );
+		if( ct.isList() ) {
+			type_t t = n->children[0]->children[0]->data_type;
+			addOperation( iop_t::id_t::IOP_INT_MOV, i, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
+			addOperation( iop_t::id_t::IOP_LIST_SIZE, s, l );
+			addOperation( iop_t::id_t::IOP_INT_MULEQ, s, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=t.rawSize()/8} );
+			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
+			addOperation( iop_t::id_t::IOP_JGE, ERROR_VARIABLE, i, s, natural_exit );
+			translateAssignFromListElementWeak( v, l, i );
+			if( has_else )
+				translateNode( n->children[1]->children[0], loop_stack );
+			else
+				translateNode( n->children[1], loop_stack );
+			loop_stack.pop_back();
+			addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
+			if( has_else ) {
+				addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, natural_exit );
+				translateNode( n->children[1]->children[1], loop_stack );
+			}
+			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
+		} else if( ct == STR_TYPE ) {
+			type_t ret = parent->scptab->getFunctionReturnType( CTOSTR_FUNCTION );
+			variable_t r = parent->newTemporaryVariable( ret );
+			addOperation( iop_t::id_t::IOP_INT_MOV, i, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
+			addOperation( iop_t::id_t::IOP_LIST_SIZE, s, l );
+			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
+			addOperation( iop_t::id_t::IOP_JGE, ERROR_VARIABLE, i, s, natural_exit );
+			addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=ret.rawSize()} );
+			addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, l );
+			addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, i );
+			addOperation( iop_t::id_t::IOP_FUNCTION, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( STRITR_FUNCTION ), {.integer=0}, {.integer=0} );
+			translatePopReturn( r );
+			addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, i, r, ERROR_VARIABLE, ERROR_LABEL, {.integer=0}, {.integer=0} );
+			addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, v, r, ERROR_VARIABLE, ERROR_LABEL, {.integer=0}, {.integer=1} );
+			if( has_else )
+				translateNode( n->children[1]->children[0], loop_stack );
+			else
+				translateNode( n->children[1], loop_stack );
+			addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
+			if( has_else ) {
+				addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, natural_exit );
+				translateNode( n->children[1]->children[1], loop_stack );
+			}
+			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
+		} else {
+			lerr << error_line() << "Cannot iterate over type " << ct << std::endl;
+		}		
 	} else
 		lerr << error_line() << "Branching operation " << n->type << " not yet implemented" << std::endl;
 }
@@ -788,7 +838,8 @@ variable_t intermediateCode::function::translateFunctionCall( const syntaxTree::
 			addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=t.rawSize()} );
 		if( n->children[0] )
 			translateArguments( n->children[0] );
-		addOperation( iop_t::id_t::IOP_FUNCTION, r, translateVariable( n->children[1] ), ERROR_VARIABLE, ERROR_LABEL, iop_t::constant_t{ .integer = 0 } );
+		addOperation( iop_t::id_t::IOP_FUNCTION, ERROR_VARIABLE, translateVariable( n->children[1] ), ERROR_VARIABLE, ERROR_LABEL, iop_t::constant_t{ .integer = 0 } );
+		translatePopReturn( r );
 		return r; 
 	} else {
 		type_t t = parent->scptab->getFunctionReturnType( f );
@@ -797,7 +848,8 @@ variable_t intermediateCode::function::translateFunctionCall( const syntaxTree::
 			addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=t.rawSize()} );
 		if( n->children[0] )
 			translateArguments( n->children[0] );
-		addOperation( iop_t::id_t::IOP_FUNCTION, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = 0 } );
+		addOperation( iop_t::id_t::IOP_FUNCTION, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = 0 } );
+		translatePopReturn( r );
 		return r; 
 	}
 	
@@ -814,6 +866,7 @@ variable_t intermediateCode::function::translateFunctionOperation( const syntaxT
 		variable_t b = translateExpression( n->children[1] );
 		addOperation( iop_t::id_t::IOP_INT_ADD_PARAM, ERROR_VARIABLE, b );
 		addOperation( iop_t::id_t::IOP_FUNCTION, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = /*f*/ 0 } );
+		translatePopReturn( r );
 	} else if( n->data_type.isList() ) {
 		label_t first_check = parent->newLabel();
 		label_t second_check = parent->newLabel();
@@ -1149,7 +1202,7 @@ std::ostream& operator<<( std::ostream& os, iop_t o ) {
 	const int w = 18;
 	os << std::setw(w) << std::left << iop_id_to_str[o.id];
 	std::string x;
-	if( o.usesResultParameter() and (o.id != iop_t::id_t::IOP_FUNCTION or o.r != 0) ) {
+	if( o.usesResultParameter() ) {
 		x = symtab->getName( scptab->getVariableSymbol( o.r ) );
 		x.resize( 7, ' ' );
 	} else			

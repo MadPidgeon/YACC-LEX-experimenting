@@ -48,4 +48,6 @@ symbolTable::symbolTable() {
 	assert( addSymbol("print") == PRINT_SYMBOL );
 	assert( addSymbol("scan") == SCAN_SYMBOL );
 	assert( addSymbol("fnc") == FNC_SYMBOL );
+	assert( addSymbol("itr") == ITR_SYMBOL );
+	assert( addSymbol("utf8char") == UTF8CHAR_SYMBOL );
 }

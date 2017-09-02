@@ -37,8 +37,10 @@ struct iop_t {
 		// function instructions (15-18)
 		IOP_INT_ADD_PARAM,	// [-a--]
 		IOP_FLT_ADD_PARAM,	// [-a--]
+		IOP_INT_POP_RETURN, // [r---]
+		IOP_FLT_POP_RETURN, // [r---]
 		IOP_RESERVE_RETURN, // [-a--]
-		IOP_FUNCTION, 	    // [ra-l] r = (*(a+l))( param_1, param_2, ... )
+		IOP_FUNCTION, 	    // [-a-l]  (*(a+l))( param_1, param_2, ... )
 		IOP_LABEL_TO_PTR,   // [r--l]
 		IOP_RETURN,		    // [-a--]
 		// arithmetic instructions (19-31)
@@ -147,7 +149,7 @@ public:
 		variable_t translateReadIndexing( const syntaxTree::node* n );
 		void translateSequentialBlock( const syntaxTree::node* n, loop_stack_t& );
 		void translateTupleElements( const syntaxTree::node* n, variable_t, size_t );
-
+		void translatePopReturn( variable_t );
 		void translateAssignToListElementWeak( variable_t, variable_t, variable_t );
 		void translateAssignFromListElementWeak( variable_t, variable_t, variable_t );
 		void translateListToListAssignmentWeak( variable_t, variable_t, variable_t, variable_t );

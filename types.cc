@@ -177,6 +177,18 @@ type_t type_t::rightFlattenTypeProduct( type_t left ) const{
 	return r;
 }
 
+type_t type_t::makeTuple( std::vector<type_t> parameters ) {
+	node* n = new node();
+	n->structure = TUP_STRUCTURE;
+	n->free_id = -2;
+	for( type_t& t : parameters ) {
+		n->parameters.push_back( t.peel() );
+		if( n->parameters.back()->free_id >= 0 )
+			n->free_id = -1;
+	}
+	return type_t( n );
+}
+
 std::vector<type_t> type_t::unpackProduct() const {
 	assert( getBase() == TUP_STRUCTURE );
 	std::vector<type_t> r;
@@ -326,6 +338,8 @@ structureTable::structureTable() {
 	assert( addStructure( SET_SYMBOL, {type_t()} ) == SET_STRUCTURE );
 	assert( addStructure( TUP_SYMBOL ) == TUP_STRUCTURE );
 	assert( addStructure( FNC_SYMBOL, {type_t(),type_t()} ) == FNC_STRUCTURE );
+	assert( addStructure( ITR_SYMBOL, {type_t()} ) == ITR_STRUCTURE );
+	assert( addStructure( UTF8CHAR_SYMBOL ) == UTF8CHAR_STRUCTURE );
 	assert( ERROR_TYPE == ERROR_TYPE );
 	assert( INT_TYPE != ERROR_TYPE );
 }
@@ -336,3 +350,4 @@ const type_t INT_TYPE( INT_STRUCTURE, {} );
 const type_t FLT_TYPE( FLT_STRUCTURE, {} );
 const type_t STR_TYPE( STR_STRUCTURE, {} );
 const type_t TUP_TYPE( TUP_STRUCTURE, {} );
+const type_t UTF8CHAR_TYPE( UTF8CHAR_STRUCTURE, {} );

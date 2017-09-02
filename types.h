@@ -20,7 +20,9 @@
 #define SET_STRUCTURE		6	// POD set(type)
 #define TUP_STRUCTURE		7	// POD tup(type,...)
 #define FNC_STRUCTURE		8	// POD fnc(tup,tup)
-#define LAST_POD_TYPEDEF	FNC_TYPEDEF
+#define ITR_STRUCTURE		9	// POD itr(str)
+#define UTF8CHAR_STRUCTURE	10	// POD
+#define LAST_POD_STRUCTURE	UTF8CHAR_STRUCTURE
 
 // temporary
 #define BOOL_TYPE			INT_TYPE
@@ -68,6 +70,7 @@ public:
 	type_t getChildType() const;
 	void applySubstitution( size_t, type_t );
 	type_t rightFlattenTypeProduct( type_t left ) const;
+	static type_t makeTuple( std::vector<type_t> );
 	std::vector<type_t> unpackProduct() const;
 	size_t getParameterCount() const;
 	type_t getParameter( int i ) const;
@@ -132,5 +135,6 @@ extern const type_t INT_TYPE;
 extern const type_t FLT_TYPE;
 extern const type_t STR_TYPE;
 extern const type_t TUP_TYPE;
+extern const type_t UTF8CHAR_TYPE;
 
 extern structureTable* strtab; // only to be used for I/O

@@ -17,6 +17,8 @@
 #define PRINT_SYMBOL	9
 #define SCAN_SYMBOL		10
 #define FNC_SYMBOL		11
+#define ITR_SYMBOL		12
+#define UTF8CHAR_SYMBOL	13
 
 typedef uint64_t symbol_t;
 

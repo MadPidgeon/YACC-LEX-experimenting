@@ -211,7 +211,7 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 		else
 			par[2] = instruction::parameter( instruction::asm_reg{ getRegister( op.b, instruction_index, not op.parameterIsRead( 2 ) ), 8 } );
 	}
-	if( op.usesResultParameter() and op.id != iop_t::id_t::IOP_FUNCTION and op.id != iop_t::id_t::IOP_INT_TUP_STORE and op.id != iop_t::id_t::IOP_GARBAGE )
+	if( op.usesResultParameter() and op.id != iop_t::id_t::IOP_INT_TUP_STORE and op.id != iop_t::id_t::IOP_GARBAGE )
 		par[0] = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, ( not op.parameterIsRead( 0 ) ) and ( op.id != iop_t::id_t::IOP_INT_ARR_STORE ) ), 8 } );
 	
 	par[3] = instruction::parameter( op.label );
@@ -271,7 +271,14 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 			instructions.emplace_back( instruction::id_t::MOVSD, instruction::complex_address( rsp ) , par[1] );
 			break;
 		case iop_t::id_t::IOP_RESERVE_RETURN:
-			instructions.emplace_back( instruction::id_t::SUB, rsp, instruction::parameter( 8 ) );
+			instructions.emplace_back( instruction::id_t::SUB, rsp, par[1] );
+			break;
+		case iop_t::id_t::IOP_INT_POP_RETURN:
+			instructions.emplace_back( instruction::id_t::POP, par[1] );
+			break;
+		case iop_t::id_t::IOP_FLT_POP_RETURN:
+			instructions.emplace_back( instruction::id_t::MOVSD, par[1], instruction::complex_address( rsp ) );
+			instructions.emplace_back( instruction::id_t::ADD, rsp, instruction::parameter( 8 ) );
 			break;
 		case iop_t::id_t::IOP_FUNCTION:
 			evacuateRegisters( instruction_index );
@@ -281,10 +288,10 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 				assert( op.label == ERROR_LABEL );
 				instructions.emplace_back( instruction::id_t::CALL, par[1] );
 			}
-			if( op.r != 0 ) {
+			/*if( op.r != 0 ) {
 				par[0] = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, not op.parameterIsRead( 0 ) ), 8 } );
 				instructions.emplace_back( instruction::id_t::POP, par[0] );
-			}
+			}*/
 			break;
 		case iop_t::id_t::IOP_LABEL_TO_PTR:
 			instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( ERROR_ASM_REG, ERROR_ASM_REG, 0, 8, addFunctionPointerDefinition( op.label ) ) );

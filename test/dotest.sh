@@ -7,6 +7,7 @@ for d in */; do
 	for f in *.code 
 	do
 		name=${f%.code}
+		rm $name
 		../../lexer $f -o $name -O0
 		if [ -x $name ]; then
 			./$name &> $name.out
@@ -14,13 +15,13 @@ for d in */; do
 				if cmp -s "./$name.out" "./$name.correct"; then
 					echo -e "$name: \033[1;32mCorrect\033[0m"
 				else
-					echo "$name: \033[1;31Incorrect\033[0m"
+					echo -e "$name: \033[1;31mIncorrect\033[0m"
 				fi
 			else
-				echo "$name: \033[1;31Crash\033[0m"
+				echo -e "$name: \033[1;31mCrash\033[0m"
 			fi			
 		else
-			echo "$name: \033[1;31Does not compile\033[0m"
+			echo -e "$name: \033[1;31mDoes not compile\033[0m"
 		fi
 	done
     cd ..
