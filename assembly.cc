@@ -359,7 +359,7 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 				instructions.emplace_back( instruction::id_t::MOV, rsi, par[1] );
 				instructions.emplace_back( instruction::id_t::IMUL, rsi, instruction::parameter( s ) );
 				instructions.emplace_back( instruction::id_t::ADD, rsi, instruction::parameter( 8 ) );
-				storeRegister( usable_registers.at( ra.getVariableRegister( op.a ) ), instruction_index, true );
+				storeRegister( getRegister( op.a, instruction_index ), instruction_index, true );
 			} else 
 				instructions.emplace_back( instruction::id_t::MOV, rsi, instruction::parameter( 8 + s*op.c_a.integer ) );
 			evacuateRegisters( instruction_index );
@@ -373,10 +373,10 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 			if( op.a == ERROR_VARIABLE )
 				par[1] = instruction::parameter( op.c_a.integer );
 			else
-				par[1] = instruction::parameter( instruction::asm_reg{ getRegister( op.a, instruction_index, not op.parameterIsRead( 1 ) ), 8 } );
+				par[1] = instruction::parameter( instruction::asm_reg{ getRegister( op.a, instruction_index ), 8 } );
 			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( rax, ERROR_ASM_REG ), par[1] );
 			instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( rax.reg, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
-			register_variables.at( usable_registers.at( ra.getVariableRegister( op.r ) ) ) = op.r;
+			getRegister( op.r, instruction_index, true );
 		}	break;
 		case iop_t::id_t::IOP_LIST_SIZE: {
 			instruction::complex_address ca( par[1] );

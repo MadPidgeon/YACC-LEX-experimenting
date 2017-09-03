@@ -29,7 +29,7 @@ const std::vector<std::string> iop_id_to_str = {
 	"LIST_ALLOCATE", "LIST_SIZE"
 };
 
-const std::vector<uint8_t> iop_t::iop_fields = {
+const std::vector<uint16_t> iop_t::iop_fields = {
 	0,
 	IOFR|IOFS,
 	IOFR|IOFA|IOFS, IOFR|IOFA|IOFS, IOFR|IOFA|IOFS|IOFF,
@@ -38,7 +38,7 @@ const std::vector<uint8_t> iop_t::iop_fields = {
 	IOFA|IOFL|IOFJ, IOFA|IOFL|IOFJ,
 	IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ, IOFA|IOFB|IOFL|IOFJ,
 	IOFR|IOFL|IOFJ,
-	IOFA, IOFA|IOFF, IOFR|IOFS, IOFR|IOFF|IOFS, IOFA,
+	IOFA, IOFA|IOFF, IOFR|IOFS|IOFE, IOFR|IOFF|IOFS|IOFE, IOFA,
 	IOFA|IOFL, // FUNCTION is not a jump!
 	IOFR|IOFL|IOFS,
 	IOFA,
@@ -49,10 +49,10 @@ const std::vector<uint8_t> iop_t::iop_fields = {
 	IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF, IOFR|IOFA|IOFB|IOFF,
 	IOFR|IOFA,
 	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
-	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
-	IOFR|IOFA|IOFB|IOFS|IOFF, IOFR|IOFA|IOFB|IOFS|IOFF,
-	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB|IOFS,
-	IOFR|IOFA|IOFB|IOFS|IOFF, IOFR|IOFA|IOFB|IOFS|IOFF, // should this be floating
+	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB/*|IOFS*/, // commented to protect op from liveness analysis
+	IOFR|IOFA|IOFB|IOFS|IOFF, IOFR|IOFA|IOFB/*|IOFS*/|IOFF,
+	IOFR|IOFA|IOFB|IOFS, IOFR|IOFA|IOFB/*|IOFS*/,
+	IOFR|IOFA|IOFB|IOFS|IOFF, IOFR|IOFA|IOFB/*|IOFS*/|IOFF, // should this be floating
 	IOFR|IOFA|IOFS, IOFR|IOFA|IOFS
 };
 
@@ -83,6 +83,10 @@ bool iop_t::isJump() const {
 
 bool iop_t::usesLabel() const {
 	return iop_fields.at(id) & IOFL;
+}
+
+bool iop_t::hasSideEffects() const {
+	return iop_fields.at(id) & IOFE;
 }
 
 std::string iop_t::debugName() const {

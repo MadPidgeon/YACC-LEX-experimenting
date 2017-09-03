@@ -245,8 +245,9 @@ void flowGraph::removeWriteOnlyMemory() {
 	opt_out << std::endl;
 	for( auto& b : basic_blocks ) {
 		for( auto& o : b.operations ) {
+			if( o.hasSideEffects() )
+				continue;
 			auto w = o.getWrittenVariables();
-			// assumption: all instructions writing to a variable have no side effects (like jmp has)
 			if( w.size() > 0 ) {
 				bool pointless = true;
 				for( variable_t v : w )
@@ -354,6 +355,83 @@ public:
 	}
 };
 
+void flowGraph::node::localCyclicEquivalence() {
+	bool change = true;
+	while( change ) { // repeat cyclic equivalence removal until stable
+		change = false;
+		std::map<variable_t,std::set<variable_t>> graph;
+		for( int i = 0; i < operations.size(); ++i ) {
+ 			auto& op = operations.at( i );
+			variable_t from = op.getParameterVariable( 1 );
+			variable_t to = op.getParameterVariable( 0 );
+			bool clear = false;
+			// add equivalences
+			if( op.id == iop_t::id_t::IOP_INT_MOV and from != ERROR_VARIABLE ) {
+				// add edge to graph if not a self-loop
+				if( from == to )
+					continue;
+				graph[from].insert( to );
+				if( graph[to].size() > 0 ) {
+					// edge added to vertex with path going out of it
+					std::vector<variable_t> cycle = checkForCycle( graph, to );
+					if( cycle.size() > 0 ) {
+						// the path results in a cycle
+						/*opt_out << "Cycle detected!:";
+						for( variable_t v : cycle )
+							opt_out << " " << symtab->getName( scptab->getVariableSymbol( v ) );
+						opt_out << std::endl;
+						std::cin.get();*/
+
+						int stage = cycle.size()-2;
+						std::swap( op.r, op.a );
+						variable_t master = to;
+						int j = i-1;
+						for( ; j >= 0 and stage >= 0; --j ) {
+							auto& op = operations.at( j );
+							if( op.id == iop_t::id_t::IOP_INT_MOV and op.a == cycle[stage] and op.r == cycle[stage+1] ) {
+								// found next assignment
+								op.r = op.a;
+								op.a = master;
+								stage--;
+							} else {
+								// substitute in master variable
+								for( int p = 0; p < 3; ++p )
+									if( op.parameterIsVariable( p ) )
+										op.setParameterVariable( p, master );
+							}
+						}
+						operations.at( j+1 ).id = iop_t::id_t::IOP_NOP;
+						assert( stage == -1 );
+						change = true;
+					} else {
+						// the path does not result in a cycle
+						clear = true;
+					}
+				}
+			} else if( op.id == iop_t::id_t::IOP_FUNCTION ) {
+				// function might affect any non-temporary
+				graph.clear();
+			} else	
+				clear = true;
+			// remove equivalences
+			if( clear )
+				for( variable_t v : op.getWrittenVariables() )
+					graph[v].clear();
+			if( change )
+				break;
+		}
+	}
+}
+
+void flowGraph::cyclicEquivalence() {
+	#ifdef OPTIMIZATION_DEBUG
+	opt_out << "Applying optimization cyclicEquivalence..." << std::endl;
+	#endif
+	for( int i = 1; i < basic_blocks.size(); ++i )
+		basic_blocks.at(i).localCyclicEquivalence();
+}
+
+/*
 void flowGraph::resolveCyclicEquivalence( flowGraph::node* n, int i, const std::set<variable_t>& eq, variable_t target ) {
 	std::vector<iop_t>& ops = n->operations;
 	if( i == -1 )
@@ -377,7 +455,7 @@ int flowGraph::node::cyclicEquivalence( flowGraph* fg ) {
 	std::map<variable_t,std::set<variable_t>> equivalence = equal_in;
 	int i = 0;
 	for( const auto& op : operations ) {
-		if( op.id == iop_t::id_t::IOP_INT_MOV and op.parameterIsVariable( 1 ) ) {
+		if( op.id == iop_t::id_t::IOP_INT_MOV and op.parameterIsVariable( 1 ) and equivalence[ op.getParameterVariable(0) ].size() == 0 ) {
 			variable_t a = op.getParameterVariable( 1 );
 			variable_t b = op.getParameterVariable( 0 );
 			if( a != b ) {
@@ -441,7 +519,7 @@ void flowGraph::cyclicEquivalence() {
 			change |= r;
 		}
 	}
-}
+}*/
 
 // ***********************************************
 // * Constant Propagation
@@ -822,7 +900,7 @@ void flowGraph::optimize( int optimization_level ) {
 	contractBlocks();
 	computeLiveness(); // temp
 	if( opt_out.enabled ) {
-		print( opt_out.stream, true );
+		print( opt_out.stream, false );
 	}	
 }
 

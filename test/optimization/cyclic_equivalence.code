@@ -1,0 +1,4 @@
+fnc(tup(int),int) f = (int p) -> int [ return p; ]; // prevents constant propagation
+int x = f(3);
+x = x+1;
+print(str(x));

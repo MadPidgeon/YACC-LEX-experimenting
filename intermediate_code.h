@@ -17,6 +17,7 @@ typedef uint64_t label_t;
 #define IOFF			(1 << 5) // is floating point operation
 #define IOFS			(1 << 6) // sets r without reading (take care with ARR_STORE )
 #define IOFJ			(1 << 7) // is jumping operation
+#define IOFE			(1 << 8) // operation has side effect besides assigning to r (only in combination with IOFR)
 
 struct iop_t {
 	enum id_t {
@@ -84,7 +85,7 @@ struct iop_t {
 		double floating;
 		char* string;
 	} c_a, c_b;
-	static const std::vector<uint8_t> iop_fields;
+	static const std::vector<uint16_t> iop_fields;
 	std::vector<variable_t> getReadVariables() const;
 	std::vector<variable_t> getWrittenVariables() const;
 	std::vector<variable_t> getReadOnlyVariables() const;
@@ -102,6 +103,7 @@ struct iop_t {
 	bool usesResultParameter() const;
 	bool usesReadParameterA() const;
 	bool usesReadParameterB() const;
+	bool hasSideEffects() const;
 	bool reduceStrength();
 	bool reduceStrengthEq( int64_t i );
 	bool isJump() const;

@@ -65,6 +65,7 @@ public:
 		std::vector<live_interval_t> computeLiveness() const;
 		bool constantPropagation();
 		int cyclicEquivalence( flowGraph* );
+		void localCyclicEquivalence();
 		void setJumpsToChildren( const flowGraph* );
 		void upgradeJump();
 	};

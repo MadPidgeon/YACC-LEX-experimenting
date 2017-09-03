@@ -447,9 +447,9 @@ main:
 _9:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 272
+	sub rsp, 184
 	mov rsi, 32
-	mov qword [-8+rbp], r8
+	mov qword [-8+rbp], r10
 	mov rax, 9
 	xor rdi, rdi
 	mov rdx, 3
@@ -458,19 +458,13 @@ _9:
 	xor r9, r9
 	syscall
 	mov qword [0+rax], 3
-	lea r8, [8+rax]
-	mov r9, 0
-	mov r10, 1
-	mov qword [0+r8+8*r9], r10
-	add r9, 1
-	mov r10, 2
-	mov qword [0+r8+8*r9], r10
-	add r9, 1
-	mov r10, 3
-	mov qword [0+r8+8*r9], r10
-	add r9, 1
-	mov qword [-56+rbp], r8
+	lea r10, [8+rax]
+	mov qword [0+r10], 1
+	mov qword [8+r10], 2
+	mov qword [16+r10], 3
+	mov qword [-24+rbp], r10
 	mov rsi, 32
+	mov qword [-32+rbp], r10
 	mov rax, 9
 	xor rdi, rdi
 	mov rdx, 3
@@ -479,70 +473,53 @@ _9:
 	xor r9, r9
 	syscall
 	mov qword [0+rax], 3
-	lea r9, [8+rax]
-	mov r8, 0
+	lea r10, [8+rax]
+	mov r11, 0
 	movsd xmm4, qword [0+_def_1]
-	movsd qword [0+r9+8*r8], xmm4
-	add r8, 1
+	movsd qword [0+r10+8*r11], xmm4
+	mov r11, 1
 	movsd xmm4, qword [0+_def_2]
-	movsd qword [0+r9+8*r8], xmm4
-	add r8, 1
+	movsd qword [0+r10+8*r11], xmm4
+	mov r11, 2
 	movsd xmm4, qword [0+_def_3]
-	movsd qword [0+r9+8*r8], xmm4
-	add r8, 1
-	mov qword [-48+rbp], r9
-	mov r8, 0
-	mov r9, 0
-	mov r10, qword [-56+rbp+8*r9]
-	mov qword [-136+rbp], r10
-	add r9, 1
-	mov r10, qword [-56+rbp+8*r9]
-	mov qword [-128+rbp], r10
-	add r9, 1
-	mov r9, qword [-136+rbp]
-	mov qword [-160+rbp+8*r8], r9
-	add r8, 1
-	mov r9, qword [-128+rbp]
-	mov qword [-160+rbp+8*r8], r9
-	add r8, 1
+	movsd qword [0+r10+8*r11], xmm4
+	mov r11, 3
+	mov qword [-16+rbp], r10
+	mov r10, qword [-24+rbp]
+	mov qword [-88+rbp], r10
+	mov r10, qword [-16+rbp]
+	mov qword [-80+rbp], r10
+	mov r10, qword [-88+rbp]
+	mov qword [-112+rbp], r10
+	mov r10, qword [-80+rbp]
+	mov qword [-104+rbp], r10
 	sub rsp, 8
-	mov r8, 0
-	mov r9, qword [-160+rbp+8*r8]
-	mov qword [-184+rbp], r9
-	add r8, 1
-	mov r9, qword [-160+rbp+8*r8]
-	mov qword [-176+rbp], r9
-	add r8, 1
-	mov r8, 1
-	mov r9, r8
-	imul r9, 1
-	mov r10, qword [-184+rbp]
-	mov r8, qword [0+r10+8*r9]
-	add r9, 1
-	push r8
+	mov r10, qword [-112+rbp]
+	mov qword [-128+rbp], r10
+	mov r10, qword [-104+rbp]
+	mov qword [-120+rbp], r10
+	mov r8, qword [-128+rbp]
+	mov r10, qword [8+r8]
+	push r10
 	call _3
 	pop r8
 	push r8
 	call _1
 	sub rsp, 8
-	mov r8, 1
-	mov r9, qword [-160+rbp+8*r8]
-	mov qword [-240+rbp], r9
-	add r8, 1
-	mov r9, qword [-160+rbp+8*r8]
-	mov qword [-232+rbp], r9
-	add r8, 1
+	mov r8, qword [-104+rbp]
+	mov qword [-160+rbp], r8
+	mov r8, qword [-96+rbp]
+	mov qword [-152+rbp], r8
 	mov r8, 2
-	mov r9, r8
-	imul r9, 1
-	mov r10, qword [-240+rbp]
-	movsd xmm4, qword [0+r10+8*r9]
-	add r9, 1
+	mov r8, 2
+	mov r9, qword [-160+rbp]
+	movsd xmm4, qword [0+r9+8*r8]
+	mov r8, 3
 	sub rsp, 8
 	movsd qword [0+rsp], xmm4
 	call _5
-	pop r8
-	push r8
+	pop r9
+	push r9
 	call _1
 _11:
 	mov rax, 60
