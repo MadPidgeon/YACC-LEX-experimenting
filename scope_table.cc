@@ -141,7 +141,7 @@ scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, FLT_TYPE ) } ) == FTOA_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, NONE_SYMBOL, type_t::makeTuple({INT_TYPE, UTF8CHAR_TYPE}), { addVariable( ERROR_SCOPE, NONE_SYMBOL, STR_TYPE ), addVariable( ERROR_SCOPE, NONE_SYMBOL, INT_TYPE ) } ) == STRITR_FUNCTION );
 	assert( addFunctionDeclaration( GLOBAL_SCOPE, STR_SYMBOL, STR_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, UTF8CHAR_TYPE ) } ) == CTOSTR_FUNCTION );
-
+	assert( addFunctionDeclaration( GLOBAL_SCOPE, INT_SYMBOL, INT_TYPE, { addVariable( ERROR_SCOPE, NONE_SYMBOL, UTF8CHAR_TYPE ) } ) == CTOINT_FUNCTION );	
 
 	assert( addFunctionDeclaration( ERROR_SCOPE, NONE_SYMBOL, VOID_TYPE ) == GLOBAL_FUNCTION );
 }

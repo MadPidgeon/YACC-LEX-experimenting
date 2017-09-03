@@ -154,7 +154,6 @@ _2:
   rep movsb
   ret
 
-_7: ; temp
 _3:
   mov rax, [rsp+8]    ; load integer
   lea rcx, [_3_buffer+20] ; load buffer adress
@@ -423,10 +422,16 @@ _6: ; advance string iterator
   mov qword [rsp+24], -1
   ret 16
 
-;_7: ; not yet defined
-;  mov rax, 60
-;  mov rsi, -1
-;  syscall
+_7: ; not yet defined
+  int3
+  mov rax, 60
+  mov rsi, -1
+  syscall
+
+_8: ; should somehow be done more efficiently
+  mov rax, [rsp+8]
+  mov [rsp+16], rax
+  ret 8
 
 global _start
 _start:

@@ -7,7 +7,7 @@ for d in */; do
 	for f in *.code 
 	do
 		name=${f%.code}
-		rm $name
+		rm -f $name
 		../../lexer $f -o $name -O0
 		if [ -x $name ]; then
 			./$name &> $name.out

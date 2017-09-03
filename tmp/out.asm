@@ -1,10 +1,7 @@
 section .data
-	_def_1_data db 0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xf0,0x90,0x8d,0x88,0xe2,0x82,0xac,0xc2,0xa1,0x24
-	_def_1 equ _def_1_data+8
-	_def_2_data db 0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x22
-	_def_2 equ _def_2_data+8
-	_def_3_data db 0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x22,0x2c
-	_def_3 equ _def_3_data+8
+	_def_1 dq 2.00000000000000000e+00
+	_def_2 dq 3.00000000000000000e+00
+	_def_3 dq 4.50000000000000000e+00
 
 ; TAKEN FROM https://github.com/davidad/asm_concurrency/blob/master/os_dependent_stuff.asm
 ; syscalls
@@ -162,7 +159,6 @@ _2:
   rep movsb
   ret
 
-_7: ; temp
 _3:
   mov rax, [rsp+8]    ; load integer
   lea rcx, [_3_buffer+20] ; load buffer adress
@@ -431,10 +427,16 @@ _6: ; advance string iterator
   mov qword [rsp+24], -1
   ret 16
 
-;_7: ; not yet defined
-;  mov rax, 60
-;  mov rsi, -1
-;  syscall
+_7: ; not yet defined
+  int3
+  mov rax, 60
+  mov rsi, -1
+  syscall
+
+_8: ; should somehow be done more efficiently
+  mov rax, [rsp+8]
+  mov [rsp+16], rax
+  ret 8
 
 global _start
 _start:
@@ -442,54 +444,107 @@ global start
 start:
 global main
 main:
-_8:
+_9:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 96
-	lea r8, [0+_def_1]
-	mov r9, 0
-	mov r10, qword [-8+r8]
-_9:
-	cmp r9, r10
-	jge _10
-	sub rsp, 16
-	push r8
-	push r9
+	sub rsp, 272
+	mov rsi, 32
 	mov qword [-8+rbp], r8
-	mov qword [-16+rbp], r9
-	mov qword [-24+rbp], r10
-	call _6
-	pop r11
-	mov qword [-48+rbp], r11
-	pop r11
-	mov qword [-40+rbp], r11
-	mov r9, qword [-48+rbp]
-	mov r11, qword [-40+rbp]
+	mov rax, 9
+	xor rdi, rdi
+	mov rdx, 3
+	mov r10, 34
+	mov r8, -1
+	xor r9, r9
+	syscall
+	mov qword [0+rax], 3
+	lea r8, [8+rax]
+	mov r9, 0
+	mov r10, 1
+	mov qword [0+r8+8*r9], r10
+	add r9, 1
+	mov r10, 2
+	mov qword [0+r8+8*r9], r10
+	add r9, 1
+	mov r10, 3
+	mov qword [0+r8+8*r9], r10
+	add r9, 1
+	mov qword [-56+rbp], r8
+	mov rsi, 32
+	mov rax, 9
+	xor rdi, rdi
+	mov rdx, 3
+	mov r10, 34
+	mov r8, -1
+	xor r9, r9
+	syscall
+	mov qword [0+rax], 3
+	lea r9, [8+rax]
+	mov r8, 0
+	movsd xmm4, qword [0+_def_1]
+	movsd qword [0+r9+8*r8], xmm4
+	add r8, 1
+	movsd xmm4, qword [0+_def_2]
+	movsd qword [0+r9+8*r8], xmm4
+	add r8, 1
+	movsd xmm4, qword [0+_def_3]
+	movsd qword [0+r9+8*r8], xmm4
+	add r8, 1
+	mov qword [-48+rbp], r9
+	mov r8, 0
+	mov r9, 0
+	mov r10, qword [-56+rbp+8*r9]
+	mov qword [-136+rbp], r10
+	add r9, 1
+	mov r10, qword [-56+rbp+8*r9]
+	mov qword [-128+rbp], r10
+	add r9, 1
+	mov r9, qword [-136+rbp]
+	mov qword [-160+rbp+8*r8], r9
+	add r8, 1
+	mov r9, qword [-128+rbp]
+	mov qword [-160+rbp+8*r8], r9
+	add r8, 1
 	sub rsp, 8
-	lea r12, [0+_def_2]
-	push r12
-	sub rsp, 8
-	sub rsp, 8
-	push r11
-	mov qword [-16+rbp], r9
-	call _7
-	pop r11
-	push r11
-	lea r11, [0+_def_3]
-	push r11
-	call _4
-	pop r11
-	push r11
-	call _4
-	pop r11
-	push r11
+	mov r8, 0
+	mov r9, qword [-160+rbp+8*r8]
+	mov qword [-184+rbp], r9
+	add r8, 1
+	mov r9, qword [-160+rbp+8*r8]
+	mov qword [-176+rbp], r9
+	add r8, 1
+	mov r8, 1
+	mov r9, r8
+	imul r9, 1
+	mov r10, qword [-184+rbp]
+	mov r8, qword [0+r10+8*r9]
+	add r9, 1
+	push r8
+	call _3
+	pop r8
+	push r8
 	call _1
-	mov r8, qword [-8+rbp]
-	mov r9, qword [-16+rbp]
-	mov r10, qword [-24+rbp]
-	jmp _9
-_10:
-_13:
+	sub rsp, 8
+	mov r8, 1
+	mov r9, qword [-160+rbp+8*r8]
+	mov qword [-240+rbp], r9
+	add r8, 1
+	mov r9, qword [-160+rbp+8*r8]
+	mov qword [-232+rbp], r9
+	add r8, 1
+	mov r8, 2
+	mov r9, r8
+	imul r9, 1
+	mov r10, qword [-240+rbp]
+	movsd xmm4, qword [0+r10+8*r9]
+	add r9, 1
+	sub rsp, 8
+	movsd qword [0+rsp], xmm4
+	call _5
+	pop r8
+	push r8
+	call _1
+_11:
 	mov rax, 60
 	mov rdi, 0
 	syscall

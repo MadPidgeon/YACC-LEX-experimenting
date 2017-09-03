@@ -19,7 +19,8 @@
 #define FTOA_FUNCTION		5
 #define STRITR_FUNCTION		6
 #define CTOSTR_FUNCTION		7
-#define GLOBAL_FUNCTION		8	// should always be the last predefined function
+#define CTOINT_FUNCTION		8
+#define GLOBAL_FUNCTION		9	// should always be the last predefined function
 
 typedef uint64_t scope_t;
 typedef uint64_t variable_t;
