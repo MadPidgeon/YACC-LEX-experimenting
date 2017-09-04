@@ -230,6 +230,10 @@ declaration_list:		declaration_list_el COMMA declaration_list {
 							$<node>$ = $<node>1;
 						};
 
+tuple_lvalue:			lbra tuple_lvalue_list rbra
+
+tuple_lvalue_list:		lvalue COMMA tuple_lvalue_list | lvalue;
+
 declaration_list_el:	id ASSIGNMENT expression {
 							$<node>$ = new syntaxTree::node( N_ASSIGN, symbolToVariable( $<num>1, decllisttypes.top() ), $<node>3 );
 							if( not decllisttypes.top().weaklyEqual( $<node>3->data_type ) )
@@ -405,7 +409,7 @@ string_particles:		STRING_PARTICLE {
 							free( $<str>2 );
 						};
 
-lvalue:					variable | function_call;
+lvalue:					variable | function_call | tuple_lvalue;
 
 variable:				id {
 							$<node>$ = symbolToVariable( $<num>1 );

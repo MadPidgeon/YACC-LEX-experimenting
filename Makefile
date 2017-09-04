@@ -28,6 +28,9 @@ obj/%.o: %.cc %.h
 asm/%.asm: code/%.code lexer
 	./lexer $< -o $@ -S -vsioa
 
+tokenizer_test: tokenizer_test.cc $(addprefix obj/, $(OBJ))
+	$(CXX) $^ -o tokenizer_test $(CXXFLAGS)
+
 lexer: $(addprefix obj/, $(OBJ))
 	$(CXX) $^ -o lexer $(CXXFLAGS)
 
