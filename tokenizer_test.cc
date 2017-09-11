@@ -4,10 +4,11 @@
 
 int main() {
 	symbolTable symtab;
-	tokenizer( std::cin, &symtab );
-	token_t t = tokenizer.getToken();
+	tokenizer tok( std::cin, &symtab );
+	token_t t = tok.getToken();
 	while( t != EOF_TOKEN ) {
-		std::cout << int( t.id ) << " ";
+		std::cout << t << " ";
+		t = tok.getToken();
 	}
 	return 0;
 }

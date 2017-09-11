@@ -1,11 +1,19 @@
 #pragma once
 #include <string>
 #include <deque>
+#include <vector>
+#include <utility>
 #include <iostream>
+#include <cstdint>
 #include "error_reporting.h"
 #include "symbol_table.h"
 
-#define EOF_TOKEN	token_t{ token_t::id_t::EOF, .integer = 0 }
+// #define DEBUG_TOKENIZER
+
+#define EOF_TOKEN	token_t{ token_t::id_t::END_OF_FILE, {.integer = 0} }
+
+#define DATA_BRACKET_TOKEN 		0
+#define STATEMENT_BRACKET_TOKEN 1
 
 struct position_t {
 	size_t row, column;
@@ -13,11 +21,11 @@ struct position_t {
 
 struct token_t {
 	enum id_t {
-		EOF,
+		END_OF_FILE, START_OF_FILE,
 
-		LBRA, RBRA, LSEQ, RSEQ, LPAR, RPAR, COMMA, DOT, ELLIPSIS, SEMICOLON,
+		LBRA, RBRA, LSEQ, RSEQ, LPAR, RPAR, COMMA, DOT, ELLIPSIS, SEMICOLON, SPACE_JOINER,
 
-		ASSIGN, ID, INT, FLT, STR,
+		ASSIGN, ID, FUNCTION, INT, FLT, STR,
 
 		DEFINE, MAPS_TO,
 
@@ -29,8 +37,13 @@ struct token_t {
 
 		LOGIC_ASSIGN_OP, LATTICE_ASSIGN_OP, ADD_ASSIGN_OP, MULT_ASSIGN_OP, EXPONENT_ASSIGN_OP,
 
-		INCREMENT
+		INCREMENT,
+
+		COUNT
 	} id;
+	static const std::vector<std::string> token_name;
+	static const std::vector<int> token_precedence;
+	static const std::vector<int> token_associativity;
 	union {
 		symbol_t identifier;
 		uint64_t op;
@@ -39,12 +52,27 @@ struct token_t {
 		char* string;
 	};
 	position_t pos;
+	bool operator==( token_t other ) const;
+	bool operator!=( token_t other ) const;
+	token_t getDual() const;
+	bool isAtom() const;
+	bool isBinaryOperator() const;
+	bool isLeftBracket() const;
+	bool isRightBracket() const;
+	bool isControlFlow() const;
+	bool isLeftAssociative() const;
+	bool isRightAssociative() const;
+	bool isStatement() const;
+	int precedence() const;
 };
+
+std::ostream& operator<<( std::ostream& os, token_t );
 
 class tokenizer {
 	std::istream& stream;
 	position_t current_position;
 	char c;
+	token_t last_added_token;
 	std::deque<token_t> tokens;
 	symbolTable* symtab;
 
@@ -67,8 +95,13 @@ class tokenizer {
 	void generateInteger();
 	void generateString();
 	void generateTokens();
+	void generateAssignment();
+	void generateComparison();
+
+	void recoverError();
 public:
+	std::vector<token_t> getAllTokens();
 	token_t getToken();
 	token_t peekToken( int i );
-	tokenizer( std::istream&, symbol_table* );
+	tokenizer( std::istream&, symbolTable* );
 };
