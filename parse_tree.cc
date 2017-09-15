@@ -145,8 +145,8 @@ parseTree::node* parseTree::parseStatementList( interval_t interval ) {
 
 parseTree::node* parseTree::parseStatement( interval_t& interval ) {
 	#ifdef PARSE_TREE_DEBUG
-	std::cout << "parseStatement(" << interval << "):" << std::endl;
-	// printTokens( interval ); std::cout << std::endl;
+	parse_out << "parseStatement(" << interval << "):" << std::endl;
+	// printTokens( interval ); parse_out << std::endl;
 	#endif
 	token_t t = tokens.at( interval.begin+1 );
 	if( t.isControlFlow() )
@@ -162,8 +162,8 @@ parseTree::node* parseTree::parseStatement( interval_t& interval ) {
 
 parseTree::node* parseTree::parseControlFlow( interval_t& interval ) {
 	#ifdef PARSE_TREE_DEBUG
-	std::cout << "parseControlFlow(" << interval << "):" << std::endl;
-	// printTokens( interval ); std::cout << std::endl;
+	parse_out << "parseControlFlow(" << interval << "):" << std::endl;
+	// printTokens( interval ); parse_out << std::endl;
 	#endif
 	token_t t = tokens.at( interval.begin+1 );
 	interval.begin += 1;
@@ -227,9 +227,9 @@ parseTree::node* parseTree::parseAtom( token_t t ) {
 
 /*parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 	#ifdef PARSE_TREE_DEBUG
-	std::cout << "parseExpression(" << interval << "):" << std::endl;
+	parse_out << "parseExpression(" << interval << "):" << std::endl;
 	printTokens( interval );
-	std::cout << std::endl;
+	parse_out << std::endl;
 	#endif
 	while( interval.size() > 0 and tokens.at( interval.begin ).id != token_t::id_t::SEMICOLON ) {
 		// temp
@@ -290,9 +290,9 @@ void parseTree::parseSequence( std::deque<node*>& output, token_t t ) {
 
 parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 	#ifdef PARSE_TREE_DEBUG
-	std::cout << "parseExpression(" << interval << "):" << std::endl;
+	parse_out << "parseExpression(" << interval << "):" << std::endl;
 	printTokens( interval );
-	std::cout << std::endl;
+	parse_out << std::endl;
 	#endif
 	interval.begin += 1;
 	token_t t = tokens.at( interval.begin );
@@ -300,19 +300,19 @@ parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 	std::deque<token_t> operators;
 	while( interval.begin < interval.end and t != EOF_TOKEN and t.id != token_t::id_t::SEMICOLON ) {
 		// ----------------------
-		std::cout << "Output: ";
+		parse_out << "Output: ";
 		for( node* x : output ) {
 			if( x == nullptr )
-				std::cout << "NULL ";
+				parse_out << "NULL ";
 			else
-				std::cout << node::node_name.at( x->id ) << " ";
+				parse_out << node::node_name.at( x->id ) << " ";
 		}
-		std::cout << std::endl;
-		std::cout << "Stack : ";
+		parse_out << std::endl;
+		parse_out << "Stack : ";
 		for( token_t x : operators ) {
-			std::cout << x << " ";
+			parse_out << x << " ";
 		}
-		std::cout << std::endl;
+		parse_out << std::endl;
 		// ----------------------
 		if( t.isAtom() ) {
 			output.push_back( parseAtom( t ) );
@@ -395,14 +395,14 @@ parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 		operators.pop_back();
 	}
 	// ----------------------
-	std::cout << "Output: ";
+	parse_out << "Output: ";
 	for( node* x : output ) {
 		if( x == nullptr )
-			std::cout << "NULL ";
+			parse_out << "NULL ";
 		else
-			std::cout << node::node_name.at( x->id ) << " ";
+			parse_out << node::node_name.at( x->id ) << " ";
 	}
-	std::cout << std::endl;
+	parse_out << std::endl;
 	// ----------------------
 	if( output.size() == 1 )
 		return output.front();
@@ -414,9 +414,9 @@ parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 
 /*parseTree::node* parseTree::parseStatement( int& begin, int& end ) {
 	#ifdef PARSE_TREE_DEBUG
-	std::cout << "parseStatement(" << begin << "," << end << "):" << std::endl;
+	parse_out << "parseStatement(" << begin << "," << end << "):" << std::endl;
 	printTokens( begin, end );
-	std::cout << std::endl;
+	parse_out << std::endl;
 	#endif
 	token_t t = tokens.at( begin+1 );
 	if( t.isControlFlow() )
@@ -430,17 +430,17 @@ parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 
 parseTree::node* parseTree::parseExpression( int begin, int end ) {
 	#ifdef PARSE_TREE_DEBUG
-	std::cout << "parseExpression(" << begin << "," << end << "):" << std::endl;
+	parse_out << "parseExpression(" << begin << "," << end << "):" << std::endl;
 	printTokens( begin, end );
-	std::cout << std::endl;
+	parse_out << std::endl;
 	#endif
 }
 
 parseTree::node* parseTree::parseControlFlow( int& begin, int& end ) {
 	#ifdef PARSE_TREE_DEBUG
-	std::cout << "parseControlFlow(" << begin << "," << end << "):" << std::endl;
+	parse_out << "parseControlFlow(" << begin << "," << end << "):" << std::endl;
 	printTokens( begin, end );
-	std::cout << std::endl;
+	parse_out << std::endl;
 	#endif
 	token_t t = tokens.at( begin+1 );
 	node* r;
@@ -489,11 +489,11 @@ parseTree::node* parseTree::parseControlFlow( int& begin, int& end ) {
 
 void parseTree::printTokens( interval_t interval, bool show_extra ) const {
 	for( size_t i = interval.begin; i <= interval.end; ++i ) {
-		std::cout << tokens.at( i );
+		parse_out << tokens.at( i );
 		if( show_extra ) {
-			std::cout << "(" << i << "," << token_data.at( i ).pair << ")";
+			parse_out << "(" << i << "," << token_data.at( i ).pair << ")";
 		}
-		std::cout << " ";
+		parse_out << " ";
 	}
 }
 

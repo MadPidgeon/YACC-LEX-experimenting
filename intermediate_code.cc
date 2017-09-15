@@ -357,7 +357,7 @@ void iop_t::legalizeCompare() {
 size_t intermediateCode::function::addOperation( iop_t::id_t type, variable_t r, variable_t a, variable_t b, label_t l, iop_t::constant_t c, iop_t::constant_t c2 ) {
 	operations.push_back( iop_t{ type, r, a, b, l, c, c2 } );
 	#ifdef SYNTAX_TREE_DEBUG
-	std::cout << operations.back() << std::endl;
+	syntree_out << operations.back() << std::endl;
 	#endif
 	return operations.size()-1;
 }
@@ -971,7 +971,7 @@ void intermediateCode::function::translateTupleElements( const syntaxTree::node*
 
 variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
-	std::cout << "translateReadIndexing" << std::endl;
+	syntree_out << "translateReadIndexing" << std::endl;
 	#endif
 	assert( n->id == SN::LIST_INDEXING or n->id == SN::TUPLE_INDEXING or n->id == SN::SIZE_OF );
 	variable_t r = parent->newTemporaryVariable( n->data_type );

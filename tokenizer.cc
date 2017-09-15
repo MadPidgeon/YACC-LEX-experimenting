@@ -199,9 +199,9 @@ void tokenizer::generateMultiplication() {
 			addToken( TK::EXPONENT_OP, o );
 			c = e;
 		}
-	} if( c == '/' and d == '/' ) {
+	} else if( c == '/' and d == '/' ) {
 		generateLineComment();
-	} if( c == '/' and d == '*' ) {
+	} else if( c == '/' and d == '*' ) {
 		c = getNextCharacter();
 		generateInlineComment();
 	} else {
@@ -459,6 +459,8 @@ void tokenizer::generateString() {
 				s.push_back('\t');
 			else if( c == '\\' )
 				s.push_back('\\');
+			else if( c == '"' )
+				s.push_back('"');
 			else
 				lerr << error_line() << "Unknown escape sequence '\\" << c << "'" << std::endl;
 		} else if( c == 0 ) {

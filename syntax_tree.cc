@@ -285,6 +285,8 @@ syntaxTree::node* syntaxTree::translateExpression( const parseTree::node* n ) co
 		return translateFunctionCall( n );
 	else if( n->id == PN::RELATION_OP )
 		return translateComparisonChain( n );
+	else if( n->id == PN::LIST or n->id == PN::SET or n->id == PN::TUPLE )
+		return translateContainer( n );
 	else
 		return translateOperator( n );
 }
@@ -320,7 +322,7 @@ syntaxTree::node* syntaxTree::translateOperator( const parseTree::node* n ) cons
 	assert( n->isOperator() );
 	SN id = SN::EMPTY;
 	switch( n->id ) {
-		case PN::LOGIC_OP: case PN::LOGIC_ASSIGN_OP:
+		case PN::LOGIC_OP: case PN::LOGIC_ASSIGN_OP: case PN::LATTICE_OP: case PN::LATTICE_ASSIGN_OP:
 			id = n->data.integer == 0 ? SN::JOIN : SN::MEET;
 			break;
 		case PN::ADD_OP: case PN::ADD_ASSIGN_OP:
@@ -328,6 +330,9 @@ syntaxTree::node* syntaxTree::translateOperator( const parseTree::node* n ) cons
 			break;
 		case PN::MULT_OP: case PN::MULT_ASSIGN_OP:
 			id = n->data.integer == 0 ? SN::MULTIPLY : ( n->data.integer == 1 ? SN::DIVIDE : SN::REMAINDER );
+			break;
+		case PN::IN_OP:
+			id = SN::IN;
 			break;
 		case PN::ASSIGN:
 			id = SN::ASSIGN;
@@ -366,8 +371,28 @@ syntaxTree::node* syntaxTree::translateControlFlow( const parseTree::node* n ) c
 	switch( n->id ) {
 		case PN::IF:
 			return new node( SN::IF, translateExpression( n->children[0] ), translateStatement( n->children[1] ) );
-		case PN::FOR:
-			return new node( SN::FOR, translateExpression( n->children[0] ), translateStatement( n->children[1] ) );
+		case PN::FOR: {
+			if( n->children[0]->id != PN::IN_OP ) {
+				lerr << error_line() << "Expected 'in' in for loop expression" << std::endl;
+				return nullptr;
+			}
+			if( n->children[0]->children[0]->id != PN::ID ) {
+				lerr << error_line() << "Expected identifier in for loop expression" << std::endl;
+				return nullptr;
+			}
+			node* iterable = translateExpression( n->children[0]->children[1] );
+			type_t t = ERROR_TYPE;
+			if( iterable->data_type.isList() or iterable->data_type.isSet() ) {
+				t = iterable->data_type.getChildType();
+			} else if( iterable->data_type == STR_TYPE ) {
+				t = UTF8CHAR_TYPE;
+			} else {
+				lerr << error_line() << "Type " << t << " is not iterable" << std::endl;
+				return nullptr;
+			}
+			node* iterator = new node( SN::VARIABLE, nullptr, nullptr, {.integer = scptab->addVariable( scope_stack.back(), n->children[0]->children[0]->data.symbol, t ) } );
+			return new node( SN::FOR, new node( SN::IN, iterator, iterable ), translateStatement( n->children[1] ) );
+		}
 		case PN::WHILE:
 			return new node( SN::WHILE, translateExpression( n->children[0] ), translateStatement( n->children[1] ) );
 		case PN::ELSE:
