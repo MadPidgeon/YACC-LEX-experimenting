@@ -38,8 +38,9 @@ bool command_line_data::parse( int argc, char** argv ) {
 				std::cout << "  -O1         Basic optimization (default)" << std::endl;
 				std::cout << "  --version   Display version information" << std::endl;
 				std::cout << "  --help      Display this help text" << std::endl;
-				std::cout << "  -v[lsioa]   Display verbose (debug) information about compilation steps:" << std::endl;
+				std::cout << "  -v[lpsioa]  Display verbose (debug) information about compilation steps:" << std::endl;
 				std::cout << "                l    Display token generation (lexer) information" << std::endl;
+				std::cout << "                p    Display parse tree generation information" << std::endl;
 				std::cout << "                s    Display syntax tree generation information" << std::endl;
 				std::cout << "                i    Display intermediate code generation information" << std::endl;
 				std::cout << "                o    Display optimization information" << std::endl;
@@ -50,6 +51,8 @@ bool command_line_data::parse( int argc, char** argv ) {
 				for( int j = 2; argv[i][j] != '\0'; ++j ) {
 					if( argv[i][j] == 'l' )
 						lexer_out.enabled = true;
+					else if( argv[i][j] == 'p' )
+						parse_out.enabled = true;
 					else if( argv[i][j] == 's' )
 						syntree_out.enabled = true;
 					else if( argv[i][j] == 'i' )
@@ -64,7 +67,7 @@ bool command_line_data::parse( int argc, char** argv ) {
 					}
 				}
 			} else if( strcmp( argv[i]+1, "-verbose" ) == 0 ) {
-				lexer_out.enabled = syntree_out.enabled = ic_out.enabled = opt_out.enabled = asm_out.enabled = true;
+				lexer_out.enabled = parse_out.enabled = syntree_out.enabled = ic_out.enabled = opt_out.enabled = asm_out.enabled = true;
 			} else if( argv[i][1] == 'O' ) {
 				if( argv[i][2] >= '0' and argv[i][2] <= '3' and argv[i][3] == '\0' )
 					optimization_level = argv[i][2] - '0';

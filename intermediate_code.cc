@@ -364,82 +364,82 @@ size_t intermediateCode::function::addOperation( iop_t::id_t type, variable_t r,
 
 void intermediateCode::function::translateNode( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
 	#ifdef SYNTAX_TREE_DEBUG
-	ic_out << "translateNode(" << n->type << ")" << std::endl;
+	ic_out << "translateNode(" << n->id << ")" << std::endl;
 	#endif
-	switch( n->type ) {
-		case N_EMPTY:
+	switch( n->id ) {
+		case SN::EMPTY:
 			addOperation( iop_t::id_t::IOP_NOP );
 			break;
-		case N_ASSIGN:
+		case SN::ASSIGN:
 			translateAssign( n );
 			break;
-		case N_GARBAGE:
+		case SN::GARBAGE:
 			translateGarbage( n );
 			break;
-		case N_ARGUMENT_LIST:
+		case SN::ARGUMENT_LIST:
 			translateArguments( n );
 			break;
-		case N_EQUALS: case N_NOT_EQUALS: case N_ADD: case N_SUBTRACT: case N_MULTIPLY: case N_DIVIDE: case N_REMAINDER: case N_UMIN: 
-		case N_VARIABLE: case N_INTEGER: case N_FLOAT: case N_STRING: case N_LIST: case N_SET: case N_TUPLE:
+		case SN::EQUALS: case SN::NOT_EQUALS: case SN::ADD: case SN::SUBTRACT: case SN::MULTIPLY: case SN::DIVIDE: case SN::REMAINDER: case SN::UMIN: 
+		case SN::VARIABLE: case SN::INTEGER: case SN::FLOAT: case SN::STRING: case SN::LIST: case SN::SET: case SN::TUPLE:
 			translateExpression( n );
 			break;
-		case N_IF: case N_WHILE: case N_FOR:
+		case SN::IF: case SN::WHILE: case SN::FOR:
 			translateBranching( n, loop_stack );
 			break;
-		case N_SEQUENTIAL_BLOCK: case N_PARALLEL_BLOCK:
+		case SN::SEQUENTIAL_BLOCK: case SN::PARALLEL_BLOCK:
 			translateBlock( n, loop_stack );
 			break;
-		case N_FUNCTION_CALL:
+		case SN::FUNCTION_CALL:
 			translateFunctionCall( n );
 			break;
-		case N_JOIN: case N_MEET:
+		case SN::JOIN: case SN::MEET:
 			translateFunctionOperation( n );
 			break;
-		case N_BREAK: case N_CONTINUE: case N_RETURN:
+		case SN::BREAK: case SN::CONTINUE: case SN::RETURN:
 			translateControlFlow( n, loop_stack );
 			break;
 		default:
-			lerr << error_line(true) << "Operation ST(" << n->type << ") not yet implemented" << std::endl;
+			lerr << error_line(true) << "Operation ST(" << (*n) << ") not yet implemented" << std::endl;
 	}
 }
 
 variable_t intermediateCode::function::translateExpression( const syntaxTree::node* n ) {
-	if( n->type == N_VARIABLE )
+	if( n->id == SN::VARIABLE )
 		return translateVariable( n );
-	if( n->type == N_INTEGER or n->type == N_FLOAT or n->type == N_STRING )
+	if( n->id == SN::INTEGER or n->id == SN::FLOAT or n->id == SN::STRING )
 		return translateConstant( n );
-	if( n->type == N_LIST or n->type == N_SET or n->type == N_TUPLE )
+	if( n->id == SN::LIST or n->id == SN::SET or n->id == SN::TUPLE )
 		return translateContainer( n );
-	if( n->type == N_FUNCTION_CALL )
+	if( n->id == SN::FUNCTION_CALL )
 		return translateFunctionCall( n );
-	if( n->type == N_JOIN or n->type == N_MEET )
+	if( n->id == SN::JOIN or n->id == SN::MEET )
 		return translateFunctionOperation( n );
-	if( n->type == N_LIST_INDEXING or n->type == N_TUPLE_INDEXING or n->type == N_SIZE_OF )
+	if( n->id == SN::LIST_INDEXING or n->id == SN::TUPLE_INDEXING or n->id == SN::SIZE_OF )
 		return translateReadIndexing( n );
-	if( n->type == N_COMPARISON_CHAIN )
+	if( n->id == SN::COMPARISON_CHAIN )
 		return translateComparisonChain( n );
-	if( n->type == N_FUNCTION_DEFINITION )
+	if( n->id == SN::FUNCTION_DEFINITION )
 		return translateFunctionDefinition( n );
 	return translateArithmetic( n );
 }
 
 void intermediateCode::function::translateAssign( const syntaxTree::node* n ) {
-	assert( n->type == N_ASSIGN );
+	assert( n->id == SN::ASSIGN );
 	translateLValue( n->children[0], translateExpression( n->children[1] ) );
 }
 
 void intermediateCode::function::translateLValue( const syntaxTree::node* n, variable_t value ) {
-	assert( n->type == N_VARIABLE or n->type == N_LIST_INDEXING );
-	if( n->type == N_VARIABLE ) 
+	assert( n->id == SN::VARIABLE or n->id == SN::LIST_INDEXING );
+	if( n->id == SN::VARIABLE ) 
 		translateGeneralAssignment( n->data.integer, value );
-	else if( n->type == N_LIST_INDEXING ) {
+	else if( n->id == SN::LIST_INDEXING ) {
 		variable_t index = translateExpression( n->children[1] );
 		variable_t list = translateVariable( n->children[0] );
 		variable_t offset = parent->newTemporaryVariable( INT_TYPE );
 		addOperation( iop_t::id_t::IOP_INT_MOV, offset, index );
 		addOperation( iop_t::id_t::IOP_INT_MULEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=n->data_type.rawSize()/8} );
 		translateAssignToListElementWeak( list, offset, value );
-	} else if( n->type == N_TUPLE_INDEXING ) {
+	} else if( n->id == SN::TUPLE_INDEXING ) {
 		variable_t tup = translateVariable( n->children[0] );
 		size_t offset = 0;
 		for( int i = 0; i < n->data.integer; ++i )
@@ -621,12 +621,12 @@ void intermediateCode::function::translatePopReturn( variable_t r ) {
 }
 
 void intermediateCode::function::translateGarbage( const syntaxTree::node* n ) {
-	assert( n->type == N_GARBAGE );
+	assert( n->id == SN::GARBAGE );
 	addOperation( iop_t::id_t::IOP_GARBAGE, variable_t( n->data.integer ) );
 }
 
 void intermediateCode::function::translateArguments( const syntaxTree::node* n ) {
-	assert( n->type == N_ARGUMENT_LIST );
+	assert( n->id == SN::TUPLE_LIST );
 	variable_t a = translateExpression( n->children[0] );
 	if( n->children[0]->data_type == FLT_TYPE )
 		addOperation( iop_t::id_t::IOP_FLT_ADD_PARAM, ERROR_VARIABLE, a );
@@ -637,8 +637,8 @@ void intermediateCode::function::translateArguments( const syntaxTree::node* n )
 }
 
 variable_t intermediateCode::function::translateArithmetic( const syntaxTree::node* n ) {
-	if( not ( n->type == N_ADD or n->type == N_SUBTRACT or n->type == N_MULTIPLY or n->type == N_DIVIDE or n->type == N_REMAINDER or n->type == N_UMIN ) ) {
-		std::cerr << error_line() << "translateArithmetic received " << n->type << std::endl;
+	if( not ( n->id == SN::ADD or n->id == SN::SUBTRACT or n->id == SN::MULTIPLY or n->id == SN::DIVIDE or n->id == SN::REMAINDER or n->id == SN::UMIN ) ) {
+		std::cerr << error_line() << "translateArithmetic received " << n->id << std::endl;
 		throw;
 	}
 	variable_t s[2];
@@ -647,38 +647,38 @@ variable_t intermediateCode::function::translateArithmetic( const syntaxTree::no
 	variable_t r = parent->newTemporaryVariable( parent->scptab->getVariableType( s[0] ) );
 	iop_t::id_t id;
 	if( n->data_type == INT_TYPE ) {
-		if( n->type == N_NOT_EQUALS or n->type == N_EQUALS ) { // 3 argument ops
+		if( n->id == SN::NOT_EQUALS or n->id == SN::EQUALS ) { // 3 argument ops
 			lerr << error_line() << "Depricated block reached" << std::endl;
-			/*if( n->type == N_NOT_EQUALS )
+			/*if( n->id == SN::NOT_EQUALS )
 				id = iop_t::id_t::IOP_INT_NEQ;
-			else if( n->type == N_EQUALS )
+			else if( n->id == SN::EQUALS )
 				id = iop_t::id_t::IOP_INT_EQ;
 			addOperation( id, r, s[0], s[1] );
 			return r;*/
 		} else { // 2 argument ops
 			addOperation( iop_t::id_t::IOP_INT_MOV, r, s[0] );
-			if( n->type == N_ADD )
+			if( n->id == SN::ADD )
 				id = iop_t::id_t::IOP_INT_ADDEQ;
-			else if( n->type == N_SUBTRACT )
+			else if( n->id == SN::SUBTRACT )
 				id = iop_t::id_t::IOP_INT_SUBEQ;
-			else if( n->type == N_MULTIPLY )
+			else if( n->id == SN::MULTIPLY )
 				id = iop_t::id_t::IOP_INT_MULEQ;
 			else
-				lerr << error_line() << "Arithmetic operation " << n->type << " not yet implemented for integers" << std::endl;
+				lerr << error_line() << "Arithmetic operation " << n->id << " not yet implemented for integers" << std::endl;
 			addOperation( id, r, s[1] );
 			return r;
 		}
 	} else if( n->data_type == FLT_TYPE ) {
-		if( n->type == N_ADD )
+		if( n->id == SN::ADD )
 			id = iop_t::id_t::IOP_FLT_ADD;
-		else if( n->type == N_SUBTRACT )
+		else if( n->id == SN::SUBTRACT )
 			id = iop_t::id_t::IOP_FLT_SUB;
-		else if( n->type == N_MULTIPLY )
+		else if( n->id == SN::MULTIPLY )
 			id = iop_t::id_t::IOP_FLT_MUL;
-		else if( n->type == N_DIVIDE )
+		else if( n->id == SN::DIVIDE )
 			id = iop_t::id_t::IOP_FLT_DIV;
 		else
-			lerr << error_line() << "Arithmetic operation " << n->type << " not yet implemented for integers" << std::endl;
+			lerr << error_line() << "Arithmetic operation " << n->id << " not yet implemented for integers" << std::endl;
 		addOperation( id, r, s[0], s[1] );
 		return r;
 		
@@ -687,7 +687,7 @@ variable_t intermediateCode::function::translateArithmetic( const syntaxTree::no
 }
 
 variable_t intermediateCode::function::translateFunctionDefinition( const syntaxTree::node* n ) {
-	assert( n->type == N_FUNCTION_DEFINITION );
+	assert( n->id == SN::FUNCTION_DEFINITION );
 	parent->defineFunction( n->data.integer, n->children[1] );
 	variable_t r = parent->newTemporaryVariable( n->data_type );
 	addOperation( iop_t::id_t::IOP_LABEL_TO_PTR, r, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( n->data.integer ) );
@@ -695,12 +695,12 @@ variable_t intermediateCode::function::translateFunctionDefinition( const syntax
 }
 
 void intermediateCode::function::translateBranching( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
-	assert( n->type == N_IF or n->type == N_WHILE or n->type == N_FOR );
-	if( n->type == N_IF ) {
+	assert( n->id == SN::IF or n->id == SN::WHILE or n->id == SN::FOR );
+	if( n->id == SN::IF ) {
 		variable_t a = translateExpression( n->children[0] );
 		label_t endif = parent->newLabel();
 		addOperation( iop_t::id_t::IOP_JF, ERROR_VARIABLE, a, ERROR_VARIABLE, endif );
-		if( n->children[1]->type == N_ELSE ) {
+		if( n->children[1]->id == SN::ELSE ) {
 			translateNode( n->children[1]->children[0], loop_stack );
 			label_t endelse = parent->newLabel();
 			addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, endelse );
@@ -711,28 +711,28 @@ void intermediateCode::function::translateBranching( const syntaxTree::node* n, 
 			translateNode( n->children[1], loop_stack );
 			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, endif );
 		}
-	} else if( n->type == N_WHILE ) {
+	} else if( n->id == SN::WHILE ) {
 		label_t condition_check = parent->newLabel(), natural_exit = parent->newLabel();
-		label_t abrupt_exit = n->children[1]->type == N_ELSE ? parent->newLabel() : natural_exit;
+		label_t abrupt_exit = n->children[1]->id == SN::ELSE ? parent->newLabel() : natural_exit;
 		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
 		variable_t exp = translateExpression( n->children[0] );
 		addOperation( iop_t::id_t::IOP_JF, ERROR_VARIABLE, exp, ERROR_VARIABLE, natural_exit );
 		loop_stack.push_back( std::make_pair( abrupt_exit, condition_check ) );
-		if( n->children[1]->type == N_ELSE )
+		if( n->children[1]->id == SN::ELSE )
 			translateNode( n->children[1]->children[0], loop_stack );
 		else 
 			translateNode( n->children[1], loop_stack );
 		loop_stack.pop_back();
 		addOperation( iop_t::id_t::IOP_JUMP, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, condition_check );
-		if( n->children[1]->type == N_ELSE ) {
+		if( n->children[1]->id == SN::ELSE ) {
 			addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, natural_exit );
 			translateNode( n->children[1]->children[1], loop_stack );
 		}
 		addOperation( iop_t::id_t::IOP_LABEL, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, abrupt_exit );
-	} else if( n->type == N_FOR ) {
-		assert( n->children[0]->type == N_IN );
+	} else if( n->id == SN::FOR ) {
+		assert( n->children[0]->id == SN::IN );
 		type_t ct = n->children[0]->children[1]->data_type;
-		bool has_else = n->children[1]->type == N_ELSE;
+		bool has_else = n->children[1]->id == SN::ELSE;
 		label_t condition_check = parent->newLabel();
 		label_t natural_exit = parent->newLabel();
 		label_t abrupt_exit = has_else ? parent->newLabel() : natural_exit;
@@ -789,18 +789,18 @@ void intermediateCode::function::translateBranching( const syntaxTree::node* n, 
 			lerr << error_line() << "Cannot iterate over type " << ct << std::endl;
 		}		
 	} else
-		lerr << error_line() << "Branching operation " << n->type << " not yet implemented" << std::endl;
+		lerr << error_line() << "Branching operation " << n->id << " not yet implemented" << std::endl;
 }
 
 void intermediateCode::function::translateControlFlow( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
-	assert( n->type == N_BREAK or n->type == N_CONTINUE or n->type == N_RETURN );
+	assert( n->id == SN::BREAK or n->id == SN::CONTINUE or n->id == SN::RETURN );
 	label_t target;
-	if( n->type == N_RETURN ) {
+	if( n->id == SN::RETURN ) {
 		addOperation( iop_t::id_t::IOP_RETURN, ERROR_VARIABLE, translateExpression( n->children[0] ) );
 		return;
 	}
 	// break or continue
-	if( n->type == N_BREAK ) {
+	if( n->id == SN::BREAK ) {
 		int back_num = n->data.integer;
 		assert( back_num > 0 );
 		if( back_num > loop_stack.size() ) 
@@ -818,22 +818,22 @@ void intermediateCode::function::translateControlFlow( const syntaxTree::node* n
 void intermediateCode::function::translateSequentialBlock( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
 	for( int i = 0; i < 2; ++i )
 		if( n->children[i] ) 
-			if( n->children[i]->type == N_BLOCK_LIST )
+			if( n->children[i]->id == SN::BLOCK_LIST )
 				translateSequentialBlock( n->children[i], loop_stack );
 			else
 				translateNode( n->children[i], loop_stack );
 }
 
 void intermediateCode::function::translateBlock( const syntaxTree::node* n, loop_stack_t& loop_stack ) {
-	assert( n->type == N_SEQUENTIAL_BLOCK or n->type == N_PARALLEL_BLOCK );
-	if( n->type == N_SEQUENTIAL_BLOCK ) {
+	assert( n->id == SN::SEQUENTIAL_BLOCK or n->id == SN::PARALLEL_BLOCK );
+	if( n->id == SN::SEQUENTIAL_BLOCK ) {
 		translateSequentialBlock( n, loop_stack );
 	} else
 		lerr << error_line() << "Parallel blocks not yet implemented" << std::endl;
 }
 
 variable_t intermediateCode::function::translateFunctionCall( const syntaxTree::node* n ) {
-	assert( n->type == N_FUNCTION_CALL );
+	assert( n->id == SN::FUNCTION_CALL );
 	function_t f = n->data.integer;
 	if( f == 0 ) { // function pointer, children[1] != nullptr
 		assert( n->children[1] );
@@ -841,8 +841,8 @@ variable_t intermediateCode::function::translateFunctionCall( const syntaxTree::
 		variable_t r = ( t != VOID_TYPE ) ? parent->newTemporaryVariable( t ) : ERROR_VARIABLE;
 		if( r != ERROR_VARIABLE )
 			addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=t.rawSize()} );
-		if( n->children[0] )
-			translateArguments( n->children[0] );
+		if( n->children[0] and n->children[0]->children[0] )
+			translateArguments( n->children[0]->children[0] );
 		addOperation( iop_t::id_t::IOP_FUNCTION, ERROR_VARIABLE, translateVariable( n->children[1] ), ERROR_VARIABLE, ERROR_LABEL, iop_t::constant_t{ .integer = 0 } );
 		translatePopReturn( r );
 		return r; 
@@ -851,8 +851,8 @@ variable_t intermediateCode::function::translateFunctionCall( const syntaxTree::
 		variable_t r = ( t != VOID_TYPE ) ? parent->newTemporaryVariable( t ) : ERROR_VARIABLE;
 		if( r != ERROR_VARIABLE )
 			addOperation( iop_t::id_t::IOP_RESERVE_RETURN, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=t.rawSize()} );
-		if( n->children[0] )
-			translateArguments( n->children[0] );
+		if( n->children[0] and n->children[0]->children[0] )
+			translateArguments( n->children[0]->children[0] );
 		addOperation( iop_t::id_t::IOP_FUNCTION, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_VARIABLE, parent->getFunctionLabel( f ), iop_t::constant_t{ .integer = 0 } );
 		translatePopReturn( r );
 		return r; 
@@ -861,7 +861,7 @@ variable_t intermediateCode::function::translateFunctionCall( const syntaxTree::
 }
 
 variable_t intermediateCode::function::translateFunctionOperation( const syntaxTree::node* n ) {
-	assert( n->type == N_JOIN or n->type == N_MEET );
+	assert( n->id == SN::JOIN or n->id == SN::MEET );
 	variable_t r = parent->newTemporaryVariable( n->data_type );
 	if( n->data_type == STR_TYPE ) {
 		function_t f = JOIN_STR_FUNCTION; // others to be implemented
@@ -916,17 +916,17 @@ variable_t intermediateCode::function::translateFunctionOperation( const syntaxT
 }
 
 variable_t intermediateCode::function::translateVariable( const syntaxTree::node* n ) {
-	assert( n->type == N_VARIABLE );
+	assert( n->id == SN::VARIABLE );
 	return variable_t( n->data.integer );
 }
 
 variable_t intermediateCode::function::translateConstant( const syntaxTree::node* n ) {
-	assert( n->type == N_INTEGER or n->type == N_FLOAT or n->type == N_STRING );
+	assert( n->id == SN::INTEGER or n->id == SN::FLOAT or n->id == SN::STRING );
 	variable_t r;
-	if( n->type == N_INTEGER ) {
+	if( n->id == SN::INTEGER ) {
 		r = parent->newTemporaryVariable( INT_TYPE );
 		addOperation( iop_t::id_t::IOP_INT_MOV, r, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, iop_t::constant_t{ .integer = n->data.integer } );
-	} else if( n->type == N_STRING ) {
+	} else if( n->id == SN::STRING ) {
 		r = parent->newTemporaryVariable( STR_TYPE );
 		addOperation( iop_t::id_t::IOP_STR_MOV, r, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, iop_t::constant_t{ .string = n->data.string } );
 	} else  {
@@ -937,7 +937,7 @@ variable_t intermediateCode::function::translateConstant( const syntaxTree::node
 }
 
 variable_t intermediateCode::function::translateContainer( const syntaxTree::node* n ) {
-	if( n->type == N_LIST ) {
+	if( n->id == SN::LIST ) {
 		// size_t s = n->data_type.getChildType().rawSize();
 		variable_t r = parent->newTemporaryVariable( n->data_type );
 		variable_t o = parent->newTemporaryVariable( INT_TYPE );
@@ -945,7 +945,7 @@ variable_t intermediateCode::function::translateContainer( const syntaxTree::nod
 		addOperation( iop_t::id_t::IOP_INT_MOV, o, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
 		translateListElements( n->children[0], r, o );
 		return r;
-	} else if( n->type == N_TUPLE ) {
+	} else if( n->id == SN::TUPLE ) {
 		variable_t r = parent->newTemporaryVariable( n->data_type );
 		translateTupleElements( n, r, 0 );
 		return r;
@@ -954,7 +954,7 @@ variable_t intermediateCode::function::translateContainer( const syntaxTree::nod
 }
 
 void intermediateCode::function::translateListElements( const syntaxTree::node* n, variable_t r, variable_t o ) {
-	assert( n->type == N_SINGLE_TYPE_EXPRESSION_LIST );
+	assert( n->id == SN::SINGLE_TYPE_EXPRESSION_LIST );
 	variable_t x = translateExpression( n->children[0] );
 	translateAssignToListElementWeak( r, o, x );
 	if( n->children[1] )
@@ -962,7 +962,7 @@ void intermediateCode::function::translateListElements( const syntaxTree::node* 
 }
 
 void intermediateCode::function::translateTupleElements( const syntaxTree::node* n, variable_t r, size_t current_offset ) {
-	assert( n->type == N_TUPLE or n->type == N_TUPLE_LIST );
+	assert( n->id == SN::TUPLE or n->id == SN::TUPLE_LIST );
 	variable_t x = translateExpression( n->children[0] );
 	addOperation( iop_t::id_t::IOP_INT_TUP_STORE, r, ERROR_VARIABLE, x, ERROR_LABEL, {.integer = current_offset} );
 	if( n->children[1] )
@@ -973,9 +973,9 @@ variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::
 	#ifdef SYNTAX_TREE_DEBUG
 	std::cout << "translateReadIndexing" << std::endl;
 	#endif
-	assert( n->type == N_LIST_INDEXING or n->type == N_TUPLE_INDEXING or n->type == N_SIZE_OF );
+	assert( n->id == SN::LIST_INDEXING or n->id == SN::TUPLE_INDEXING or n->id == SN::SIZE_OF );
 	variable_t r = parent->newTemporaryVariable( n->data_type );
-	if( n->type == N_LIST_INDEXING ) {
+	if( n->id == SN::LIST_INDEXING ) {
 		variable_t list = translateExpression( n->children[0] );
 		variable_t index = translateExpression( n->children[1] );
 		variable_t offset = parent->newTemporaryVariable( INT_TYPE );
@@ -983,7 +983,7 @@ variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::
 		addOperation( iop_t::id_t::IOP_INT_MULEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=n->data_type.rawSize()/8} );
 		translateAssignFromListElementWeak( r, list, offset );
 		return r;
-	} else if( n->type == N_TUPLE_INDEXING ) {
+	} else if( n->id == SN::TUPLE_INDEXING ) {
 		variable_t tuple = translateExpression( n->children[0] );
 		size_t index = n->data.integer;
 		size_t base_offset = 0;
@@ -1000,7 +1000,7 @@ variable_t intermediateCode::function::translateReadIndexing( const syntaxTree::
 }
 
 variable_t intermediateCode::function::translateComparisonChain( const syntaxTree::node* n ) {
-	assert( n->type == N_COMPARISON_CHAIN );
+	assert( n->id == SN::COMPARISON_CHAIN );
 	return translateComparison( n->children[0] ).second;
 }
 
@@ -1008,13 +1008,13 @@ std::pair<variable_t,variable_t> intermediateCode::function::translateComparison
 	// (child_left, comparison_result)
 	variable_t left = translateExpression( n->children[0] );
 	variable_t result = parent->newTemporaryVariable( BOOL_TYPE );
-	if( n->children[1]->type < N_EQUALS or n->children[1]->type > N_GREATER_EQ ) {
+	if( n->children[1]->id < SN::EQUALS or n->children[1]->id > SN::GREATER_EQ ) {
 		variable_t right = translateExpression( n->children[1] );
-		addOperation( iop_t::id_t( iop_t::id_t::IOP_INT_EQ + n->type - N_EQUALS ), result, left, right );
+		addOperation( iop_t::id_t( iop_t::id_t::IOP_INT_EQ + n->id - SN::EQUALS ), result, left, right );
 	} else {
 		auto p = translateComparison( n->children[1] );
 		variable_t right = p.first;
-		addOperation( iop_t::id_t( iop_t::id_t::IOP_INT_EQ + n->type - N_EQUALS ), result, left, right );
+		addOperation( iop_t::id_t( iop_t::id_t::IOP_INT_EQ + n->id - SN::EQUALS ), result, left, right );
 		addOperation( iop_t::id_t::IOP_INT_ANDEQ, result, p.second );
 	}
 	return std::make_pair( left, result );

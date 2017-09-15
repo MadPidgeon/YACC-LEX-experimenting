@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+extern int msglevel; /* the higher, the more messages... */
 void pmesg(int level, const char *format, ...);
 
 #if defined(__cplusplus)

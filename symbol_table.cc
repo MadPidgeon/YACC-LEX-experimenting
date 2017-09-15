@@ -34,6 +34,13 @@ symbol_t symbolTable::addTemporarySymbol() {
 	return addSymbol("$t" + std::to_string( temporaries_counter++ ));
 }
 
+std::ostream& operator<<( std::ostream& os, const symbolTable& st ) {
+	for( int i = 0; i < st.int_to_str.size(); ++i ) {
+		os << std::setw(3) << i << "| " << st.int_to_str.at( i ) << std::endl;
+	}
+	return os;
+}
+
 symbolTable::symbolTable() {
 	temporaries_counter = 0;
 	assert( addSymbol("-ERROR-") == ERROR_SYMBOL ); // note that "-ERROR-" is not a legal token by the grammar, hence no conflict arrises

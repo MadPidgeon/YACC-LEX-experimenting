@@ -39,6 +39,7 @@ optional_output& operator<<( optional_output& os, T x ) {
 optional_output& operator<<( optional_output& os, decltype(std::endl<char, std::char_traits<char>>) );
 
 extern optional_output lexer_out;
+extern optional_output parse_out;
 extern optional_output syntree_out;
 extern optional_output ic_out;
 extern optional_output opt_out;

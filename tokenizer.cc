@@ -50,7 +50,7 @@ token_t token_t::getDual() const {
 }
 
 bool token_t::isBinaryOperator() const {
-	return ( id >= id_t::LOGIC_OP and id <= EXPONENT_OP ) or ( id >= id_t::LOGIC_ASSIGN_OP and id <= id_t::EXPONENT_ASSIGN_OP ) or id == id_t::ASSIGN or id == id_t::SPACE_JOINER or id == id_t::COMMA;
+	return ( id >= id_t::LOGIC_OP and id <= EXPONENT_OP ) or ( id >= id_t::LOGIC_ASSIGN_OP and id <= id_t::EXPONENT_ASSIGN_OP ) or id == id_t::ASSIGN or id == id_t::SPACE_JOINER or id == id_t::COMMA or id == id_t::MAPS_TO;
 }
 
 bool token_t::isAtom() const {
@@ -70,7 +70,7 @@ bool token_t::isControlFlow() const {
 }
 
 bool token_t::isLeftAssociative() const {
-	return ( id == id_t::LOGIC_OP or id == id_t::RELATION_OP or id == id_t::LATTICE_OP or id == id_t::ADD_OP or id == id_t::MULT_OP or id == id_t::SPACE_JOINER);
+	return ( id == id_t::LOGIC_OP or id == id_t::LATTICE_OP or id == id_t::ADD_OP or id == id_t::MULT_OP or id == id_t::SPACE_JOINER);
 }
 
 bool token_t::isRightAssociative() const {
@@ -84,6 +84,8 @@ bool token_t::isStatement() const {
 int token_t::precedence() const {
 	if( id == id_t::SPACE_JOINER )
 		return 1000;
+	if( id == id_t::MAPS_TO )
+		return 500;
 	if( id == id_t::INCREMENT )
 		return 100;
 	if( id >= id_t::LOGIC_OP and id <= id_t::EXPONENT_OP )
@@ -99,6 +101,9 @@ int token_t::precedence() const {
 }
 
 std::ostream& operator<<( std::ostream& os, token_t t ) {
+	extern symbolTable* symtab;
+	if( t.id == token_t::id_t::ID )
+		return os << token_t::token_name.at( t.id ) << "(" << symtab->getName( t.data.symbol ) << ")";
 	return os << token_t::token_name.at( t.id );
 }
 
@@ -121,76 +126,77 @@ void tokenizer::addToken( token_t::id_t id, int64_t i ) {
 }
 
 void tokenizer::addFloating( double f ) {
-	tokens.push_back( token_t{ token_t::id_t::FLT, {.floating=f}, current_position } );
+	tokens.push_back( token_t{ TK::FLT, {.floating=f}, current_position } );
 }
 
 void tokenizer::addString( const std::string& s ) {
-	tokens.push_back( token_t{ token_t::id_t::FLT, {.string=strdup(s.c_str())}, current_position } );
+	tokens.push_back( token_t{ TK::STR, {.string=strdup(s.c_str())}, current_position } );
 }
 
 void tokenizer::generateBrackets() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateBrackets()" << std::endl;
+	lexer_out << "generateBrackets()" << std::endl;
 	#endif
 	assert( c == '(' or c == ')' or c == '[' or c == ']' or c == '{' or c == '}' );
-	if( c == '(' ) {
-		if( last_added_token.id == token_t::id_t::ID )
-			addToken( token_t::id_t::SPACE_JOINER );
-		addToken( token_t::id_t::LBRA );
-	} else if( c == ')' )
-		addToken( token_t::id_t::RBRA );
+	// a(...), [...](...), {...}(...)
+	if( ( last_added_token.id == TK::ID or last_added_token.isRightBracket() ) and c == '(' )
+		addToken( TK::SPACE_JOINER );
+	if( c == '(' )
+		addToken( TK::LBRA );
+	else if( c == ')' )
+		addToken( TK::RBRA );
 	else if( c == '[' )
-		addToken( token_t::id_t::LSEQ );
+		addToken( TK::LSEQ );
 	else if( c == ']' )
-		addToken( token_t::id_t::RSEQ );
+		addToken( TK::RSEQ );
 	else if( c == '{' )
-		addToken( token_t::id_t::LPAR );
+		addToken( TK::LPAR );
 	else if( c == '}' )
-		addToken( token_t::id_t::RPAR );
+		addToken( TK::RPAR );
 	c = getNextCharacter();
 }
 
 void tokenizer::generateAddition() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateAddition()" << std::endl;
+	lexer_out << "generateAddition()" << std::endl;
 	#endif
 	assert( c == '+' or c == '-' );
 	char d;
 	uint64_t o = ( c == '-' );
 	d = getNextCharacter();
 	if( d == '=' ) {
-		addToken( token_t::id_t::ADD_ASSIGN_OP, o );
+		addToken( TK::ADD_ASSIGN_OP, o );
 		c = getNextCharacter();
 	} else if( c == d ) {
-		addToken( token_t::id_t::INCREMENT, o );
+		addToken( TK::INCREMENT, o );
 		c = getNextCharacter();
 	} else if( c == '-' and d == '>' ) {
-		addToken( token_t::id_t::MAPS_TO );
+		addToken( TK::MAPS_TO );
 		c = getNextCharacter();
 	} else {
-		addToken( token_t::id_t::ADD_OP, o );
+		addToken( TK::ADD_OP, o );
 		c = d;
 	}
 }
 
 void tokenizer::generateMultiplication() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateMultiplication()" << std::endl;
+	lexer_out << "generateMultiplication()" << std::endl;
 	#endif
 	assert( c == '*' or c == '/' or c == '%' );
 	char d;
 	uint64_t o = 2*( c == '%' ) + ( c == '/' );
 	d = getNextCharacter();
 	if( d == '=' ) {
-		addToken( token_t::id_t::MULT_ASSIGN_OP, o );
+		addToken( TK::MULT_ASSIGN_OP, o );
 		c = getNextCharacter();
 	} else if( c == '*' and d == '*' ) {
 		char e = getNextCharacter();
 		if( e == '=' ) {
-			addToken( token_t::id_t::EXPONENT_ASSIGN_OP );
+			addToken( TK::EXPONENT_ASSIGN_OP );
 			c = getNextCharacter();
 		} else {
-			addToken( token_t::id_t::EXPONENT_OP, o );
+			addToken( TK::EXPONENT_OP, o );
 			c = e;
 		}
 	} if( c == '/' and d == '/' ) {
@@ -199,39 +205,39 @@ void tokenizer::generateMultiplication() {
 		c = getNextCharacter();
 		generateInlineComment();
 	} else {
-		addToken( token_t::id_t::MULT_OP, o );
+		addToken( TK::MULT_OP, o );
 		c = d;
 	}
 }
 
 void tokenizer::generateLattice() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateLattice()" << std::endl;
+	lexer_out << "generateLattice()" << std::endl;
 	#endif
 	assert( c == '|' or c == '&' );
 	uint64_t o = ( c == '&' );
 	char d = getNextCharacter();
 	if( d == '=' ) {
-		addToken( token_t::id_t::LATTICE_ASSIGN_OP, o );
+		addToken( TK::LATTICE_ASSIGN_OP, o );
 		c = getNextCharacter();
 	} else if( c == d ) {
 		char e = getNextCharacter();
 		if( e == '=' ) {
-			addToken( token_t::id_t::LOGIC_ASSIGN_OP );
+			addToken( TK::LOGIC_ASSIGN_OP );
 			c = getNextCharacter();
 		} else {
-			addToken( token_t::id_t::LOGIC_OP, o );
+			addToken( TK::LOGIC_OP, o );
 			c = e;
 		}
 	} else {
-		addToken( token_t::id_t::LATTICE_OP, o );
+		addToken( TK::LATTICE_OP, o );
 		c = d;
 	}
 }
 
 void tokenizer::eatWhitespace() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "eatWhitespace()" << std::endl;
+	lexer_out << "eatWhitespace()" << std::endl;
 	#endif
 	while( c == ' ' or c == '\n' or c == '\t' )
 		c = getNextCharacter();
@@ -239,7 +245,7 @@ void tokenizer::eatWhitespace() {
 
 void tokenizer::generateIdentifier() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateIdentifier()" << std::endl;
+	lexer_out << "generateIdentifier()" << std::endl;
 	#endif
 	assert( isalpha( c ) );
 	std::string id;
@@ -248,32 +254,33 @@ void tokenizer::generateIdentifier() {
 		c = getNextCharacter();
 	}
 	if( id == "if" )
-		addToken( token_t::id_t::IF );
+		addToken( TK::IF );
 	else if( id == "else" )
-		addToken( token_t::id_t::ELSE );
+		addToken( TK::ELSE );
 	else if( id == "while" )
-		addToken( token_t::id_t::WHILE );
+		addToken( TK::WHILE );
 	else if( id == "for" )
-		addToken( token_t::id_t::FOR );
+		addToken( TK::FOR );
 	else if( id == "break" )
-		addToken( token_t::id_t::BREAK );
+		addToken( TK::BREAK );
 	else if( id == "continue" )
-		addToken( token_t::id_t::CONTINUE );
+		addToken( TK::CONTINUE );
 	else if( id == "return" )
-		addToken( token_t::id_t::RETURN );
+		addToken( TK::RETURN );
 	else if( id == "in" )
-		addToken( token_t::id_t::IN_OP );
+		addToken( TK::IN_OP );
 	else {
 		symbol_t s = symtab->addSymbol( id );
-		if( last_added_token.id == token_t::id_t::RBRA or last_added_token.id == token_t::id_t::ID )
-			addToken( token_t::id_t::SPACE_JOINER );
-		addToken( token_t::id_t::ID, s );
+		// (...) a, b a
+		if( last_added_token.id == TK::RBRA or last_added_token.id == TK::ID )
+			addToken( TK::SPACE_JOINER );
+		addToken( TK::ID, s );
 	}
 }
 
 void tokenizer::generateLineComment() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateLineComment()" << std::endl;
+	lexer_out << "generateLineComment()" << std::endl;
 	#endif
 	while( c != '\n' and c != 0 )
 		c = getNextCharacter();
@@ -281,7 +288,7 @@ void tokenizer::generateLineComment() {
 
 void tokenizer::generateInlineComment() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateInlineComment()" << std::endl;
+	lexer_out << "generateInlineComment()" << std::endl;
 	#endif
 	char d = c;
 	c = getNextCharacter();
@@ -304,7 +311,7 @@ void tokenizer::generateInlineComment() {
 
 void tokenizer::generateDot() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateDot()" << std::endl;
+	lexer_out << "generateDot()" << std::endl;
 	#endif
 	assert( c == '.' );
 	char d;
@@ -313,9 +320,9 @@ void tokenizer::generateDot() {
 		char e = getNextCharacter();
 		c = getNextCharacter();
 		if( e == '.' )
-			addToken( token_t::id_t::ELLIPSIS );
+			addToken( TK::ELLIPSIS );
 		else {
-			addToken( token_t::id_t::DOT );
+			addToken( TK::DOT );
 			generateMantissa();
 		}
 	} else if( isdigit( d ) ) {
@@ -323,13 +330,13 @@ void tokenizer::generateDot() {
 		generateMantissa();
 	} else {
 		c = d;
-		addToken( token_t::id_t::DOT );
+		addToken( TK::DOT );
 	}
 }
 
 void tokenizer::generateMantissa( int64_t integer ) {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateMantissa()" << std::endl;
+	lexer_out << "generateMantissa()" << std::endl;
 	#endif
 	assert( c != '.' );
 	std::string s = std::to_string( integer ) + ".";
@@ -360,7 +367,7 @@ void tokenizer::generateMantissa( int64_t integer ) {
 
 void tokenizer::generateInteger() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateInteger()" << std::endl;
+	lexer_out << "generateInteger()" << std::endl;
 	#endif
 	assert( isdigit( c ) );
 	int base = 10;
@@ -416,9 +423,9 @@ void tokenizer::generateInteger() {
 			eatWhitespace();
 			if( isalpha( c ) ) {
 				generateIdentifier();
-				if( tokens.back().id == token_t::id_t::ID ) {
-					addToken( token_t::id_t::DOT );
-					addToken( token_t::id_t::INT, i );
+				if( tokens.back().id == TK::ID ) {
+					addToken( TK::DOT );
+					addToken( TK::INT, i );
 					tokens.back().pos = p;
 					std::swap( tokens.back(), tokens.at( tokens.size()-3 ) );
 				} else {
@@ -433,12 +440,12 @@ void tokenizer::generateInteger() {
 		lerr << error_line() << "Integer cannot contain alphabetic characters" << std::endl;
 		recoverError();
 	} else
-		addToken( token_t::id_t::INT, i );
+		addToken( TK::INT, i );
 }
 
 void tokenizer::generateString() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "generateString()" << std::endl;
+	lexer_out << "generateString()" << std::endl;
 	#endif
 	assert( c == '"' );
 	std::string s;
@@ -468,10 +475,10 @@ void tokenizer::generateString() {
 void tokenizer::generateAssignment() {
 	char d = getNextCharacter();
 	if( d == '=' ) {
-		addToken( token_t::id_t::RELATION_OP, 0 );
+		addToken( TK::RELATION_OP, 0 );
 		c = getNextCharacter();
 	} else {
-		addToken( token_t::id_t::ASSIGN, 0 );
+		addToken( TK::ASSIGN, 0 );
 		c = d;
 	}
 }
@@ -480,15 +487,15 @@ void tokenizer::generateComparison() {
 	char d = getNextCharacter();
 	if( d == '=' ) {
 		if( c == '<' )
-			addToken( token_t::id_t::RELATION_OP, 4 );
+			addToken( TK::RELATION_OP, 4 );
 		else if( c == '>' )
-			addToken( token_t::id_t::RELATION_OP, 5 );
+			addToken( TK::RELATION_OP, 5 );
 		c = getNextCharacter();
 	} else {
 		if( c == '<' )
-			addToken( token_t::id_t::RELATION_OP, 2 );
+			addToken( TK::RELATION_OP, 2 );
 		else if( c == '>' )
-			addToken( token_t::id_t::RELATION_OP, 3 );
+			addToken( TK::RELATION_OP, 3 );
 		c = d;
 	}
 }
@@ -496,17 +503,17 @@ void tokenizer::generateComparison() {
 void tokenizer::generateTokens( int i ) {
 	while( i --> 0 and c != 0 ) {
 		eatWhitespace();
-		// std::cout << "(" << c << ") " << current_position.column << std::endl;
+		// lexer_out << "(" << c << ") " << current_position.column << std::endl;
 		if( c == ';' ) {
-			addToken( token_t::id_t::SEMICOLON );
+			addToken( TK::SEMICOLON );
 			c = getNextCharacter();
 		} else if( c == '=' )
 			generateAssignment();
 		else if( c == '#' ) {
-			addToken( token_t::id_t::SIZE_OP );
+			addToken( TK::SIZE_OP );
 			c = getNextCharacter();
 		} else if( c == ',' ) {
-			addToken( token_t::id_t::COMMA );
+			addToken( TK::COMMA );
 			c = getNextCharacter();
 		} else if( c == '+' or c == '-' )
 			generateAddition();
@@ -531,7 +538,7 @@ void tokenizer::generateTokens( int i ) {
 
 void tokenizer::recoverError() {
 	#ifdef DEBUG_TOKENIZER
-	std::cout << "recoverError()" << std::endl;
+	lexer_out << "recoverError()" << std::endl;
 	#endif
 	while( c != ';' and c != ']' and c != 0 )
 		c = getNextCharacter();
@@ -565,11 +572,11 @@ token_t tokenizer::peekToken( int i ) {
 
 tokenizer::tokenizer( std::istream& is, symbolTable* st ) 
 	: stream( is ), symtab( st ) {
-	assert( token_t::id_t::COUNT == token_t::token_name.size() );
+	assert( TK::COUNT == token_t::token_name.size() );
 	c = getNextCharacter();
 	current_position.row = 1;
 	current_position.column = 0;
-	addToken( token_t::id_t::START_OF_FILE );
+	addToken( TK::START_OF_FILE );
 }
 
 // 1.234.yolo() + 1337.yolo() + .1234 * 1. + 999*666

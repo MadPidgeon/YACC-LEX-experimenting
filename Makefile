@@ -1,6 +1,8 @@
 CXX = g++
 CXXFLAGS = -Wall -std=c++11 -Wno-narrowing -Wfatal-errors
-OBJ = debug.o symbol_table.o scope_table.o syntax_tree.o types.o error_reporting.o intermediate_code.o flow_graph.o register_allocation.o assembly.o stack_frame.o interface.o  y.tab.o lex.yy.o
+OBJ = debug.o symbol_table.o scope_table.o syntax_tree.o types.o error_reporting.o intermediate_code.o flow_graph.o register_allocation.o assembly.o stack_frame.o interface.o 
+OLD_OBJ = y.tab.o lex.yy.o
+NEW_OBJ = alternative_main.o parse_tree.o tokenizer.o
 
 .PHONY: install
 install:
@@ -25,8 +27,8 @@ obj/lex.yy.o: lex.yy.c
 obj/%.o: %.cc %.h
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
-asm/%.asm: code/%.code lexer
-	./lexer $< -o $@ -S -vsioa
+asm/%.asm: code/%.code yolo
+	./yolo $< -o $@ -S -vsioa
 
 tokenizer_test: tokenizer_test.cc obj/symbol_table.o obj/error_reporting.o obj/tokenizer.o
 	$(CXX) $^ -o tokenizer_test $(CXXFLAGS)
@@ -34,6 +36,8 @@ tokenizer_test: tokenizer_test.cc obj/symbol_table.o obj/error_reporting.o obj/t
 parse_tree_test: parse_tree_test.cc obj/symbol_table.o obj/error_reporting.o obj/tokenizer.o obj/parse_tree.o
 	$(CXX) $^ -o parse_tree_test $(CXXFLAGS)
 
-lexer: $(addprefix obj/, $(OBJ))
+lexer: $(addprefix obj/, $(OBJ)) $(addprefix obj/, $(OLD_OBJ))
 	$(CXX) $^ -o lexer $(CXXFLAGS)
 
+yolo: $(addprefix obj/, $(OBJ)) $(addprefix obj/, $(NEW_OBJ))
+	$(CXX) $^ -o yolo $(CXXFLAGS)

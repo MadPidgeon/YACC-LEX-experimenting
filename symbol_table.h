@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <deque>
 #include <string>
+#include <iostream>
 
 #define SYMBOL_TABLE_DEBUG
 
@@ -23,6 +24,7 @@
 typedef uint64_t symbol_t;
 
 class symbolTable {
+	friend std::ostream& operator<<( std::ostream& os, const symbolTable& );
 	std::unordered_map<std::string,symbol_t> str_to_int;
 	std::deque<std::string> int_to_str;
 	size_t temporaries_counter;
@@ -36,3 +38,5 @@ public:
 };
 
 extern symbolTable* symtab; // only to be used for I/O
+
+std::ostream& operator<<( std::ostream& os, const symbolTable& );

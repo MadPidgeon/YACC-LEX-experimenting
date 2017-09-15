@@ -109,6 +109,8 @@ class assemblyGenerator {
 	label_t end_of_function;
 	stackFrame sf;
 	int optimization_level;
+	typedef iop_t::id_t IOP;
+	typedef instruction::id_t ASM;
 public:
 	void generateInstruction( iop_t, std::string prefix, size_t instruction_index );
 	void generateFunction( const intermediateCode::function&, std::string prefix, bool main );

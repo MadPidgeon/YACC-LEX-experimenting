@@ -8,12 +8,20 @@
 #include "error_reporting.h"
 #include "symbol_table.h"
 
-// #define DEBUG_TOKENIZER
+#define DEBUG_TOKENIZER
 
 #define EOF_TOKEN	token_t{ token_t::id_t::END_OF_FILE, {.integer = 0} }
 
 #define DATA_BRACKET_TOKEN 		0
 #define STATEMENT_BRACKET_TOKEN 1
+
+union extra_data_t {
+	int64_t integer;
+	uint64_t op;
+	symbol_t symbol;
+	char* string;
+	double floating;
+};
 
 struct position_t {
 	size_t row, column;
@@ -44,13 +52,7 @@ struct token_t {
 	static const std::vector<std::string> token_name;
 	static const std::vector<int> token_precedence;
 	static const std::vector<int> token_associativity;
-	union {
-		symbol_t identifier;
-		uint64_t op;
-		int64_t integer;
-		double floating;
-		char* string;
-	};
+	extra_data_t data;
 	position_t pos;
 	bool operator==( token_t other ) const;
 	bool operator!=( token_t other ) const;
@@ -100,6 +102,7 @@ class tokenizer {
 
 	void recoverError();
 public:
+	typedef token_t::id_t TK;
 	std::vector<token_t> getAllTokens();
 	token_t getToken();
 	token_t peekToken( int i );

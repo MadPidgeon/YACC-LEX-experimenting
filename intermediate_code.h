@@ -118,6 +118,8 @@ struct iop_t {
 class intermediateCode {
 	friend std::ostream& operator<<( std::ostream&, const intermediateCode& );
 	typedef std::vector<std::pair<label_t,label_t>> loop_stack_t;
+	typedef syntaxTree::node::id_t SN;
+	typedef iop_t::id_t IOP;
 public:
 	struct function {
 		symbol_t symbol;

@@ -6,7 +6,7 @@ const std::vector<std::string> parseTree::node::node_name = {
 
 	"TUPLE", "LIST", "SET", "SEQUENCE_PART", "ELLIPSIS", "SPACE_JOINER", "COMMA",
 
-	"MEMBER_OF", "ASSIGN", "ID", "INT", "FLT", "STR", "FUNCTION_CALL",
+	"MEMBER_OF", "ASSIGN", "ID", "INT", "FLT", "STR", "VARIABLE_DECLARATION", "FUNCTION_CALL", "INLINE_FUNCTION_DEF",
 
 	"IF", "WHILE", "FOR", "ELSE", 
 
@@ -19,10 +19,18 @@ const std::vector<std::string> parseTree::node::node_name = {
 	"INCREMENT"
 };
 
-parseTree::node::node( id_t i, node* a, node* b ) {
+parseTree::node::node( id_t i, node* a, node* b, int64_t d ) {
 	id = i;
 	children[0] = a;
 	children[1] = b;
+	data.integer = d;
+}
+
+parseTree::node::node( id_t i, node* a, node* b, extra_data_t d ) {
+	id = i;
+	children[0] = a;
+	children[1] = b;
+	data = d;
 }
 
 void parseTree::generateTokenData() {
@@ -51,10 +59,10 @@ void parseTree::generateTokenData() {
 				if( bracket_contains_statement.back() ) {
 					bracket_contains_statement.pop_back();
 					bracket_contains_statement.back() = true;
-					s.integer = t.integer = STATEMENT_BRACKET_TOKEN;
+					s.data.integer = t.data.integer = STATEMENT_BRACKET_TOKEN;
 				} else {
 					bracket_contains_statement.pop_back();
-					s.integer = t.integer = DATA_BRACKET_TOKEN;
+					s.data.integer = t.data.integer = DATA_BRACKET_TOKEN;
 				}
 			}
 		} else if( t.id == token_t::id_t::SEMICOLON or t.isControlFlow() ) {
@@ -143,7 +151,7 @@ parseTree::node* parseTree::parseStatement( interval_t& interval ) {
 	token_t t = tokens.at( interval.begin+1 );
 	if( t.isControlFlow() )
 		return parseControlFlow( interval );
-	else if( t.isLeftBracket() and t.integer == STATEMENT_BRACKET_TOKEN ) {
+	else if( t.isLeftBracket() and t.data.integer == STATEMENT_BRACKET_TOKEN ) {
 		interval_t sub_interval = { interval.begin+1, token_data.at( interval.begin+1 ).pair };
 		interval.begin = sub_interval.end;
 		return parseStatementList( sub_interval );
@@ -160,8 +168,12 @@ parseTree::node* parseTree::parseControlFlow( interval_t& interval ) {
 	token_t t = tokens.at( interval.begin+1 );
 	interval.begin += 1;
 	node* r;
-	if( t.id == token_t::id_t::BREAK or t.id == token_t::id_t::CONTINUE ) {
-		r = new node( t.id == token_t::id_t::BREAK ? node::id_t::BREAK : node::id_t::CONTINUE, parseExpression( interval ) );
+	if( t.id == TK::BREAK or t.id == TK::CONTINUE ) {
+		if( tokens.at( interval.begin+1 ).id == TK::SEMICOLON ) {
+			r = new node( t.id == TK::BREAK ? PN::BREAK : PN::CONTINUE );
+			interval.begin += 1;
+		} else
+			r = new node( t.id == TK::BREAK ? PN::BREAK : PN::CONTINUE, parseExpression( interval ) );
 	} else if( t.id == token_t::id_t::RETURN ) {
 		r = new node( node::id_t::RETURN, parseExpression( interval ) );
 	} else if( t.id == token_t::id_t::ELSE ) {
@@ -196,18 +208,17 @@ parseTree::node* parseTree::parseControlFlow( interval_t& interval ) {
 		}
 	}
 	return r;
-
 }
 
 parseTree::node* parseTree::parseAtom( token_t t ) {
 	if( t.id == token_t::id_t::INT ) {
-		return new node( node::id_t::INT, nullptr, nullptr );
+		return new node( node::id_t::INT, nullptr, nullptr, t.data );
 	} else if( t.id == token_t::id_t::STR ) {
-		return new node( node::id_t::STR, nullptr, nullptr );
+		return new node( node::id_t::STR, nullptr, nullptr, t.data );
 	} else if( t.id == token_t::id_t::FLT ) {
-		return new node( node::id_t::FLT, nullptr, nullptr );
+		return new node( node::id_t::FLT, nullptr, nullptr, t.data );
 	} else if( t.id == token_t::id_t::ID ) {
-		return new node( node::id_t::ID, nullptr, nullptr );
+		return new node( node::id_t::ID, nullptr, nullptr, t.data );
 	} else {
 		lerr << error_line() << "Token is not an atom" << std::endl;
 		throw;
@@ -235,18 +246,19 @@ void parseTree::parseOperation( std::deque<node*>& output, token_t t ) {
 	node* b = output.back();
 	output.pop_back();
 	node* a = output.back();
-	if( t.id == token_t::id_t::ADD_OP ) {
-		output.back() = new node( node::id_t::ADD_OP, a, b );
-	} else if( t.id == token_t::id_t::MULT_OP ) {
-		output.back() = new node( node::id_t::MULT_OP, a, b );
+	if( t.id >= token_t::id_t::LOGIC_OP and t.id <= token_t::id_t::EXPONENT_ASSIGN_OP ) {
+		output.back() = new node( node::id_t( t.id + node::id_t::LOGIC_OP - token_t::id_t::LOGIC_OP ), a, b, t.data );
 	} else if( t.id == token_t::id_t::ASSIGN ) {
 		output.back() = new node( node::id_t::ASSIGN, a, b );
-	} else if( t.id == token_t::id_t::RELATION_OP ) {
-		output.back() = new node( node::id_t::RELATION_OP, a, b );
 	} else if( t.id == token_t::id_t::COMMA ) {
 		output.back() = new node( node::id_t::COMMA, a, b );
 	} else if( t.id == token_t::id_t::SPACE_JOINER ) {
-		output.back() = new node( node::id_t::SPACE_JOINER, a, b );
+		if( b->id == node::id_t::ID )
+			output.back() = new node( node::id_t::VARIABLE_DECLARATION, a, b );
+		else
+			output.back() = new node( node::id_t::FUNCTION_CALL, a, b );
+	} else if( t.id == token_t::id_t::MAPS_TO ) {
+		output.back() = new node( node::id_t::INLINE_FUNCTION_DEF, a, b );
 	} else {
 		lerr << error_line() << "Unknown operator " << t << std::endl;
 		output.back() = new node( node::id_t::ADD_OP, a, b );
@@ -327,10 +339,14 @@ parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 				operators.pop_back();
 			}
 			operators.push_back( t );
-		} else if( t.isLeftBracket() and t.integer == DATA_BRACKET_TOKEN ) {
+		} else if( t.isLeftBracket() and t.data.integer == DATA_BRACKET_TOKEN ) {
 			operators.push_back( t );
 			output.push_back( nullptr );
-		} else if( t.isRightBracket() and t.integer == DATA_BRACKET_TOKEN ) {
+		} else if( t.isLeftBracket() and t.data.integer == STATEMENT_BRACKET_TOKEN ) {
+			interval_t sub_interval = { interval.begin, token_data.at( interval.begin ).pair };
+			output.push_back( parseStatementList( sub_interval ) );
+			interval.begin = sub_interval.end;
+		} else if( t.isRightBracket() and t.data.integer == DATA_BRACKET_TOKEN ) {
 			while( ( not operators.empty() ) and ( not operators.back().isLeftBracket() ) ) {
 				parseOperation( output, operators.back() );
 				operators.pop_back();
@@ -547,6 +563,18 @@ void parseTree::printTokens( interval_t interval, bool show_extra ) const {
 /*void translateSequence( token_t::id_t previous, int depth ) {
 
 }*/
+
+bool parseTree::node::isOperator() const {
+	return ( id >= id_t::LOGIC_OP and id <= id_t::EXPONENT_ASSIGN_OP ) or id == id_t::ASSIGN;
+}
+
+bool parseTree::node::isControlFlow() const {
+	return ( id >= id_t::IF and id <= id_t::CONTINUE );
+}
+
+const parseTree::node* parseTree::getRoot() const {
+	return root;
+}
 
 size_t interval_t::size() const {
 	if( begin > end )

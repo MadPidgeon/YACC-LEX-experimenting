@@ -1,6 +1,6 @@
 #include "debug.h"
 
-extern int msglevel; /* the higher, the more messages... */
+int msglevel = 90;
 
 void pmesg(int level, const char* format, ...) {
   va_list args;

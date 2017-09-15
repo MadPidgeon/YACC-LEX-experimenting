@@ -194,7 +194,7 @@ instruction::complex_address::operator bool() const {
 
 void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_t instruction_index ) {
 	asm_out << std::setw(3) << instruction_index << ": " << op << std::endl;
-	// instructions.emplace_back( instruction::id_t::NOP ); // separates ir instructions
+	// instructions.emplace_back( ASM::NOP ); // separates ir instructions
 
 	// compute common parameters
 	// SHOULD SOMEHOW COMPENSATE FOR >32-bit immediates
@@ -232,156 +232,156 @@ void assemblyGenerator::generateInstruction( iop_t op, std::string prefix, size_
 		case iop_t::id_t::IOP_GARBAGE:
 			break;
 		case iop_t::id_t::IOP_NOP:
-			instructions.emplace_back( instruction::id_t::NOP );
+			instructions.emplace_back( ASM::NOP );
 			break;
 		case iop_t::id_t::IOP_INT_MOV:
-			instructions.emplace_back( instruction::id_t::MOV, par[0], par[1] );
+			instructions.emplace_back( ASM::MOV, par[0], par[1] );
 			break;
 		case iop_t::id_t::IOP_FLT_MOV:
 			if( op.a == ERROR_VARIABLE )
-				instructions.emplace_back( instruction::id_t::MOVSD, par[0], instruction::complex_address( ERROR_ASM_REG, ERROR_ASM_REG, 0, 8, addFloatingDefinition( op.c_a.floating ) ) );
+				instructions.emplace_back( ASM::MOVSD, par[0], instruction::complex_address( ERROR_ASM_REG, ERROR_ASM_REG, 0, 8, addFloatingDefinition( op.c_a.floating ) ) );
 			else
-				instructions.emplace_back( instruction::id_t::MOVSD, par[0], par[1] );
+				instructions.emplace_back( ASM::MOVSD, par[0], par[1] );
 			break;
 		case iop_t::id_t::IOP_STR_MOV:
 			if( op.a == ERROR_VARIABLE ) 
-				instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( ERROR_ASM_REG, ERROR_ASM_REG, 0, 8, addStringDefinition( std::string( op.c_a.string ) ) ) );
+				instructions.emplace_back( ASM::LEA, par[0], instruction::complex_address( ERROR_ASM_REG, ERROR_ASM_REG, 0, 8, addStringDefinition( std::string( op.c_a.string ) ) ) );
 			else
-				instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( par[1] ) );
+				instructions.emplace_back( ASM::LEA, par[0], instruction::complex_address( par[1] ) );
 			break;
 		case iop_t::id_t::IOP_LABEL:
-			instructions.emplace_back( instruction::id_t::LABEL, par[3] );
+			instructions.emplace_back( ASM::LABEL, par[3] );
 			break;
 		case iop_t::id_t::IOP_JUMP:
-			instructions.emplace_back( instruction::id_t::JMP, par[3] );
+			instructions.emplace_back( ASM::JMP, par[3] );
 			break;
 		case iop_t::id_t::IOP_JT: case iop_t::id_t::IOP_JF:
-			instructions.emplace_back( instruction::id_t::TEST, par[1], instruction::parameter( 1 ) );
-			instructions.emplace_back( op.id == iop_t::id_t::IOP_JT ? instruction::id_t::JNE : instruction::id_t::JE, par[3] );
+			instructions.emplace_back( ASM::TEST, par[1], instruction::parameter( 1 ) );
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_JT ? ASM::JNE : ASM::JE, par[3] );
 			break;
 		case iop_t::id_t::IOP_JE: case iop_t::id_t::IOP_JN: case iop_t::id_t::IOP_JL: case iop_t::id_t::IOP_JG: case iop_t::id_t::IOP_JLE: case iop_t::id_t::IOP_JGE:
-			instructions.emplace_back( instruction::id_t::CMP, par[1], par[2] ); // parameter 2 could be constant, error
-			instructions.emplace_back( instruction::id_t( op.id - iop_t::id_t::IOP_JE + instruction::id_t::JE ), par[3] );
+			instructions.emplace_back( ASM::CMP, par[1], par[2] ); // parameter 2 could be constant, error
+			instructions.emplace_back( ASM( op.id - iop_t::id_t::IOP_JE + ASM::JE ), par[3] );
 			break;
 		case iop_t::id_t::IOP_INT_ADD_PARAM:
-			instructions.emplace_back( instruction::id_t::PUSH, par[1] );
+			instructions.emplace_back( ASM::PUSH, par[1] );
 			break;
 		case iop_t::id_t::IOP_FLT_ADD_PARAM:
-			instructions.emplace_back( instruction::id_t::SUB, rsp, instruction::parameter( 8 ) );
-			instructions.emplace_back( instruction::id_t::MOVSD, instruction::complex_address( rsp ) , par[1] );
+			instructions.emplace_back( ASM::SUB, rsp, instruction::parameter( 8 ) );
+			instructions.emplace_back( ASM::MOVSD, instruction::complex_address( rsp ) , par[1] );
 			break;
 		case iop_t::id_t::IOP_RESERVE_RETURN:
-			instructions.emplace_back( instruction::id_t::SUB, rsp, par[1] );
+			instructions.emplace_back( ASM::SUB, rsp, par[1] );
 			break;
 		case iop_t::id_t::IOP_INT_POP_RETURN:
-			instructions.emplace_back( instruction::id_t::POP, par[0] );
+			instructions.emplace_back( ASM::POP, par[0] );
 			break;
 		case iop_t::id_t::IOP_FLT_POP_RETURN:
-			instructions.emplace_back( instruction::id_t::MOVSD, par[0], instruction::complex_address( rsp ) );
-			instructions.emplace_back( instruction::id_t::ADD, rsp, instruction::parameter( 8 ) );
+			instructions.emplace_back( ASM::MOVSD, par[0], instruction::complex_address( rsp ) );
+			instructions.emplace_back( ASM::ADD, rsp, instruction::parameter( 8 ) );
 			break;
 		case iop_t::id_t::IOP_FUNCTION:
 			evacuateRegisters( instruction_index );
 			if( op.a == 0 and op.c_a.integer == 0 )
-				instructions.emplace_back( instruction::id_t::CALL, par[3] );
+				instructions.emplace_back( ASM::CALL, par[3] );
 			else {
 				assert( op.label == ERROR_LABEL );
-				instructions.emplace_back( instruction::id_t::CALL, par[1] );
+				instructions.emplace_back( ASM::CALL, par[1] );
 			}
 			/*if( op.r != 0 ) {
 				par[0] = instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, not op.parameterIsRead( 0 ) ), 8 } );
-				instructions.emplace_back( instruction::id_t::POP, par[0] );
+				instructions.emplace_back( ASM::POP, par[0] );
 			}*/
 			break;
 		case iop_t::id_t::IOP_LABEL_TO_PTR:
-			instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( ERROR_ASM_REG, ERROR_ASM_REG, 0, 8, addFunctionPointerDefinition( op.label ) ) );
+			instructions.emplace_back( ASM::LEA, par[0], instruction::complex_address( ERROR_ASM_REG, ERROR_ASM_REG, 0, 8, addFunctionPointerDefinition( op.label ) ) );
 			break;
 		case iop_t::id_t::IOP_RETURN:
-			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( RBP, ERROR_ASM_REG, sf.getVariableLocation( return_variable ), 8, ERROR_LABEL ), par[1] );
-			instructions.emplace_back( instruction::id_t::JMP, instruction::parameter( end_of_function ) );
+			instructions.emplace_back( ASM::MOV, instruction::complex_address( RBP, ERROR_ASM_REG, sf.getVariableLocation( return_variable ), 8, ERROR_LABEL ), par[1] );
+			instructions.emplace_back( ASM::JMP, instruction::parameter( end_of_function ) );
 			break;
 		case iop_t::id_t::IOP_INT_ANDEQ: case iop_t::id_t::IOP_INT_OREQ: case iop_t::id_t::IOP_INT_XOREQ: case iop_t::id_t::IOP_INT_ANDNEQ:
-			instructions.emplace_back( instruction::id_t( instruction::id_t::AND + op.id - iop_t::id_t::IOP_INT_ANDEQ ), par[0], par[1] );
+			instructions.emplace_back( ASM( ASM::AND + op.id - iop_t::id_t::IOP_INT_ANDEQ ), par[0], par[1] );
 			break;
 		case iop_t::id_t::IOP_INT_ADDEQ: case iop_t::id_t::IOP_INT_SUBEQ: case iop_t::id_t::IOP_INT_MULEQ:
-			instructions.emplace_back( instruction::id_t( op.id - iop_t::id_t::IOP_INT_ADDEQ + instruction::id_t::ADD ), par[0], par[1] );
+			instructions.emplace_back( ASM( op.id - iop_t::id_t::IOP_INT_ADDEQ + ASM::ADD ), par[0], par[1] );
 			break;
 		case iop_t::id_t::IOP_INT_MODDIV:
-			instructions.emplace_back( instruction::id_t::MOV, rax, par[0] );
-			instructions.emplace_back( instruction::id_t::MOV, rdx, par[1] );
-			instructions.emplace_back( instruction::id_t::IDIV, rdx );
+			instructions.emplace_back( ASM::MOV, rax, par[0] );
+			instructions.emplace_back( ASM::MOV, rdx, par[1] );
+			instructions.emplace_back( ASM::IDIV, rdx );
 			if( op.b != ERROR_VARIABLE )
-				instructions.emplace_back( instruction::id_t::MOV, par[2], rdx );
+				instructions.emplace_back( ASM::MOV, par[2], rdx );
 			break;
 		case iop_t::id_t::IOP_FLT_ADD:
-			instructions.emplace_back( instruction::id_t::VADDSD, par[0], par[1], par[2] );
+			instructions.emplace_back( ASM::VADDSD, par[0], par[1], par[2] );
 			break;
 		case iop_t::id_t::IOP_FLT_SUB:
-			instructions.emplace_back( instruction::id_t::VSUBSD, par[0], par[1], par[2] );
+			instructions.emplace_back( ASM::VSUBSD, par[0], par[1], par[2] );
 			break;
 		case iop_t::id_t::IOP_FLT_MUL:
-			instructions.emplace_back( instruction::id_t::VMULSD, par[0], par[1], par[2] );
+			instructions.emplace_back( ASM::VMULSD, par[0], par[1], par[2] );
 			break;
 		case iop_t::id_t::IOP_FLT_DIV:
-			instructions.emplace_back( instruction::id_t::VDIVSD, par[0], par[1], par[2] );
+			instructions.emplace_back( ASM::VDIVSD, par[0], par[1], par[2] );
 			break;
 		case iop_t::id_t::IOP_STR_CONEQ: // does not exist
 			lerr << error_line() << "IOP_STR_CONEQ depricated" << std::endl; 
 			break;
 		case iop_t::id_t::IOP_INT_EQ: case iop_t::id_t::IOP_INT_NEQ: case iop_t::id_t::IOP_INT_L: case iop_t::id_t::IOP_INT_G: case iop_t::id_t::IOP_INT_LE: case iop_t::id_t::IOP_INT_GE: 
-			instructions.emplace_back( instruction::id_t::CMP, par[1], par[2] );
-			instructions.emplace_back( instruction::id_t( op.id - iop_t::id_t::IOP_INT_EQ + instruction::id_t::SETE ), instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, not op.parameterIsRead( 0 ) ), 1 } ) );
+			instructions.emplace_back( ASM::CMP, par[1], par[2] );
+			instructions.emplace_back( ASM( op.id - iop_t::id_t::IOP_INT_EQ + ASM::SETE ), instruction::parameter( instruction::asm_reg{ getRegister( op.r, instruction_index, not op.parameterIsRead( 0 ) ), 1 } ) );
 			// add and for fixes
 			break;
 		case iop_t::id_t::IOP_INT_TUP_LOAD: 
 		case iop_t::id_t::IOP_FLT_TUP_LOAD: {
 			instruction::complex_address ca( RBP, par[2] );
 			ca.constant += sf.getVariableDirectedLocation( op.a );
-			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ? instruction::id_t::MOV : instruction::id_t::MOVSD, par[0], ca );
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ? ASM::MOV : ASM::MOVSD, par[0], ca );
 		} 	break;
 		case iop_t::id_t::IOP_INT_TUP_STORE: 
 		case iop_t::id_t::IOP_FLT_TUP_STORE:{
 			instruction::complex_address ca( RBP, par[1] );
 			ca.constant += sf.getVariableDirectedLocation( op.r );
-			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_TUP_STORE ? instruction::id_t::MOV : instruction::id_t::MOVSD, ca, par[2] );
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_TUP_STORE ? ASM::MOV : ASM::MOVSD, ca, par[2] );
 		}	break;
 		case iop_t::id_t::IOP_INT_ARR_LOAD:
 		case iop_t::id_t::IOP_FLT_ARR_LOAD:
-			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_ARR_LOAD ? instruction::id_t::MOV : instruction::id_t::MOVSD, par[0], instruction::complex_address( par[1], par[2] ) );
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_ARR_LOAD ? ASM::MOV : ASM::MOVSD, par[0], instruction::complex_address( par[1], par[2] ) );
 			break;
 		case iop_t::id_t::IOP_INT_ARR_STORE:
 		case iop_t::id_t::IOP_FLT_ARR_STORE:
-			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_ARR_STORE ? instruction::id_t::MOV : instruction::id_t::MOVSD, instruction::complex_address( par[0], par[1] ), par[2] );
+			instructions.emplace_back( op.id == iop_t::id_t::IOP_INT_ARR_STORE ? ASM::MOV : ASM::MOVSD, instruction::complex_address( par[0], par[1] ), par[2] );
 			break;
 		case iop_t::id_t::IOP_LIST_ALLOCATE: {
 			size_t s = scptab->getVariableType( op.r ).rawSize();
 			if( op.a != ERROR_VARIABLE ) {
-				instructions.emplace_back( instruction::id_t::MOV, rsi, par[1] );
-				instructions.emplace_back( instruction::id_t::IMUL, rsi, instruction::parameter( s ) );
-				instructions.emplace_back( instruction::id_t::ADD, rsi, instruction::parameter( 8 ) );
+				instructions.emplace_back( ASM::MOV, rsi, par[1] );
+				instructions.emplace_back( ASM::IMUL, rsi, instruction::parameter( s ) );
+				instructions.emplace_back( ASM::ADD, rsi, instruction::parameter( 8 ) );
 				storeRegister( getRegister( op.a, instruction_index ), instruction_index, true );
 			} else 
-				instructions.emplace_back( instruction::id_t::MOV, rsi, instruction::parameter( 8 + s*op.c_a.integer ) );
+				instructions.emplace_back( ASM::MOV, rsi, instruction::parameter( 8 + s*op.c_a.integer ) );
 			evacuateRegisters( instruction_index );
-			instructions.emplace_back( instruction::id_t::MOV, rax, instruction::parameter( 9 ) /*SYSCALL_MMAP*/ );
-			instructions.emplace_back( instruction::id_t::XOR, rdi, rdi );
-			instructions.emplace_back( instruction::id_t::MOV, rdx, instruction::parameter( 3 ) /* PROT_READ | PROT_WRITE */ );
-			instructions.emplace_back( instruction::id_t::MOV, r10, instruction::parameter( 0x22 ) /* MAP_PRIVATE | MAP_ANON */ );
-			instructions.emplace_back( instruction::id_t::MOV, r8, instruction::parameter( -1 ) );
-			instructions.emplace_back( instruction::id_t::XOR, r9, r9 );
-			instructions.emplace_back( instruction::id_t::SYSCALL );
+			instructions.emplace_back( ASM::MOV, rax, instruction::parameter( 9 ) /*SYSCALL_MMAP*/ );
+			instructions.emplace_back( ASM::XOR, rdi, rdi );
+			instructions.emplace_back( ASM::MOV, rdx, instruction::parameter( 3 ) /* PROT_READ | PROT_WRITE */ );
+			instructions.emplace_back( ASM::MOV, r10, instruction::parameter( 0x22 ) /* MAP_PRIVATE | MAP_ANON */ );
+			instructions.emplace_back( ASM::MOV, r8, instruction::parameter( -1 ) );
+			instructions.emplace_back( ASM::XOR, r9, r9 );
+			instructions.emplace_back( ASM::SYSCALL );
 			if( op.a == ERROR_VARIABLE )
 				par[1] = instruction::parameter( op.c_a.integer );
 			else
 				par[1] = instruction::parameter( instruction::asm_reg{ getRegister( op.a, instruction_index ), 8 } );
-			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( rax, ERROR_ASM_REG ), par[1] );
-			instructions.emplace_back( instruction::id_t::LEA, par[0], instruction::complex_address( rax.reg, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
+			instructions.emplace_back( ASM::MOV, instruction::complex_address( rax, ERROR_ASM_REG ), par[1] );
+			instructions.emplace_back( ASM::LEA, par[0], instruction::complex_address( rax.reg, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
 			getRegister( op.r, instruction_index, true );
 		}	break;
 		case iop_t::id_t::IOP_LIST_SIZE: {
 			instruction::complex_address ca( par[1] );
 			ca.constant = -8;
-			instructions.emplace_back( instruction::id_t::MOV, par[0], ca );
+			instructions.emplace_back( ASM::MOV, par[0], ca );
 		} 	break;
 		default:
 			lerr << error_line() << "Unknown IR instruction " << op.id << std::endl;
@@ -465,11 +465,11 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 	/*for( auto x : live_intervals )
 		variable_register[ x.variable ] = x.assigned_register+8;*/
 	// Generate preamble
-	instructions.emplace_back( instruction::id_t::LABEL, f.label );
-	instructions.emplace_back( instruction::id_t::PUSH, RBP );
-	// 	instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( instruction::complex_address( instruction::asm_reg( RSP_REG, 8 ), instruction::asm_reg(), -8, 8, ERROR_LABEL ) ), instruction::asm_reg( RBP_REG, 8 ) );
-	instructions.emplace_back( instruction::id_t::MOV, RBP, RSP );
-	instructions.emplace_back( instruction::id_t::SUB, RSP, sf.localVariableSize() );
+	instructions.emplace_back( ASM::LABEL, f.label );
+	instructions.emplace_back( ASM::PUSH, RBP );
+	// 	instructions.emplace_back( ASM::MOV, instruction::complex_address( instruction::complex_address( instruction::asm_reg( RSP_REG, 8 ), instruction::asm_reg(), -8, 8, ERROR_LABEL ) ), instruction::asm_reg( RBP_REG, 8 ) );
+	instructions.emplace_back( ASM::MOV, RBP, RSP );
+	instructions.emplace_back( ASM::SUB, RSP, sf.localVariableSize() );
 	// Generate code
 	end_of_function = f.parent->newLabel();
 	size_t bi = 1;
@@ -486,15 +486,15 @@ void assemblyGenerator::generateFunction( const intermediateCode::function& f, s
 		restoreRegisters( ioff-1 );
 	}
 	// Generate postamble
-	instructions.emplace_back( instruction::id_t::LABEL, instruction::parameter( end_of_function ) );
+	instructions.emplace_back( ASM::LABEL, instruction::parameter( end_of_function ) );
 	if( main ) {
-		instructions.emplace_back( instruction::id_t::MOV, RAX, 60 /*SYSCALL EXIT*/ );
-		instructions.emplace_back( instruction::id_t::MOV, RDI, 0 /* error code */ );
-		instructions.emplace_back( instruction::id_t::SYSCALL );
+		instructions.emplace_back( ASM::MOV, RAX, 60 /*SYSCALL EXIT*/ );
+		instructions.emplace_back( ASM::MOV, RDI, 0 /* error code */ );
+		instructions.emplace_back( ASM::SYSCALL );
 	} else {
-		instructions.emplace_back( instruction::id_t::LEA, RSP, instruction::complex_address( RBP, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
-		instructions.emplace_back( instruction::id_t::MOV, RBP, instruction::complex_address( RSP, ERROR_ASM_REG, -8, 8, ERROR_LABEL ) );
-		instructions.emplace_back( instruction::id_t::RET, sf.popCountOnReturn() );
+		instructions.emplace_back( ASM::LEA, RSP, instruction::complex_address( RBP, ERROR_ASM_REG, 8, 8, ERROR_LABEL ) );
+		instructions.emplace_back( ASM::MOV, RBP, instruction::complex_address( RSP, ERROR_ASM_REG, -8, 8, ERROR_LABEL ) );
+		instructions.emplace_back( ASM::RET, sf.popCountOnReturn() );
 	}
 }
 
@@ -596,12 +596,12 @@ void assemblyGenerator::storeRegister( register_t r, size_t instruction_index, b
 	if( scptab->getVariableType( v ) == FLT_TYPE ) {
 		if( ra_flt.isActive( v, instruction_index ) or force ) {
 			auto offset = sf.getVariableLocation( v );
-			instructions.emplace_back( instruction::id_t::MOVSD, instruction::complex_address( RBP, ERROR_ASM_REG, offset, 8, ERROR_LABEL ), instruction::asm_reg( r, 8 ) );
+			instructions.emplace_back( ASM::MOVSD, instruction::complex_address( RBP, ERROR_ASM_REG, offset, 8, ERROR_LABEL ), instruction::asm_reg( r, 8 ) );
 		}
 	} else {
 		if( ra.isActive( v, instruction_index ) or force ) {
 			auto offset = sf.getVariableLocation( v );
-			instructions.emplace_back( instruction::id_t::MOV, instruction::complex_address( RBP, ERROR_ASM_REG, offset, 8, ERROR_LABEL ), instruction::asm_reg( r, 8 ) );
+			instructions.emplace_back( ASM::MOV, instruction::complex_address( RBP, ERROR_ASM_REG, offset, 8, ERROR_LABEL ), instruction::asm_reg( r, 8 ) );
 		}
 	}
 	register_variables.at( r ) = ERROR_VARIABLE;
@@ -619,9 +619,9 @@ void assemblyGenerator::loadVariable( variable_t v, register_t r ) {
 	if( v == ERROR_VARIABLE )
 		return;
 	auto offset = sf.getVariableLocation( v );
-	instruction::id_t t = instruction::id_t::MOV;
+	ASM t = ASM::MOV;
 	if( scptab->getVariableType( v ) == FLT_TYPE )
-		t = instruction::id_t::MOVSD;
+		t = ASM::MOVSD;
 	instructions.emplace_back( t, instruction::asm_reg( r, 8 ), instruction::complex_address( RBP, ERROR_ASM_REG, offset, 8, ERROR_LABEL ) );
 	register_variables.at( r ) = v;
 }
@@ -678,8 +678,8 @@ assemblyGenerator::assemblyGenerator( const intermediateCode& ic, int O ) : asse
 
 assemblyGenerator::assemblyGenerator() {
 	extra_definition_offset = 0;
-	assert( instruction::id_t::COUNT == instruction::names.size() );
-	assert( instruction::id_t::COUNT == instruction::parameter_count.size() );
+	assert( ASM::COUNT == instruction::names.size() );
+	assert( ASM::COUNT == instruction::parameter_count.size() );
 	register_variables.resize( register_count, ERROR_VARIABLE );
 	volatile_register_cycle = 0;
 	optimization_level = 1;

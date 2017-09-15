@@ -6,6 +6,7 @@ int err_character_number = 1;
 int err_line_character_number = 1;
 int err_count = 0;
 optional_output lexer_out( std::cout );
+optional_output parse_out( std::cout );
 optional_output syntree_out( std::cout );
 optional_output ic_out( std::cout );
 optional_output opt_out( std::cout );

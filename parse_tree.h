@@ -23,9 +23,9 @@ public:
 		enum id_t {
 			NOP,
 
-			TUPLE, LIST, SET, SEQUENCE_PART, ELLIPSIS, SPACE_JOINER, COMMA,
+			TUPLE, LIST, SET, SEQUENCE_PART, ELLIPSIS, SPACE_JOINER, COMMA, 
 
-			MEMBER_OF, ASSIGN, ID, INT, FLT, STR, FUNCTION_CALL,
+			MEMBER_OF, ASSIGN, ID, INT, FLT, STR, VARIABLE_DECLARATION, FUNCTION_CALL, INLINE_FUNCTION_DEF,
 
 			IF, WHILE, FOR, ELSE, 
 
@@ -39,14 +39,21 @@ public:
 
 			COUNT
 		} id;
+		extra_data_t data;
 		static const std::vector<std::string> node_name;
 		node* children[2];
-		node( id_t, node* a = nullptr, node* b = nullptr );
+		node( id_t, node* a = nullptr, node* b = nullptr, int64_t d = 0 );
+		node( id_t, node* a, node* b, extra_data_t d );
 		void print( std::ostream& os, bool extra = false, int depth = 0 ) const;
+		bool isOperator() const;
+		bool isControlFlow() const;
 	};
 private:
 	node* root;
 public:
+	typedef node::id_t PN;
+	typedef token_t::id_t TK;
+	const node* getRoot() const;
 	void generateTokenData();
 	node* parseStatementList( interval_t );
 	node* parseStatement( interval_t& );

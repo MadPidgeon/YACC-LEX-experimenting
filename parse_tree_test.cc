@@ -4,12 +4,15 @@
 #include "tokenizer.h"
 #include "parse_tree.h"
 
-std::string code = "int x = 0, y = 2;\nif( x == 0 ) [ x = x + 1; ]\nint y = 3*x+1;\nif( f(x,y,z) == x ) x = y / 2;\nif( x == 0 ) if( y == 0 ) z = 0; else z = 1;\nfor( z in {1,2,3} ) { [ ( x, y, z ) = (1,2,3) ] }";
+std::string code = "int x = 0, y = 2;\nif( x == 0 ) [ x = x + 1; ]\nint y = 3*x+1;\nif( f(x,y,z) == x ) x = y / 2;\nif( x == 0 ) if( y == 0 ) z = 0; else z = 1;\nfor( z in {1,2,3} ) { [ ( x, y, z ) = (1,2,3) ] };\nfnc(int,int) id = (int x) -> int [ return x; ];";
+
+symbolTable* symtab;
+
 
 int main() {
-	symbolTable symtab;
+	symtab = new symbolTable();
 	std::istringstream input( code );
-	tokenizer tokgen( input, &symtab );
+	tokenizer tokgen( input, symtab );
 	auto tokens = tokgen.getAllTokens();
 	/*for( token_t t : tokens )
 		std::cout << t << " ";
