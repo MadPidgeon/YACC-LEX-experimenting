@@ -127,6 +127,7 @@ scopeTable::scopeTable( symbolTable* sym, structureTable* str ) {
 	addTypeDefinition( GLOBAL_SCOPE, INT_SYMBOL, INT_STRUCTURE );
 	addTypeDefinition( GLOBAL_SCOPE, FLT_SYMBOL, FLT_STRUCTURE );
 	addTypeDefinition( GLOBAL_SCOPE, STR_SYMBOL, STR_STRUCTURE );
+	addTypeDefinition( GLOBAL_SCOPE, TUP_SYMBOL, TUP_STRUCTURE );
 	addTypeDefinition( GLOBAL_SCOPE, LST_SYMBOL, LST_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 	addTypeDefinition( GLOBAL_SCOPE, SET_SYMBOL, SET_STRUCTURE, { type_t(int64_t(0)) }, { type_t(int64_t(0)) } );
 	addTypeDefinition( GLOBAL_SCOPE, FNC_SYMBOL, FNC_STRUCTURE, { type_t(int64_t(0)), type_t(int64_t(1)) }, { type_t(int64_t(0)), type_t(int64_t(1)) } );

@@ -445,7 +445,7 @@ _9:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 40
-	mov rsi, 8
+	mov rsi, 40
 	mov qword [-8+rbp], r8
 	mov rax, 9
 	xor rdi, rdi
@@ -454,7 +454,7 @@ _9:
 	mov r8, -1
 	xor r9, r9
 	syscall
-	mov qword [0+rax], 0
+	mov qword [0+rax], 4
 	lea r8, [8+rax]
 	mov qword [0+r8], 1
 	mov qword [8+r8], 2

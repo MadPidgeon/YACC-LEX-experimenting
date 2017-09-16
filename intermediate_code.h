@@ -148,6 +148,7 @@ public:
 		variable_t translateFunctionOperation( const syntaxTree::node* n );
 		void translateListElements( const syntaxTree::node* n, variable_t, variable_t );
 		size_t translateTupleAssignment( variable_t target, variable_t source, size_t offset, type_t t );
+		void translateTupleLValue( const syntaxTree::node* n, variable_t value, variable_t offset );
 		void translateLValue( const syntaxTree::node* n, variable_t value );
 		variable_t translateVariable( const syntaxTree::node* n );
 		variable_t translateReadIndexing( const syntaxTree::node* n );

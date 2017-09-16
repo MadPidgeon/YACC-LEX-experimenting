@@ -1,6 +1,4 @@
 section .data
-	_def_1_data db 0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x2c
-	_def_1 equ _def_1_data+8
 
 ; TAKEN FROM https://github.com/davidad/asm_concurrency/blob/master/os_dependent_stuff.asm
 ; syscalls
@@ -446,9 +444,9 @@ main:
 _9:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 144
-	mov rsi, 40
-	mov qword [-8+rbp], r8
+	sub rsp, 216
+	mov rsi, 32
+	mov qword [-8+rbp], r9
 	mov rax, 9
 	xor rdi, rdi
 	mov rdx, 3
@@ -456,110 +454,64 @@ _9:
 	mov r8, -1
 	xor r9, r9
 	syscall
-	mov qword [0+rax], 4
-	lea r8, [8+rax]
-	mov qword [0+r8], 1
-	mov qword [8+r8], 2
-	mov qword [16+r8], 3
-	mov qword [24+r8], 4
-	mov r9, r8
-	mov rsi, 40
-	mov qword [-24+rbp], r8
-	mov qword [-16+rbp], r9
-	mov rax, 9
-	xor rdi, rdi
-	mov rdx, 3
-	mov r10, 34
-	mov r8, -1
-	xor r9, r9
-	syscall
-	mov qword [0+rax], 4
-	lea r8, [8+rax]
-	mov qword [0+r8], 5
-	mov qword [8+r8], 6
-	mov qword [16+r8], 7
-	mov qword [24+r8], 8
-	mov r10, r8
-	mov r9, qword [-16+rbp]
-	mov r8, qword [-8+r9]
-	mov r11, qword [-8+r10]
-	mov r12, r8
-	add r12, r11
-	imul r8, 1
-	imul r11, 1
-	mov rsi, r12
-	imul rsi, 8
-	add rsi, 8
-	mov qword [-56+rbp], r12
-	mov qword [-40+rbp], r8
-	mov qword [-16+rbp], r9
-	mov qword [-32+rbp], r10
-	mov qword [-48+rbp], r11
-	mov qword [-64+rbp], r13
-	mov rax, 9
-	xor rdi, rdi
-	mov rdx, 3
-	mov r10, 34
-	mov r8, -1
-	xor r9, r9
-	syscall
-	mov r12, qword [-56+rbp]
-	mov qword [0+rax], r12
-	lea r13, [8+rax]
-	mov r12, 0
-	mov r14, 0
-	mov r9, qword [-16+rbp]
-	mov r10, qword [-32+rbp]
-	mov r8, qword [-40+rbp]
-	mov r11, qword [-48+rbp]
-_10:
-	cmp r12, r8
-	jge _12
-	mov r15, qword [0+r9+8*r12]
-	add r12, 1
-	mov qword [0+r13+8*r14], r15
-	add r14, 1
-	jmp _10
-_12:
-	mov r12, 0
-_11:
-	cmp r12, r11
-	jge _13
-	mov r15, qword [0+r10+8*r12]
-	add r12, 1
-	mov qword [0+r13+8*r14], r15
-	add r14, 1
-	jmp _11
-_13:
-	mov r9, r13
+	mov qword [0+rax], 3
+	lea r9, [8+rax]
 	mov r10, 0
-_14:
-	cmp r10, 8
-	jge _15
-	sub rsp, 8
-	sub rsp, 8
-	mov r13, r10
-	imul r13, 1
-	mov r15, qword [0+r9+8*r13]
-	add r13, 1
-	push r15
-	mov qword [-96+rbp], r9
-	mov qword [-104+rbp], r10
-	call _3
-	pop r13
-	push r13
-	lea r13, [0+_def_1]
-	push r13
-	call _4
-	pop r13
-	push r13
-	call _1
-	mov r10, qword [-104+rbp]
+	mov r11, 0
+	mov qword [-40+rbp], r11
+	mov r11, 1
+	mov qword [-32+rbp], r11
+	mov r11, qword [-40+rbp]
+	mov qword [0+r9+8*r10], r11
 	add r10, 1
-	mov r9, qword [-96+rbp]
-	jmp _14
-_15:
-_20:
+	mov r11, qword [-32+rbp]
+	mov qword [0+r9+8*r10], r11
+	add r10, 1
+	mov r11, 2
+	mov qword [-80+rbp], r11
+	mov r11, 3
+	mov qword [-72+rbp], r11
+	mov r11, qword [-80+rbp]
+	mov qword [0+r9+8*r10], r11
+	add r10, 1
+	mov r11, qword [-72+rbp]
+	mov qword [0+r9+8*r10], r11
+	add r10, 1
+	mov r11, 4
+	mov qword [-120+rbp], r11
+	mov r11, 5
+	mov qword [-112+rbp], r11
+	mov r11, qword [-120+rbp]
+	mov qword [0+r9+8*r10], r11
+	add r10, 1
+	mov r11, qword [-112+rbp]
+	mov qword [0+r9+8*r10], r11
+	add r10, 1
+	mov r10, r9
+	sub rsp, 8
+	mov r9, 2
+	mov r11, r9
+	imul r11, 2
+	mov r9, qword [0+r10+8*r11]
+	mov qword [-184+rbp], r9
+	add r11, 1
+	mov r9, qword [0+r10+8*r11]
+	mov qword [-176+rbp], r9
+	add r11, 1
+	mov r9, 1
+	mov r10, qword [-184+rbp+8*r9]
+	mov qword [-208+rbp], r10
+	add r9, 1
+	mov r10, qword [-184+rbp+8*r9]
+	mov qword [-200+rbp], r10
+	add r9, 1
+	mov r8, qword [-208+rbp]
+	push r8
+	call _3
+	pop r8
+	push r8
+	call _1
+_11:
 	mov rax, 60
 	mov rdi, 0
 	syscall

@@ -177,6 +177,14 @@ type_t type_t::rightFlattenTypeProduct( type_t left ) const{
 	return r;
 }
 
+type_t type_t::leftFlattenTypeProduct( type_t right ) const{
+	if( getBase() != TUP_STRUCTURE )
+		return ERROR_TYPE;
+	type_t r( *this );
+	r.getBaseParameters().push_back( right.peel() );
+	return r;
+}
+
 type_t type_t::makeTuple( std::vector<type_t> parameters ) {
 	node* n = new node();
 	n->structure = TUP_STRUCTURE;
@@ -286,12 +294,15 @@ std::ostream& operator<<( std::ostream& os, const type_t& t ) {
 
 
 type_t typedefTable::getType( symbol_t s, std::vector<type_t> pars ) const {
+	if( s == TUP_SYMBOL ) { // hacks
+		return type_t::makeTuple( pars );
+	}
 	auto loc = definitions.find( s );
 	if( loc == definitions.end() )
 		return ERROR_TYPE;
 	const typedefinition& d = loc->second;
 	if( d.parameters.size() != pars.size() ) {
-		lerr << error_line() << "Incorrect number of arguments to type " + std::to_string( s ) << " (expected " << d.parameters.size() << ", received " << pars.size() << ")" << std::endl;
+		lerr << error_line() << "Incorrect number of arguments to type " << symtab->getName(s) << " (expected " << d.parameters.size() << ", received " << pars.size() << ")" << std::endl;
 		return ERROR_TYPE;
 	}
 	std::vector<type_t> arguments;

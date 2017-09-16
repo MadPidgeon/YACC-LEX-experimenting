@@ -59,6 +59,7 @@ struct token_t {
 	token_t getDual() const;
 	bool isAtom() const;
 	bool isBinaryOperator() const;
+	bool isUnaryOperator() const;
 	bool isLeftBracket() const;
 	bool isRightBracket() const;
 	bool isControlFlow() const;

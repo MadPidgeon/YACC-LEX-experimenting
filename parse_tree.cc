@@ -243,21 +243,27 @@ void parseTree::parseOperation( std::deque<node*>& output, token_t t ) {
 		lerr << error_line() << "Expected two operands to binary operator " << t << std::endl;
 		return;
 	}
+	// unary operators
 	node* b = output.back();
+	if( t.id == TK::SIZE_OP ) {
+		output.back() = new node( PN::SIZE_OP, b );
+		return;
+	}
+	// binary operators
 	output.pop_back();
 	node* a = output.back();
-	if( t.id >= token_t::id_t::LOGIC_OP and t.id <= token_t::id_t::EXPONENT_ASSIGN_OP ) {
-		output.back() = new node( node::id_t( t.id + node::id_t::LOGIC_OP - token_t::id_t::LOGIC_OP ), a, b, t.data );
-	} else if( t.id == token_t::id_t::ASSIGN ) {
+	if( t.id >= TK::LOGIC_OP and t.id <= TK::EXPONENT_ASSIGN_OP ) {
+		output.back() = new node( node::id_t( t.id + node::id_t::LOGIC_OP - TK::LOGIC_OP ), a, b, t.data );
+	} else if( t.id == TK::ASSIGN ) {
 		output.back() = new node( node::id_t::ASSIGN, a, b );
-	} else if( t.id == token_t::id_t::COMMA ) {
+	} else if( t.id == TK::COMMA ) {
 		output.back() = new node( node::id_t::COMMA, a, b );
-	} else if( t.id == token_t::id_t::SPACE_JOINER ) {
+	} else if( t.id == TK::SPACE_JOINER ) {
 		if( b->id == node::id_t::ID )
 			output.back() = new node( node::id_t::VARIABLE_DECLARATION, a, b );
 		else
 			output.back() = new node( node::id_t::FUNCTION_CALL, a, b );
-	} else if( t.id == token_t::id_t::MAPS_TO ) {
+	} else if( t.id == TK::MAPS_TO ) {
 		output.back() = new node( node::id_t::INLINE_FUNCTION_DEF, a, b );
 	} else {
 		lerr << error_line() << "Unknown operator " << t << std::endl;
@@ -281,9 +287,9 @@ void parseTree::parseSequence( std::deque<node*>& output, token_t t ) {
 	}
 
 	node::id_t id = node::id_t::TUPLE;
-	if( t.id == token_t::id_t::RSEQ )
+	if( t.id == TK::RSEQ )
 		id = node::id_t::LIST;
-	else if( t.id == token_t::id_t::RPAR )
+	else if( t.id == TK::RPAR )
 		id = node::id_t::SET;
 	output.back() = new node( id, parameters );
 }
@@ -316,16 +322,7 @@ parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 		// ----------------------
 		if( t.isAtom() ) {
 			output.push_back( parseAtom( t ) );
-		} /*else if( t.id == token_t::id_t::COMMA ) {
-			while( ( not operators.empty() ) and ( not operators.back().isLeftBracket() ) ) {
-				parseOperation( output, operators.back() );
-				operators.pop_back();
-			}
-			if( operators.empty() ) {
-				lerr << error_line() << "Missing left parenthesis" << std::endl;
-				return nullptr;
-			}
-		}*/ else if( t.isBinaryOperator() ) {
+		} else if( t.isBinaryOperator() or t.isUnaryOperator() ) {
 			while( ( not operators.empty() ) and ( not operators.back().isLeftBracket() ) ) {
 				const token_t& u = operators.back();
 				if( t.isLeftAssociative() ) {
@@ -404,6 +401,7 @@ parseTree::node* parseTree::parseExpression( interval_t& interval ) {
 	}
 	parse_out << std::endl;
 	// ----------------------
+	parse_out << "Expression parsing ended" << std::endl;
 	if( output.size() == 1 )
 		return output.front();
 	else {

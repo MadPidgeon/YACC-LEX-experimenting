@@ -70,6 +70,7 @@ public:
 	type_t getChildType() const;
 	void applySubstitution( size_t, type_t );
 	type_t rightFlattenTypeProduct( type_t left ) const;
+	type_t leftFlattenTypeProduct( type_t right ) const;
 	static type_t makeTuple( std::vector<type_t> );
 	std::vector<type_t> unpackProduct() const;
 	size_t getParameterCount() const;

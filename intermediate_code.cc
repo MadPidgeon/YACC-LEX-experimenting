@@ -428,8 +428,23 @@ void intermediateCode::function::translateAssign( const syntaxTree::node* n ) {
 	translateLValue( n->children[0], translateExpression( n->children[1] ) );
 }
 
+void intermediateCode::function::translateTupleLValue( const syntaxTree::node* n, variable_t value, variable_t offset ) {
+	// breaks on (f(0),x) = (3,4)
+	if( n->children[0]->id == SN::TUPLE ) {
+		translateTupleLValue( n->children[0], value, offset );
+	} else if( n->children[0]->id == SN::VARIABLE ) {
+		variable_t v = n->children[0]->data.integer;
+		// add type checking
+		translateAssignFromTupleElementWeak( v, value, offset );
+	} else {
+		lerr << error_line() << "Expected only variables in lvalue expression" << std::endl;
+		return;
+	}
+	if( n->children[1] )
+		translateTupleLValue( n->children[1], value, offset );
+}
+
 void intermediateCode::function::translateLValue( const syntaxTree::node* n, variable_t value ) {
-	assert( n->id == SN::VARIABLE or n->id == SN::LIST_INDEXING );
 	if( n->id == SN::VARIABLE ) 
 		translateGeneralAssignment( n->data.integer, value );
 	else if( n->id == SN::LIST_INDEXING ) {
@@ -447,6 +462,10 @@ void intermediateCode::function::translateLValue( const syntaxTree::node* n, var
 		variable_t index = parent->newTemporaryVariable( INT_TYPE );
 		addOperation( iop_t::id_t::IOP_INT_MOV, index, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=offset/8} );
 		translateAssignToTupleElementWeak( tup, index, value );
+	} else if( n->id == SN::TUPLE ) {
+		variable_t offset = parent->newTemporaryVariable( INT_TYPE );
+		addOperation( iop_t::id_t::IOP_INT_MOV, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=0} );
+		translateTupleLValue( n->children[0], value, offset );
 	} else {
 		lerr << error_line() << "Cannot assign to anything other than a variable" << std::endl;
 	}
@@ -543,7 +562,7 @@ void intermediateCode::function::translateAssignToTupleElementWeak( variable_t t
 }
 
 void intermediateCode::function::translateAssignFromTupleElementWeak( variable_t target, variable_t source, variable_t offset ) {
-	type_t tt = parent->scptab->getVariableType( source );
+	type_t tt = parent->scptab->getVariableType( target );
 	if( tt == INT_TYPE or tt.isFunction() or tt.isList() or tt.isSet() ) {
 		addOperation( iop_t::id_t::IOP_INT_TUP_LOAD, target, source, offset );
 		addOperation( iop_t::id_t::IOP_INT_ADDEQ, offset, ERROR_VARIABLE, ERROR_VARIABLE, ERROR_LABEL, {.integer=1} );
@@ -639,6 +658,7 @@ void intermediateCode::function::translateArguments( const syntaxTree::node* n )
 variable_t intermediateCode::function::translateArithmetic( const syntaxTree::node* n ) {
 	if( not ( n->id == SN::ADD or n->id == SN::SUBTRACT or n->id == SN::MULTIPLY or n->id == SN::DIVIDE or n->id == SN::REMAINDER or n->id == SN::UMIN ) ) {
 		std::cerr << error_line() << "translateArithmetic received " << n->id << std::endl;
+		n->print( std::cerr );
 		throw;
 	}
 	variable_t s[2];
@@ -947,7 +967,7 @@ variable_t intermediateCode::function::translateContainer( const syntaxTree::nod
 		return r;
 	} else if( n->id == SN::TUPLE ) {
 		variable_t r = parent->newTemporaryVariable( n->data_type );
-		translateTupleElements( n, r, 0 );
+		translateTupleElements( n->children[0], r, 0 );
 		return r;
 	}
 	lerr << error_line() << "Sets not yet implemented" << std::endl;
@@ -962,7 +982,7 @@ void intermediateCode::function::translateListElements( const syntaxTree::node* 
 }
 
 void intermediateCode::function::translateTupleElements( const syntaxTree::node* n, variable_t r, size_t current_offset ) {
-	assert( n->id == SN::TUPLE or n->id == SN::TUPLE_LIST );
+	assert( n->id == SN::TUPLE_LIST );
 	variable_t x = translateExpression( n->children[0] );
 	addOperation( iop_t::id_t::IOP_INT_TUP_STORE, r, ERROR_VARIABLE, x, ERROR_LABEL, {.integer = current_offset} );
 	if( n->children[1] )

@@ -31,7 +31,7 @@ public:
 
 			SEQUENTIAL_BLOCK, PARALLEL_BLOCK, BLOCK_LIST,
 
-			LIST, SET, SINGLE_TYPE_EXPRESSION_LIST,  SIZE_OF,
+			LIST, SET, SINGLE_TYPE_EXPRESSION_LIST, SIZE_OF,
 
 			TUPLE, TUPLE_LIST,
 
@@ -67,22 +67,26 @@ private:
 	std::vector<scope_t> scope_stack;
 	typedef parseTree::node::id_t PN;
 	typedef node::id_t SN;
-	node* translateExpression( const parseTree::node* ) const;
-	node* translateOperator( const parseTree::node* ) const;
-	node* translateControlFlow( const parseTree::node* ) const;
-	node* translateContainer( const parseTree::node* ) const;
-	node* recursiveTranslateContainer( const parseTree::node* n, SN join ) const;
-	node* translateComparisonChain( const parseTree::node* ) const;
-	node* translateStatementList( const parseTree::node* ) const;
-	node* translateStatement( const parseTree::node* ) const;
-	node* translateExpressionList( const parseTree::node* ) const;
-	node* translateIdentifier( const parseTree::node* ) const;
-	node* translateFunctionCall( const parseTree::node* ) const;
-	node* translateAbstractParseList( const parseTree::node* n, PN pjoiner, SN sjoiner, bool right_final_leaf ) const;
+	node* translateExpression( const parseTree::node* );
+	node* translateOperator( const parseTree::node* );
+	node* translateControlFlow( const parseTree::node* );
+	node* translateContainer( const parseTree::node* );
+	node* recursiveTranslateContainer( const parseTree::node* n, SN join );
+	node* translateComparisonChain( const parseTree::node* );
+	node* recursiveTranslateTypedArguments( const parseTree::node* );
+	node* translateTypedArguments( const parseTree::node* );
+	node* recursiveTranslateStatementList( const parseTree::node* );
+	node* translateStatementList( const parseTree::node* );
+	node* translateStatement( const parseTree::node* );
+	node* translateExpressionList( const parseTree::node* );
+	node* translateIdentifier( const parseTree::node* );
+	node* translateFunctionCall( const parseTree::node* );
+	node* translateInlineFunctionDefinition( const parseTree::node* );
+	node* translateAbstractParseList( const parseTree::node* n, PN pjoiner, SN sjoiner, bool right_final_leaf );
 	node* makeErrorNode() const;
-	type_t translateType( const parseTree::node* ) const;
-	node* translateVariableDeclaration( const parseTree::node* n, type_t t ) const;
-	node* translateVariableDeclaration( const parseTree::node* n ) const;
+	type_t translateType( const parseTree::node* );
+	node* translateVariableDeclaration( const parseTree::node* n, type_t t );
+	node* translateVariableDeclaration( const parseTree::node* n );
 public:
 	static const std::vector<std::string> node_name;
 	static scopeTable* scopes; // ugly, plz fix

@@ -54,7 +54,7 @@ int main( int argc, char** argv ) {
 	syntree = new syntaxTree( *partree, scptab );
 	syntree_out << "\nSyntax Tree:";
 	if( syntree_out.enabled )
-		syntree->print( syntree_out.stream, true );
+		syntree->print( syntree_out.stream, false );
 	syntree_out << "\n\nScope Table:" << std::endl << (*scptab) << std::endl;
 	if( err_count > 0 )
 		return -1;

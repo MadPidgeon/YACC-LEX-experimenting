@@ -47,14 +47,9 @@ type_t syntaxTree::node::computeDatatype() {
 	}
 	switch( id ) {
 		// 0 children
-		case SN::INTEGER:
-		case SN::STRING:
-		case SN::FLOAT:
-		case SN::VARIABLE:
-		case SN::EMPTY:
-		case SN::CONTINUE:
-		case SN::BREAK:
-		case SN::GARBAGE:
+		case SN::INTEGER:	case SN::STRING:	case SN::FLOAT:
+		case SN::VARIABLE:	case SN::EMPTY:		case SN::GARBAGE:
+		case SN::CONTINUE:	case SN::BREAK:
 			if( c != 0 )
 				return ERROR_TYPE;
 			break;
@@ -63,15 +58,12 @@ type_t syntaxTree::node::computeDatatype() {
 			break;
 		// 1 child (left)
 		case SN::COMPARISON_CHAIN:
-		case SN::UMIN: 
-		case SN::LIST:
-		case SN::SET:
-		case SN::TUPLE:
+		case SN::UMIN: 		case SN::SIZE_OF:
+		case SN::LIST:		case SN::SET:		case SN::TUPLE:
 		case SN::RETURN:
 		case SN::TUPLE_INDEXING:
 		case SN::SEQUENTIAL_BLOCK:
 		case SN::PARALLEL_BLOCK:
-		case SN::SIZE_OF:
 			if( c != 1 or children[1] != nullptr )
 				return ERROR_TYPE;
 			break;
@@ -107,7 +99,7 @@ type_t syntaxTree::node::computeDatatype() {
 		case SN::GARBAGE:
 		case SN::IF:       case SN::WHILE:    case SN::ELSE:     case SN::FOR:
 		case SN::EMPTY:
-		case SN::SEQUENTIAL_BLOCK:          case SN::PARALLEL_BLOCK:
+		case SN::SEQUENTIAL_BLOCK:            case SN::PARALLEL_BLOCK:
 		case SN::BLOCK_LIST:
 		case SN::BREAK:    case SN::CONTINUE: case SN::RETURN:
 			return VOID_TYPE;
@@ -139,7 +131,8 @@ type_t syntaxTree::node::computeDatatype() {
 		case SN::FUNCTION_CALL:
 			// implement argument checking as well
 			if( children[1] ) {
-				assert( children[1]->data_type.isFunction() );
+				if( not children[1]->data_type.isFunction() )
+					return ERROR_TYPE;
 				return children[1]->data_type.getParameter(1);
 			} else
 				return syntaxTree::scopes->getFunctionReturnType( data.integer );
@@ -253,7 +246,7 @@ syntaxTree::node::~node() {
 	}
 }
 
-syntaxTree::node* syntaxTree::translateAbstractParseList( const parseTree::node* n, PN pjoiner, SN sjoiner, bool right_final_leaf ) const {
+syntaxTree::node* syntaxTree::translateAbstractParseList( const parseTree::node* n, PN pjoiner, SN sjoiner, bool right_final_leaf ) {
 	if( n == nullptr ) {
 		return nullptr;
 	} else if( n->id == pjoiner ) {
@@ -266,7 +259,7 @@ syntaxTree::node* syntaxTree::translateAbstractParseList( const parseTree::node*
 	}
 }
 
-syntaxTree::node* syntaxTree::translateExpression( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateExpression( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateExpression(" << std::flush;
 	if( syntree_out.enabled )
@@ -287,11 +280,13 @@ syntaxTree::node* syntaxTree::translateExpression( const parseTree::node* n ) co
 		return translateComparisonChain( n );
 	else if( n->id == PN::LIST or n->id == PN::SET or n->id == PN::TUPLE )
 		return translateContainer( n );
+	else if( n->id == PN::INLINE_FUNCTION_DEF )
+		return translateInlineFunctionDefinition( n );
 	else
 		return translateOperator( n );
 }
 
-syntaxTree::node* syntaxTree::translateComparisonChain( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateComparisonChain( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateComparisonChain(" << std::flush;
 	if( syntree_out.enabled )
@@ -312,7 +307,36 @@ syntaxTree::node* syntaxTree::translateComparisonChain( const parseTree::node* n
 	return r;
 }
 
-syntaxTree::node* syntaxTree::translateOperator( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::recursiveTranslateTypedArguments( const parseTree::node* n ) {
+	const parseTree::node* def = n;
+	if( n->id == PN::COMMA )
+		def = n->children[0];
+	if( def->id != PN::VARIABLE_DECLARATION ) {
+		lerr << error_line() << "Expected variable declaration in function argument list" << std::endl;
+		return makeErrorNode();
+	}
+	type_t t = translateType( def->children[0] );
+	if( def->children[1]->id != PN::ID ) {
+		lerr << error_line() << "Expected identifier in variable declaration" << std::endl;
+		return makeErrorNode();
+	}
+	symbol_t s = def->children[1]->data.symbol;
+	variable_t v = scptab->addVariable( scope_stack.back(), s, t );
+	syntaxTree::node* tail = nullptr;
+	if( n->id == PN::COMMA )
+		tail = recursiveTranslateTypedArguments( n->children[1] );
+	return new node( SN::TUPLE_LIST, new node( SN::VARIABLE, nullptr, nullptr, {.integer=v} ), tail );
+}
+
+syntaxTree::node* syntaxTree::translateTypedArguments( const parseTree::node* n ) {
+	assert( n->id == PN::TUPLE );
+	if( n->children[0] )
+		return recursiveTranslateTypedArguments( n->children[0] );
+	else
+		return nullptr;
+}
+
+syntaxTree::node* syntaxTree::translateOperator( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateOperator(";
 	if( syntree_out.enabled )
@@ -337,19 +361,24 @@ syntaxTree::node* syntaxTree::translateOperator( const parseTree::node* n ) cons
 		case PN::ASSIGN:
 			id = SN::ASSIGN;
 			break;
+		case PN::SIZE_OP:
+			id = SN::SIZE_OF;
+			break;
 		default:
 			lerr << error_line() << "Unhandled operator " << n->id << std::endl;
 			return nullptr;
 	}
 	node* lhs = translateExpression( n->children[0] );
-	if( n->id >= PN::LOGIC_ASSIGN_OP and n->id <= PN::EXPONENT_ASSIGN_OP ) {
+	if( n->id == PN::SIZE_OP ) {
+		return new node( id, lhs );
+	} else if( n->id >= PN::LOGIC_ASSIGN_OP and n->id <= PN::EXPONENT_ASSIGN_OP ) {
 		return new node( SN::ASSIGN, lhs, new node( id, lhs->clone(), translateExpression( n->children[1] ) ) );
 	} else {
 		return new node( id, lhs, translateExpression( n->children[1] ) );
 	}	
 }
 
-syntaxTree::node* syntaxTree::translateIdentifier( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateIdentifier( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateIdentifier(";
 	if( syntree_out.enabled )
@@ -360,7 +389,7 @@ syntaxTree::node* syntaxTree::translateIdentifier( const parseTree::node* n ) co
 	return new node( SN::VARIABLE, nullptr, nullptr, {.integer=scptab->getVariable( scope_stack.back(), n->data.symbol )} );
 }
 
-syntaxTree::node* syntaxTree::translateControlFlow( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateControlFlow( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateControlFlow(";
 	if( syntree_out.enabled )
@@ -407,13 +436,21 @@ syntaxTree::node* syntaxTree::translateControlFlow( const parseTree::node* n ) c
 				lerr << error_line() << "Can only break or continue a constant number of loops" << std::endl;
 				return new node( n->id == PN::BREAK ? SN::BREAK : SN::CONTINUE, nullptr, nullptr, {.integer=1} );
 			}
+		case PN::RETURN:
+			return new node( SN::RETURN, translateExpression( n->children[0] ) );
 		default:
 			syntree_out << error_line() << "Unhandled control flow " << n->id << std::endl;
 			return nullptr;
 	}
 }
 
-syntaxTree::node* syntaxTree::translateStatementList( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::recursiveTranslateStatementList( const parseTree::node* n ) {
+	if( n == nullptr )
+		return nullptr;
+	return new node( SN::BLOCK_LIST, translateStatement( n->children[0] ), recursiveTranslateStatementList( n->children[1] ) );
+}
+
+syntaxTree::node* syntaxTree::translateStatementList( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateStatementList(";
 	if( syntree_out.enabled )
@@ -424,25 +461,17 @@ syntaxTree::node* syntaxTree::translateStatementList( const parseTree::node* n )
 	SN id = SN::SEQUENTIAL_BLOCK;
 	if( n->id == PN::SET )
 		id = SN::PARALLEL_BLOCK;
-	node* r = new node( id );
-	parseTree::node* parse_head = n->children[0];
-	node** syntax_head = &r->children[0];
-	while( parse_head ) {
-		// add some check to id_t
-		*syntax_head = new node( SN::BLOCK_LIST, translateStatement( parse_head->children[0] ) );
-		parse_head = parse_head->children[1];
-		syntax_head = &(*syntax_head)->children[1];
-	}
-	return r;
+	return new node( id, recursiveTranslateStatementList( n->children[0] ) );
 }
 
-syntaxTree::node* syntaxTree::recursiveTranslateContainer( const parseTree::node* n, SN join ) const {
+syntaxTree::node* syntaxTree::recursiveTranslateContainer( const parseTree::node* n, SN join ) {
 	if( n->id != PN::COMMA )
 		return new node( join, translateExpression( n ) );
-	return new node( join, translateExpression( n->children[0] ), recursiveTranslateContainer( n->children[1], join ) );
+	node* tail = recursiveTranslateContainer( n->children[1], join );
+	return new node( join, translateExpression( n->children[0] ), tail, {.integer=tail->data.integer+1} );
 }
 
-syntaxTree::node* syntaxTree::translateContainer( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateContainer( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateContainer(";
 	if( syntree_out.enabled )
@@ -457,10 +486,44 @@ syntaxTree::node* syntaxTree::translateContainer( const parseTree::node* n ) con
 		head = SN::TUPLE;
 	} else if( n->id == PN::SET )
 		head = SN::SET;
-	return new node( head, recursiveTranslateContainer( n->children[0], join ) );
+	node* tail = recursiveTranslateContainer( n->children[0], join );
+	return new node( head, tail, nullptr, {.integer=tail->data.integer+1} );
 }
 
-syntaxTree::node* syntaxTree::translateFunctionCall( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateInlineFunctionDefinition( const parseTree::node* n ) {
+	#ifdef SYNTAX_TREE_DEBUG
+	syntree_out << "translateInlineFunctionDefinition(";
+	if( syntree_out.enabled )
+		n->print( syntree_out.stream );
+	syntree_out << ")" << std::endl;
+	#endif
+	assert( n->id == PN::INLINE_FUNCTION_DEF );
+	scope_t parent_scope = scope_stack.back();
+	scope_stack.push_back( scptab->addScope( parent_scope ) );
+	node* arguments = translateTypedArguments( n->children[0] );
+	if( n->children[1]->id != PN::FUNCTION_CALL ) {
+		if( n->children[1]->id == PN::LIST or n->children[1]->id == PN::SET ) {
+			lerr << error_line() << "Expected return type before function body" << std::endl;
+			return makeErrorNode();
+		} else if( n->children[1]->id == PN::TUPLE ) {
+			lerr << error_line() << "Expected function body" << std::endl;
+			return makeErrorNode();
+		} else {
+			lerr << error_line() << "Expected function definition" << std::endl;
+			return makeErrorNode();
+		}
+	}
+	type_t return_type = translateType( n->children[1]->children[0] );
+	function_t f = scptab->addFunctionDeclaration( parent_scope, NONE_SYMBOL, return_type, scptab->getAllVariables( scope_stack.back() ) );
+	node* body = translateStatementList( n->children[1]->children[1] );
+	scope_stack.pop_back();
+	node* r = new node( SN::FUNCTION_DEFINITION, arguments, body, {.integer = f} );
+	r->data_type = type_t( FNC_STRUCTURE, { arguments->data_type, return_type } );
+	return r;
+}
+
+
+syntaxTree::node* syntaxTree::translateFunctionCall( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateFunctionCall(";
 	if( syntree_out.enabled )
@@ -475,11 +538,13 @@ syntaxTree::node* syntaxTree::translateFunctionCall( const parseTree::node* n ) 
 	}
 	size_t tuple_size = rhs->data_type.getParameterCount();
 	if( n->children[0]->id == PN::ID ) { // named function call
+		if( n->children[0]->data.symbol == TUP_SYMBOL )
+			return rhs;
 		function_t f = scptab->getFunction( scope_stack.back(), n->children[0]->data.symbol, rhs->data_type );
 		variable_t v = scptab->getVariable( scope_stack.back(), n->children[0]->data.symbol );
 		if( f == ERROR_FUNCTION and v == ERROR_FUNCTION ) {
 			lerr << error_line() << "Unknown variable or function " << symtab->getName( n->children[0]->data.symbol ) << " taking argument " << rhs->data_type << std::endl;
-			return makeErrorNode();
+			return new node( SN::FUNCTION_CALL, makeErrorNode(), rhs );
 		}
 		if( v == ERROR_VARIABLE or scptab->getVariableScope( v ) <= scptab->getFunctionScope( f ) ) { // named function
 			return new node( SN::FUNCTION_CALL, rhs, nullptr, {.integer = f} );
@@ -495,21 +560,28 @@ syntaxTree::node* syntaxTree::translateFunctionCall( const parseTree::node* n ) 
 			return makeErrorNode();
 		}
 		node* index = rhs->children[0]->children[0];
+		rhs->children[0]->children[0]->parent = nullptr;
 		rhs->children[0]->children[0] = nullptr;
 		delete rhs;
-		if( lhs->data_type.isTuple() )
-			return new node( SN::TUPLE_INDEXING, lhs, index );
-		else
+		if( lhs->data_type.isTuple() ) {
+			if( index->id != SN::INTEGER ) {
+				lerr << error_line() << "Can only index tuples by constants" << std::endl;
+				return makeErrorNode();
+			}
+			int i = index->data.integer;
+			delete index;
+			return new node( SN::TUPLE_INDEXING, lhs, nullptr, {.integer=i} );
+		} else
 			return new node( SN::LIST_INDEXING, lhs, index );
 	}
-	return new node( SN::FUNCTION_CALL, lhs, rhs );
+	return new node( SN::FUNCTION_CALL, rhs, lhs );
 }
 
 syntaxTree::node* syntaxTree::makeErrorNode() const {
 	return new node( SN::VARIABLE, nullptr, nullptr, {.integer=ERROR_VARIABLE} );
 }
 
-syntaxTree::node* syntaxTree::translateStatement( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateStatement( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateStatement(";
 	if( syntree_out.enabled )
@@ -530,13 +602,13 @@ syntaxTree::node* syntaxTree::translateStatement( const parseTree::node* n ) con
 	return nullptr;
 }
 
-syntaxTree::node* syntaxTree::translateExpressionList( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateExpressionList( const parseTree::node* n ) {
 	assert( n->id == PN::COMMA );
 	lerr << error_line() << "C-style comma operator not (yet) supported" << std::endl;
 	return nullptr;
 }
 
-syntaxTree::node* syntaxTree::translateVariableDeclaration( const parseTree::node* n, type_t t ) const {
+syntaxTree::node* syntaxTree::translateVariableDeclaration( const parseTree::node* n, type_t t ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateVariableDeclaration(" << std::flush;
 	if( syntree_out.enabled )
@@ -545,7 +617,7 @@ syntaxTree::node* syntaxTree::translateVariableDeclaration( const parseTree::nod
 	#endif
 	if( n->id == PN::ID ) {
 		// declaration only
-		scopes->addVariable( scope_stack.back(), n->data.symbol, t );
+		scptab->addVariable( scope_stack.back(), n->data.symbol, t );
 		return nullptr;
 	} else if( n->id == PN::ASSIGN ) {
 		// assignment
@@ -553,7 +625,7 @@ syntaxTree::node* syntaxTree::translateVariableDeclaration( const parseTree::nod
 			lerr << error_line() << "Expected identifier in variable declaration" << std::endl;
 			return nullptr;
 		}
-		scopes->addVariable( scope_stack.back(), n->children[0]->data.symbol, t );
+		scptab->addVariable( scope_stack.back(), n->children[0]->data.symbol, t );
 		return new node( SN::BLOCK_LIST, translateExpression( n ) );
 	} else {
 		lerr << error_line() << "Expected variable declaration" << std::endl;
@@ -561,7 +633,7 @@ syntaxTree::node* syntaxTree::translateVariableDeclaration( const parseTree::nod
 	}
 }
 
-type_t syntaxTree::translateType( const parseTree::node* n ) const {
+type_t syntaxTree::translateType( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateType(";
 	if( syntree_out.enabled )
@@ -569,23 +641,37 @@ type_t syntaxTree::translateType( const parseTree::node* n ) const {
 	syntree_out << ")" << std::endl;
 	#endif
 	if( n->id == PN::ID ) {
-		return type_t( scopes->getTypeDefinition( scope_stack.back(), n->data.symbol ) );
+		type_t t = scptab->getTypeDefinition( scope_stack.back(), n->data.symbol );
+		if( t == ERROR_TYPE ) {
+			lerr << error_line() << "Unknown type " << symtab->getName( n->data.symbol ) << std::endl;
+		}
+		return t;
 	} else if( n->id == PN::FUNCTION_CALL ) {
 		if( n->children[0]->id == PN::ID ) {
-			type_t t = TUP_TYPE;
-			t = t.rightFlattenTypeProduct( translateType( n->children[1] ) );
-			return t; // temp
+			type_t arguments = translateType( n->children[1] );
+			type_t t = scptab->getTypeDefinition( scope_stack.back(), n->children[0]->data.symbol, arguments.unpackProduct() );
+			if( t == ERROR_TYPE ) {
+				lerr << error_line() << "Unknown variadic type " << symtab->getName( n->children[0]->data.symbol ) << std::endl;
+			}
+			return t;
 		} else {
 			lerr << error_line() << "Type arithmetic not (yet) implemented" << std::endl;
 			return ERROR_TYPE;
 		}
+	} else if( n->id == PN::TUPLE ) {
+		type_t t = TUP_TYPE;
+		parseTree::node* itr;
+		for( itr = n->children[0]; itr->id == PN::COMMA; itr = itr->children[1] )
+			t = t.leftFlattenTypeProduct( translateType( itr->children[0] ) );
+		t = t.leftFlattenTypeProduct( translateType( itr ) );
+		return t;
 	} else {
 		lerr << error_line() << "Expected type definition" << std::endl;
 		return ERROR_TYPE;
 	}
 }
 
-syntaxTree::node* syntaxTree::translateVariableDeclaration( const parseTree::node* n ) const {
+syntaxTree::node* syntaxTree::translateVariableDeclaration( const parseTree::node* n ) {
 	#ifdef SYNTAX_TREE_DEBUG
 	syntree_out << "translateVariableDeclaration(";
 	if( syntree_out.enabled )
@@ -654,7 +740,6 @@ syntaxTree::syntaxTree( const parseTree& pt, scopeTable* s ) {
 	scopes = s;
 	scope_stack.push_back( GLOBAL_SCOPE );
 	root = translateStatement( pt.getRoot() );
-	computeTyping();
 }
 
 const syntaxTree::node* syntaxTree::getRoot() const {

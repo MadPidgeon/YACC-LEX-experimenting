@@ -1,6 +1,7 @@
 section .data
-	_def_1_data db 0x1f,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x56,0x61,0x72,0x69,0x61,0x62,0x6c,0x65,0x20,0x78,0x20,0x63,0x6f,0x6e,0x74,0x61,0x69,0x6e,0x73,0x20,0x74,0x68,0x65,0x20,0x6e,0x75,0x6d,0x62,0x65,0x72,0x20
-	_def_1 equ _def_1_data+8
+	_def_1 dq 2.00000000000000000e+00
+	_def_2 dq 3.00000000000000000e+00
+	_def_3 dq 4.50000000000000000e+00
 
 ; TAKEN FROM https://github.com/davidad/asm_concurrency/blob/master/os_dependent_stuff.asm
 ; syscalls
@@ -446,16 +447,69 @@ main:
 _9:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 24
+	sub rsp, 168
+	mov rsi, 32
+	mov qword [-8+rbp], r8
+	mov rax, 9
+	xor rdi, rdi
+	mov rdx, 3
+	mov r10, 34
+	mov r8, -1
+	xor r9, r9
+	syscall
+	mov qword [0+rax], 3
+	lea r8, [8+rax]
+	mov qword [0+r8], 1
+	mov qword [8+r8], 2
+	mov qword [16+r8], 3
+	mov qword [-24+rbp], r8
+	mov rsi, 32
+	mov qword [-32+rbp], r8
+	mov rax, 9
+	xor rdi, rdi
+	mov rdx, 3
+	mov r10, 34
+	mov r8, -1
+	xor r9, r9
+	syscall
+	mov qword [0+rax], 3
+	lea r8, [8+rax]
+	mov r9, 0
+	movsd xmm4, qword [0+_def_1]
+	movsd qword [0+r8+8*r9], xmm4
+	mov r9, 1
+	movsd xmm4, qword [0+_def_2]
+	movsd qword [0+r8+8*r9], xmm4
+	mov r9, 2
+	movsd xmm4, qword [0+_def_3]
+	movsd qword [0+r8+8*r9], xmm4
+	mov r9, 3
+	mov qword [-16+rbp], r8
+	mov r8, qword [-24+rbp]
+	mov qword [-88+rbp], r8
+	mov r8, qword [-16+rbp]
+	mov qword [-80+rbp], r8
+	mov r8, qword [-88+rbp]
+	mov qword [-112+rbp], r8
+	mov r8, qword [-80+rbp]
+	mov qword [-104+rbp], r8
 	sub rsp, 8
-	lea r8, [0+_def_1]
-	push r8
-	sub rsp, 8
-	push 1337
+	mov r8, qword [-112+rbp]
+	mov r9, qword [8+r8]
+	push r9
 	call _3
 	pop r8
 	push r8
-	call _4
+	call _1
+	sub rsp, 8
+	mov r8, qword [-104+rbp]
+	mov r9, 2
+	mov r9, 2
+	movsd xmm4, qword [0+r8+8*r9]
+	mov r9, 3
+	sub rsp, 8
+	movsd qword [0+rsp], xmm4
+	call _5
 	pop r8
 	push r8
 	call _1

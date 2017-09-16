@@ -50,7 +50,11 @@ token_t token_t::getDual() const {
 }
 
 bool token_t::isBinaryOperator() const {
-	return ( id >= id_t::LOGIC_OP and id <= EXPONENT_OP ) or ( id >= id_t::LOGIC_ASSIGN_OP and id <= id_t::EXPONENT_ASSIGN_OP ) or id == id_t::ASSIGN or id == id_t::SPACE_JOINER or id == id_t::COMMA or id == id_t::MAPS_TO;
+	return ( id >= id_t::LOGIC_OP and id <= EXPONENT_OP and id != SIZE_OP ) or ( id >= id_t::LOGIC_ASSIGN_OP and id <= id_t::EXPONENT_ASSIGN_OP ) or id == id_t::ASSIGN or id == id_t::SPACE_JOINER or id == id_t::COMMA or id == id_t::MAPS_TO;
+}
+
+bool token_t::isUnaryOperator() const {
+	return id == id_t::SIZE_OP;
 }
 
 bool token_t::isAtom() const {
@@ -70,7 +74,7 @@ bool token_t::isControlFlow() const {
 }
 
 bool token_t::isLeftAssociative() const {
-	return ( id == id_t::LOGIC_OP or id == id_t::LATTICE_OP or id == id_t::ADD_OP or id == id_t::MULT_OP or id == id_t::SPACE_JOINER);
+	return ( id == id_t::LOGIC_OP or id == id_t::LATTICE_OP or id == id_t::ADD_OP or id == id_t::MULT_OP or id == id_t::SPACE_JOINER );
 }
 
 bool token_t::isRightAssociative() const {
@@ -138,8 +142,9 @@ void tokenizer::generateBrackets() {
 	lexer_out << "generateBrackets()" << std::endl;
 	#endif
 	assert( c == '(' or c == ')' or c == '[' or c == ']' or c == '{' or c == '}' );
-	// a(...), [...](...), {...}(...)
-	if( ( last_added_token.id == TK::ID or last_added_token.isRightBracket() ) and c == '(' )
+	// a_(...), [...]_(...), {...}_(...)
+	// int -> (int,str)_[ yolo ]
+	if( ( last_added_token.id == TK::ID or last_added_token.isRightBracket() ) and ( c == '(' or c == '[' or c == '{' ) )
 		addToken( TK::SPACE_JOINER );
 	if( c == '(' )
 		addToken( TK::LBRA );
