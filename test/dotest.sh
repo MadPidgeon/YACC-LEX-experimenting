@@ -10,8 +10,15 @@ for d in */; do
 		rm -f $name
 		../../yolo $f -o $name -O1
 		if [ -x $name ]; then
-			./$name &> $name.out
-			if (($? == 0)); then
+			r=1
+			if [ -f "./$name.input" ]; then
+				./$name < "./$name.input" &> $name.out 
+				r=$?
+			else
+				./$name &> $name.out
+				r=$?
+			fi			
+			if (($r == 0)); then
 				if cmp -s "./$name.out" "./$name.correct"; then
 					echo -e "$name: \033[1;32mCorrect\033[0m"
 				else

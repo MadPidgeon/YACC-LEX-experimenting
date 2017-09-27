@@ -535,7 +535,7 @@ bool offset_variable_t::operator==( offset_variable_t other ) const {
 	return variable == other.variable and offset == other.offset;
 }
 
-offset_variable_t::offset_variable_t( variable_t v, size_t o ) 
+offset_variable_t::offset_variable_t( variable_t v, int64_t o ) 
 		: variable( v ), offset( o ) {
 }
 
@@ -561,6 +561,11 @@ flowGraph::constant_data::constant_data( double x ) {
 	data.floating = x;
 }
 
+flowGraph::constant_data::constant_data( const char* x ) {
+	type = STR_TYPE;
+	data.string = x;
+}
+
 bool flowGraph::constant_data::operator==( const flowGraph::constant_data& other ) const {
 	if( type != other.type )
 		return false;
@@ -568,7 +573,9 @@ bool flowGraph::constant_data::operator==( const flowGraph::constant_data& other
 		return data.integer == other.data.integer;
 	if( type == FLT_TYPE )
 		return data.floating == other.data.floating;
-	return false;
+	if( type == STR_TYPE )
+		return data.string == other.data.string;
+	throw;
 }
 
 bool flowGraph::constant_data::operator!=( const flowGraph::constant_data& other ) const {
@@ -576,11 +583,15 @@ bool flowGraph::constant_data::operator!=( const flowGraph::constant_data& other
 }
 
 bool flowGraph::node::constantPropagation() {
+	#ifdef OPTIMIZATION_DEBUG
+	opt_out << "node::constantPropagation()" << std::endl;
+	#endif
 	bool change = false;
 	std::map<offset_variable_t,constant_data> constants = const_in;
 	for( auto& op : operations ) {
 		// substitute in known constants
 		if( op.id == iop_t::id_t::IOP_INT_TUP_LOAD ) {
+			constants.erase( op.getParameterVariable(0) );
 			if( op.parameterIsVariable( 2 ) ) {
 				auto itr = constants.find( op.getParameterVariable( 2 ) );
 				if( itr != constants.end() ) 
@@ -611,16 +622,27 @@ bool flowGraph::node::constantPropagation() {
 				}
 			}
 		}
-		
+
+		/*std::cout << "Constants at " << op << std::endl;
+		for( auto c : constants ) {
+			std::cout << "(" << symtab->getName( scptab->getVariableSymbol( c.first.variable ) ) << "," << c.first.offset << ") " << c.second.type << " " << c.second.data.integer << std::endl;
+		}*/
+
 		// reduce strength
 		op.reduceStrength();
 		if( op.usesResultParameter() and constants.count( op.r ) and constants.at( op.r ).type == INT_TYPE )
 			op.reduceStrengthEq( constants.at( op.r ).data.integer );
 		// aquire constants
-		if( op.id == iop_t::id_t::IOP_INT_MOV and not op.parameterIsVariable( 1 ) ) {
+		if( op.id == iop_t::id_t::IOP_INT_MOV and not op.parameterIsVariable( 1 ) ) { // confusion between value of &x and x[0]
 			auto itr = constants.find( op.getParameterVariable( 0 ) );
 			if( itr == constants.end() or itr->second.data.integer != op.getParameterInteger( 1 ) )
 				constants[ op.getParameterVariable(0) ] = constant_data( op.getParameterInteger( 1 ) );
+		} else if( op.id == iop_t::id_t::IOP_STR_MOV and not op.parameterIsVariable( 1 ) ) {
+			// std::cout << "Add string " << symtab->getName( scptab->getVariableSymbol( op.getParameterVariable(0) ) ) << std::endl;
+			/*auto itr = constants.find( op.getParameterVariable( 0 ) );
+			if( itr == constants.end() or itr->second.data.integer != op.getParameterInteger( 1 ) )*/
+			// sterft gigantisch op wbreak
+			// constants[ op.getParameterVariable(0) ] = constant_data( op.getParameterString( 1 ) );
 		} else if( op.id == iop_t::id_t::IOP_FLT_MOV and not op.parameterIsVariable( 1 ) ) {
 			auto itr = constants.find( op.getParameterVariable( 0 ) );
 			if( itr == constants.end() or itr->second.data.floating != op.getParameterFloating( 1 ) )
@@ -641,7 +663,7 @@ bool flowGraph::node::constantPropagation() {
 			}
 		}
 		// lose constants
-		if( op.id != iop_t::id_t::IOP_INT_MOV and op.id != iop_t::id_t::IOP_FLT_MOV and op.id != iop_t::id_t::IOP_INT_TUP_STORE and op.id != iop_t::id_t::IOP_INT_TUP_LOAD )
+		if( op.id != iop_t::id_t::IOP_INT_MOV and op.id != iop_t::id_t::IOP_STR_MOV and op.id != iop_t::id_t::IOP_FLT_MOV and op.id != iop_t::id_t::IOP_INT_TUP_STORE and op.id != iop_t::id_t::IOP_INT_TUP_LOAD )
 			for( int i = 0; i < 3; ++i )
 				if( op.parameterIsWritten( i ) )
 					constants.erase( op.getParameterVariable( i ) );
@@ -881,7 +903,7 @@ void flowGraph::optimize( int optimization_level ) {
 	// second optimization
 	if( optimization_level >= 1 )
 		constantPropagation();
-	if( optimization_level >= 1 )
+	if( optimization_level >= 2 )
 		cyclicEquivalence();
 	// third optimization
 	if( optimization_level >= 1 )

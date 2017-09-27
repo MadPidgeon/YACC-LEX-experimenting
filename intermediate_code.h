@@ -83,7 +83,7 @@ struct iop_t {
 	union constant_t {
 		int64_t integer;
 		double floating;
-		char* string;
+		const char* string;
 	} c_a, c_b;
 	static const std::vector<uint16_t> iop_fields;
 	std::vector<variable_t> getReadVariables() const;
@@ -96,6 +96,7 @@ struct iop_t {
 	variable_t getParameterVariable( int i ) const;
 	int64_t getParameterInteger( int i ) const;
 	double getParameterFloating( int i ) const;
+	const char* getParameterString( int i ) const;
 	bool parameterIsVariable( int i ) const;
 	bool parameterIsWritten( int i ) const;
 	bool parameterIsRead( int i ) const;

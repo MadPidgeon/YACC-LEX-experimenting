@@ -21,8 +21,8 @@ struct live_interval_t {
 
 struct offset_variable_t {
 	variable_t variable;
-	size_t offset; // in qwords
-	offset_variable_t( variable_t, size_t = 0 );
+	int64_t offset; // in qwords
+	offset_variable_t( variable_t, int64_t = -16 );
 	bool operator<( offset_variable_t ) const;
 	bool operator==( offset_variable_t ) const;
 	static offset_variable_t highest_lower_bound( variable_t );
@@ -37,7 +37,7 @@ public:
 		union data_t {
 			int64_t integer;
 			double floating;
-			char* string;
+			const char* string;
 			constant_data* array; // change to map
 		} data;
 		bool operator==( const constant_data& other ) const;
@@ -45,6 +45,7 @@ public:
 		constant_data();
 		constant_data( int64_t x );
 		constant_data( double x );
+		constant_data( const char* x );
 	};
 	struct node {
 		basic_block_t id;

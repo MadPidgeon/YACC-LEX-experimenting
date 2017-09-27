@@ -53,13 +53,18 @@ type_t syntaxTree::node::computeDatatype() {
 			if( c != 0 )
 				return ERROR_TYPE;
 			break;
+		// optional left child
+		case SN::TUPLE:
+			if( children[1] )
+				return ERROR_TYPE;
+			break;
 		// both optional
 		case SN::FUNCTION_CALL:
 			break;
 		// 1 child (left)
 		case SN::COMPARISON_CHAIN:
 		case SN::UMIN: 		case SN::SIZE_OF:
-		case SN::LIST:		case SN::SET:		case SN::TUPLE:
+		case SN::LIST:		case SN::SET:
 		case SN::RETURN:
 		case SN::TUPLE_INDEXING:
 		case SN::SEQUENTIAL_BLOCK:
@@ -486,8 +491,12 @@ syntaxTree::node* syntaxTree::translateContainer( const parseTree::node* n ) {
 		head = SN::TUPLE;
 	} else if( n->id == PN::SET )
 		head = SN::SET;
-	node* tail = recursiveTranslateContainer( n->children[0], join );
-	return new node( head, tail, nullptr, {.integer=tail->data.integer+1} );
+	if( n->children[0] ) {
+		node* tail = recursiveTranslateContainer( n->children[0], join );
+		return new node( head, tail, nullptr, {.integer=tail->data.integer+1} );
+	} else {
+		return new node( head, nullptr, nullptr, {.integer=0} );
+	}
 }
 
 syntaxTree::node* syntaxTree::translateInlineFunctionDefinition( const parseTree::node* n ) {

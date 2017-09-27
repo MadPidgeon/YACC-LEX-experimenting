@@ -174,6 +174,16 @@ double iop_t::getParameterFloating( int i ) const {
 	}
 }
 
+const char* iop_t::getParameterString( int i ) const {
+	switch( i ) {
+		case 1:
+			return c_a.string;
+		case 2:
+			return c_b.string;
+		default:
+			throw;
+	}
+}
 
 bool iop_t::parameterIsVariable( int i ) const {
 	return getParameterVariable( i ) != ERROR_VARIABLE;
