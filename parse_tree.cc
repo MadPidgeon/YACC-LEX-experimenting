@@ -6,7 +6,7 @@ const std::vector<std::string> parseTree::node::node_name = {
 
 	"TUPLE", "LIST", "SET", "SEQUENCE_PART", "ELLIPSIS", "SPACE_JOINER", "COMMA",
 
-	"MEMBER_OF", "ASSIGN", "ID", "INT", "FLT", "STR", "VARIABLE_DECLARATION", "FUNCTION_CALL", "INLINE_FUNCTION_DEF",
+	"MEMBER_OF", "ASSIGN", "ID", "INT", "FLT", "STR", "VARIABLE_DECLARATION", "FUNCTION_CALL", "MEMBER_CALL", "INLINE_FUNCTION_DEF",
 
 	"IF", "WHILE", "FOR", "ELSE", 
 
@@ -265,6 +265,8 @@ void parseTree::parseOperation( std::deque<node*>& output, token_t t ) {
 			output.back() = new node( node::id_t::FUNCTION_CALL, a, b );
 	} else if( t.id == TK::MAPS_TO ) {
 		output.back() = new node( node::id_t::INLINE_FUNCTION_DEF, a, b );
+	} else if( t.id == TK::DOT ) {
+		output.back() = new node( node::id_t::MEMBER_CALL, a, b );
 	} else {
 		lerr << error_line() << "Unknown operator " << t << std::endl;
 		output.back() = new node( node::id_t::ADD_OP, a, b );

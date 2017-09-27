@@ -50,7 +50,7 @@ token_t token_t::getDual() const {
 }
 
 bool token_t::isBinaryOperator() const {
-	return ( id >= id_t::LOGIC_OP and id <= EXPONENT_OP and id != SIZE_OP ) or ( id >= id_t::LOGIC_ASSIGN_OP and id <= id_t::EXPONENT_ASSIGN_OP ) or id == id_t::ASSIGN or id == id_t::SPACE_JOINER or id == id_t::COMMA or id == id_t::MAPS_TO;
+	return ( id >= id_t::LOGIC_OP and id <= EXPONENT_OP and id != SIZE_OP ) or ( id >= id_t::LOGIC_ASSIGN_OP and id <= id_t::EXPONENT_ASSIGN_OP ) or id == id_t::ASSIGN or id == id_t::SPACE_JOINER or id == id_t::COMMA or id == id_t::MAPS_TO or id == id_t::DOT;
 }
 
 bool token_t::isUnaryOperator() const {
@@ -74,7 +74,7 @@ bool token_t::isControlFlow() const {
 }
 
 bool token_t::isLeftAssociative() const {
-	return ( id == id_t::LOGIC_OP or id == id_t::LATTICE_OP or id == id_t::ADD_OP or id == id_t::MULT_OP or id == id_t::SPACE_JOINER );
+	return ( id == id_t::LOGIC_OP or id == id_t::LATTICE_OP or id == id_t::ADD_OP or id == id_t::MULT_OP or id == id_t::SPACE_JOINER or id == id_t::DOT );
 }
 
 bool token_t::isRightAssociative() const {
@@ -90,6 +90,8 @@ int token_t::precedence() const {
 		return 1000;
 	if( id == id_t::MAPS_TO )
 		return 500;
+	if( id == id_t::DOT )
+		return 300;
 	if( id == id_t::INCREMENT )
 		return 100;
 	if( id >= id_t::LOGIC_OP and id <= id_t::EXPONENT_OP )
@@ -433,10 +435,12 @@ void tokenizer::generateInteger() {
 					addToken( TK::INT, i );
 					tokens.back().pos = p;
 					std::swap( tokens.back(), tokens.at( tokens.size()-3 ) );
+					last_added_token = tokens.back();
 				} else {
 					addFloating( double(i) );
 					tokens.back().pos = p;
 					std::swap( tokens.back(), tokens.at( tokens.size()-2 ) );
+					last_added_token = tokens.back();
 				}
 			} else
 				addFloating( double(i) );

@@ -279,7 +279,7 @@ syntaxTree::node* syntaxTree::translateExpression( const parseTree::node* n ) {
 		return new node( SN::FLOAT, nullptr, nullptr, {.floating=n->data.floating} );
 	else if( n->id == PN::STR )
 		return new node( SN::STRING, nullptr, nullptr, syntaxTree::node::extra_data_t{.string=n->data.string} );
-	else if( n->id == PN::FUNCTION_CALL )
+	else if( n->id == PN::FUNCTION_CALL or n->id == PN::MEMBER_CALL )
 		return translateFunctionCall( n );
 	else if( n->id == PN::RELATION_OP )
 		return translateComparisonChain( n );
@@ -539,12 +539,32 @@ syntaxTree::node* syntaxTree::translateFunctionCall( const parseTree::node* n ) 
 		n->print( syntree_out.stream );
 	syntree_out << ")" << std::endl;
 	#endif
-	assert( n->id == PN::FUNCTION_CALL );
-	node* lhs,* rhs = translateContainer( n->children[1] );
+	assert( n->id == PN::FUNCTION_CALL or n->id == PN::MEMBER_CALL );
+
+	// collect parameters
+	node* lhs,* rhs;
+	if( n->id == PN::FUNCTION_CALL )
+		rhs = translateContainer( n->children[1] );
+	else if( n->id == PN::MEMBER_CALL ) {
+		if( n->children[1]->id != PN::FUNCTION_CALL ) {
+			lerr << error_line() << "Member variables not yet implemented" << std::endl;
+			return makeErrorNode();
+		}
+		rhs = translateContainer( n->children[1]->children[1] );
+		node* list = rhs->children[0];
+		rhs->children[0] = nullptr;
+		delete rhs;
+		node* object = translateExpression( n->children[0] );
+		int index = list ? list->data.integer+1 : 0;
+		rhs = new node( SN::TUPLE, new node( SN::TUPLE_LIST, object, list, {.integer=index} ), nullptr, {.integer=index+1} );
+		n = n->children[1];
+	}
 	if( rhs->id != SN::TUPLE ) {
 		lerr << error_line() << "Expected function arguments" << std::endl;
 		return makeErrorNode();
 	}
+
+	// determine function
 	size_t tuple_size = rhs->data_type.getParameterCount();
 	if( n->children[0]->id == PN::ID ) { // named function call
 		if( n->children[0]->data.symbol == TUP_SYMBOL )
@@ -563,6 +583,8 @@ syntaxTree::node* syntaxTree::translateFunctionCall( const parseTree::node* n ) 
 	} else { // anonymous function call
 		lhs = translateExpression( n->children[0] );
 	}
+
+	// list or tuple indexing
 	if( lhs->data_type.isList() or lhs->data_type.isTuple() ) {
 		if( tuple_size != 1 ) {
 			lerr << error_line() << "Unexpected number of arguments to container indexing" << std::endl;
@@ -605,7 +627,7 @@ syntaxTree::node* syntaxTree::translateStatement( const parseTree::node* n ) {
 		return translateControlFlow( n );
 	else if( n->id == PN::LIST or n->id == PN::SET ) // pas op met [1,2,3](1) = 4;
 		return translateStatementList( n );
-	else if( n->id == PN::FUNCTION_CALL )
+	else if( n->id == PN::FUNCTION_CALL or n->id == PN::MEMBER_CALL )
 		return translateFunctionCall( n );
 	syntree_out << error_line() << "Unhandled statement " << n->id << std::endl;
 	return nullptr;
